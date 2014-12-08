@@ -17,6 +17,127 @@ class BaseQuerySet(base.BaseQuerySet):
     """
 
     @gen.coroutine
+    def map_reduce(self, map_f, reduce_f, output, finalize_f=None, limit=None,
+                   scope=None):
+        """map_reduce that uses motor
+
+        Perform a map/reduce query using the current query spec
+        and ordering. While ``map_reduce`` respects ``QuerySet`` chaining,
+        it must be the last call made, as it does not return a maleable
+        ``QuerySet``.
+
+        See the :meth:`~mongoengine.tests.QuerySetTest.test_map_reduce`
+        and :meth:`~mongoengine.tests.QuerySetTest.test_map_advanced`
+        tests in ``tests.queryset.QuerySetTest`` for usage examples.
+
+        :param map_f: map function, as :class:`~bson.code.Code` or string
+        :param reduce_f: reduce function, as
+                         :class:`~bson.code.Code` or string
+        :param output: output collection name, if set to 'inline' will try to
+           use :class:`~pymongo.collection.Collection.inline_map_reduce`
+           This can also be a dictionary containing output options
+           see: http://docs.mongodb.org/manual/reference/command/mapReduce/#dbcmd.mapReduce
+        :param finalize_f: finalize function, an optional function that
+                           performs any post-reduction processing.
+        :param scope: values to insert into map/reduce global scope. Optional.
+        :param limit: number of objects from current query to provide
+                      to map/reduce method
+
+        Returns an iterator yielding
+        :class:`~mongoengine.document.MapReduceDocument`.
+
+        """
+        queryset = self.clone()
+
+        MapReduceDocument = _import_class('MapReduceDocument')
+
+        if not hasattr(self._collection, "map_reduce"):
+            raise NotImplementedError("Requires MongoDB >= 1.7.1")
+
+        map_f_scope = {}
+        if isinstance(map_f, Code):
+            map_f_scope = map_f.scope
+            map_f = str(map_f)
+        map_f = Code(queryset._sub_js_fields(map_f), map_f_scope)
+
+        reduce_f_scope = {}
+        if isinstance(reduce_f, Code):
+            reduce_f_scope = reduce_f.scope
+            reduce_f = str(reduce_f)
+        reduce_f_code = queryset._sub_js_fields(reduce_f)
+        reduce_f = Code(reduce_f_code, reduce_f_scope)
+
+        mr_args = {'query': ( yield queryset._query)}
+
+        if finalize_f:
+            finalize_f_scope = {}
+            if isinstance(finalize_f, Code):
+                finalize_f_scope = finalize_f.scope
+                finalize_f = str(finalize_f)
+            finalize_f_code = queryset._sub_js_fields(finalize_f)
+            finalize_f = Code(finalize_f_code, finalize_f_scope)
+            mr_args['finalize'] = finalize_f
+
+        if scope:
+            mr_args['scope'] = scope
+
+        if limit:
+            mr_args['limit'] = limit
+
+        if output == 'inline' and not queryset._ordering:
+            map_reduce_function = 'inline_map_reduce'
+        else:
+            map_reduce_function = 'map_reduce'
+            mr_args['out'] = output
+
+        results = getattr(queryset._collection, map_reduce_function)(
+                          map_f, reduce_f, **mr_args)
+        results = yield results
+
+        if map_reduce_function == 'map_reduce':
+            results = results.find()
+
+        if queryset._ordering:
+            results = results.sort(queryset._ordering)
+
+
+        return [MapReduceDocument(queryset._document, queryset._collection,
+                                  doc['_id'], doc['value']) for doc in results]
+        # for doc in results:
+        #     yield MapReduceDocument(queryset._document, queryset._collection,
+        #                             doc['_id'], doc['value'])
+
+    @gen.coroutine
+    def item_frequencies(self, field, normalize=False, map_reduce=True):
+        """Returns a dictionary of all items present in a field across
+        the whole queried set of documents, and their corresponding frequency.
+        This is useful for generating tag clouds, or searching documents.
+
+        .. note::
+
+            Can only do direct simple mappings and cannot map across
+            :class:`~mongoengine.fields.ReferenceField` or
+            :class:`~mongoengine.fields.GenericReferenceField` for more complex
+            counting a manual map reduce call would is required.
+
+        If the field is a :class:`~mongoengine.fields.ListField`, the items within
+        each list will be counted individually.
+
+        :param field: the field to use
+        :param normalize: normalize the results so they add to 1.0
+        :param map_reduce: Use map_reduce over exec_js
+
+        .. versionchanged:: 0.5 defaults to map_reduce and can handle embedded
+                            document lookups
+        """
+        if map_reduce:
+            freq = yield self._item_frequencies_map_reduce(field,
+                                                           normalize=normalize)
+            return freq
+        yield self._item_frequencies_exec_js(field, normalize=normalize)
+
+
+    @gen.coroutine
     def in_bulk(self, object_ids):
         """Retrieve a set of documents by their ids.
 
@@ -380,3 +501,157 @@ class BaseQuerySet(base.BaseQuerySet):
         cursor = yield self._cursor
         n = yield cursor.count(with_limit_and_skip=with_limit_and_skip)
         return n
+
+    @gen.coroutine
+    def average(self, field):
+        """Average over the values of the specified field.
+
+        :param field: the field to average over; use dot-notation to refer to
+            embedded document fields
+
+        """
+        map_func = """
+            function() {
+                var path = '{{~%(field)s}}'.split('.'),
+                field = this;
+
+                for (p in path) {
+                    if (typeof field != 'undefined')
+                       field = field[path[p]];
+                    else
+                       break;
+                }
+
+                if (field && field.constructor == Array) {
+                    field.forEach(function(item) {
+                        emit(1, {t: item||0, c: 1});
+                    });
+                } else if (typeof field != 'undefined') {
+                    emit(1, {t: field||0, c: 1});
+                }
+            }
+        """ % dict(field=field)
+
+        reduce_func = Code("""
+            function(key, values) {
+                var out = {t: 0, c: 0};
+                for (var i in values) {
+                    var value = values[i];
+                    out.t += value.t;
+                    out.c += value.c;
+                }
+                return out;
+            }
+        """)
+
+        finalize_func = Code("""
+            function(key, value) {
+                return value.t / value.c;
+            }
+        """)
+
+        results = yield self.map_reduce(
+            map_func, reduce_func,
+            finalize_f=finalize_func, output='inline')
+        for result in results:
+            return result.value
+        else:
+            return 0
+
+    @gen.coroutine
+    def sum(self, field):
+        """Sum over the values of the specified field.
+
+        :param field: the field to sum over; use dot-notation to refer to
+            embedded document fields
+
+        .. versionchanged:: 0.5 - updated to map_reduce as db.eval doesnt work
+            with sharding.
+        """
+        map_func = """
+            function() {
+                var path = '{{~%(field)s}}'.split('.'),
+                field = this;
+
+                for (p in path) {
+                    if (typeof field != 'undefined')
+                       field = field[path[p]];
+                    else
+                       break;
+                }
+
+                if (field && field.constructor == Array) {
+                    field.forEach(function(item) {
+                        emit(1, item||0);
+                    });
+                } else if (typeof field != 'undefined') {
+                    emit(1, field||0);
+                }
+            }
+        """ % dict(field=field)
+
+        reduce_func = Code("""
+            function(key, values) {
+                var sum = 0;
+                for (var i in values) {
+                    sum += values[i];
+                }
+                return sum;
+            }
+        """)
+
+        results = yield self.map_reduce(map_func, reduce_func, output='inline')
+        for result in results:
+            return result.value
+        else:
+            return 0
+
+    @gen.coroutine
+    def _item_frequencies_map_reduce(self, field, normalize=False):
+        map_func = """
+            function() {
+                var path = '{{~%(field)s}}'.split('.');
+                var field = this;
+
+                for (p in path) {
+                    if (typeof field != 'undefined')
+                       field = field[path[p]];
+                    else
+                       break;
+                }
+                if (field && field.constructor == Array) {
+                    field.forEach(function(item) {
+                        emit(item, 1);
+                    });
+                } else if (typeof field != 'undefined') {
+                    emit(field, 1);
+                } else {
+                    emit(null, 1);
+                }
+            }
+        """ % dict(field=field)
+        reduce_func = """
+            function(key, values) {
+                var total = 0;
+                var valuesSize = values.length;
+                for (var i=0; i < valuesSize; i++) {
+                    total += parseInt(values[i], 10);
+                }
+                return total;
+            }
+        """
+        values = yield self.map_reduce(map_func, reduce_func, 'inline')
+        frequencies = {}
+        for f in values:
+            key = f.key
+            if isinstance(key, float):
+                if int(key) == key:
+                    key = int(key)
+            frequencies[key] = int(f.value)
+
+        if normalize:
+            count = sum(frequencies.values())
+            frequencies = dict([(k, float(v) / count)
+                                for k, v in list(frequencies.items())])
+
+        return frequencies

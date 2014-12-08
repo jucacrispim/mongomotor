@@ -3,6 +3,7 @@
 from mongomotor.monkey import patch_all
 patch_all()
 
-from mongomotor.document import Document
+from mongoengine.connection import connect, disconnect
+from mongomotor.document import Document, EmbeddedDocument, DynamicDocument
 
 VERSION = '0.1'

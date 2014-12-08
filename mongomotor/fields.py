@@ -13,25 +13,6 @@ from mongoengine import Document
 
 
 class ReferenceField(fields.ReferenceField):
-    def __init__(self, document_type, dbref=False,
-                 reverse_delete_rule=fields.DO_NOTHING, **kwargs):
-        """Initialises the Reference Field.
-
-        :param dbref:  Store the reference as :class:`~pymongo.dbref.DBRef`
-          or as the :class:`~pymongo.objectid.ObjectId`.id .
-        :param reverse_delete_rule: Determines what to do when the referring
-          object is deleted
-        """
-        if not isinstance(document_type, str):
-            if not issubclass(document_type, (Document, str)):
-                self.error('Argument to ReferenceField constructor must be a '
-                           'document class or a string')
-
-        self.dbref = dbref
-        self.document_type_obj = document_type
-        self.reverse_delete_rule = reverse_delete_rule
-        super(fields.ReferenceField, self).__init__(**kwargs)
-
     @gen.coroutine
     def __get__(self, instance, owner):
         """Descriptor to allow lazy dereferencing.

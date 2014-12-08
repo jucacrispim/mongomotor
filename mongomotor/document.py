@@ -2,17 +2,24 @@
 
 import re
 import pymongo
+from pymongo.read_preferences import ReadPreference
 from bson.dbref import DBRef
+import tornado
 from tornado import gen
 from mongoengine.queryset import OperationError, NotUniqueError
-from mongoengine import Document as DocumentBase
-from mongoengine.base.metaclasses import TopLevelDocumentMetaclass
+from mongoengine import (Document as DocumentBase,
+                         EmbeddedDocument as EmbeddedDocumentBase,
+                         DynamicDocument as DynamicDocumentBase)
+from mongoengine.base.metaclasses import (TopLevelDocumentMetaclass,
+                                          DocumentMetaclass)
 from mongoengine.document import _import_class
 from tornado import gen
 from mongomotor import signals
+from mongomotor.base.document import BaseDocumentMotor
 
 
-class Document(DocumentBase, metaclass=TopLevelDocumentMetaclass):
+class Document(BaseDocumentMotor, DocumentBase,
+               metaclass=TopLevelDocumentMetaclass):
     """
     Document version that uses motor mongodb driver.
     It's a copy of some mongoengine.Document methods
@@ -70,24 +77,11 @@ class Document(DocumentBase, metaclass=TopLevelDocumentMetaclass):
             to cascading saves.  Implies ``cascade=True``.
         :param _refs: A list of processed references used in cascading saves
 
-        .. versionchanged:: 0.5
-            In existing documents it only saves changed fields using
-            set / unset.  Saves are cascaded and any
-            :class:`~bson.dbref.DBRef` objects that have changes are
-            saved as well.
-        .. versionchanged:: 0.6
-            Added cascading saves
-        .. versionchanged:: 0.8
-            Cascade saves are optional and default to False.  If you want
-            fine grain control then you can turn off using document
-            meta['cascade'] = True.  Also you can pass different kwargs to
-            the cascade save using cascade_kwargs which overwrites the
-            existing kwargs with custom values.
         """
         signals.pre_save.send(self.__class__, document=self)
 
         if validate:
-            self.validate(clean=clean)
+            yield self.validate(clean=clean)
 
         if write_concern is None:
             write_concern = {"w": 1}
@@ -209,3 +203,89 @@ class Document(DocumentBase, metaclass=TopLevelDocumentMetaclass):
         cls._collection = None
         db = cls._get_db()
         yield db.drop_collection(cls._get_collection_name())
+
+    @classmethod
+    @gen.coroutine
+    def compare_indexes(cls):
+        """ Compares the indexes defined in MongoEngine with the ones existing
+        in the database. Returns any missing/extra indexes.
+        """
+        required = cls.list_indexes()
+        existing = [
+            info['key'] for info in
+            list((yield cls._get_collection().index_information()).values())]
+
+        missing = [index for index in required if index not in existing]
+        extra = [index for index in existing if index not in required]
+
+        # if { _cls: 1 } is missing, make sure it's *really* necessary
+        if [('_cls', 1)] in missing:
+            cls_obsolete = False
+            for index in existing:
+                if includes_cls(index) and index not in extra:
+                    cls_obsolete = True
+                    break
+            if cls_obsolete:
+                missing.remove([('_cls', 1)])
+
+        return {'missing': missing, 'extra': extra}
+
+    @gen.coroutine
+    def reload(self, max_depth=1):
+        """Reloads all attributes from the database.
+
+        .. versionadded:: 0.1.2
+        .. versionchanged:: 0.6  Now chainable
+        """
+        if not self.pk:
+            raise self.DoesNotExist("Document does not exist")
+        obj = (yield (yield self._qs.read_preference(ReadPreference.PRIMARY).filter(
+            **self._object_key).limit(1)).select_related(max_depth=max_depth))
+
+
+        if obj:
+            obj = obj[0]
+        else:
+            raise self.DoesNotExist("Document does not exist")
+
+        for field in self._fields_ordered:
+            if isinstance(obj[field], tornado.concurrent.Future):
+                # this will mark document as changed in this field but this is not
+                # the desired behavior, so we'll remove this mark after.
+                f = yield self._load_related(obj[field], max_depth - 1)
+                obj[field] = f
+                obj._changed_fields.pop(obj._changed_fields.index(field))
+                setattr(self, field, self._reload(field, f))
+            else:
+                setattr(self, field, self._reload(field, obj[field]))
+
+        self._changed_fields = obj._changed_fields
+        self._created = False
+        return obj
+
+    @gen.coroutine
+    def _load_related(self, field, max_depth):
+        field = yield field
+        return field
+        # if max_depth == 0:
+        #     return field
+        # else:
+        #     for f in dir(field):
+
+
+
+class DynamicDocument(Document, DynamicDocumentBase,
+                      metaclass=TopLevelDocumentMetaclass):
+
+    my_metaclass  = TopLevelDocumentMetaclass
+
+    _dynamic = True
+
+    def __delattr__(self, *args, **kwargs):
+        DynamicDocumentBase.__delattr__(self, *args, **kwargs)
+
+
+class EmbeddedDocument(BaseDocumentMotor, EmbeddedDocumentBase,
+                       metaclass=DocumentMetaclass):
+
+    my_metaclass = TopLevelDocumentMetaclass

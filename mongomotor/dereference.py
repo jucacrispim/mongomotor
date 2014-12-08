@@ -1,11 +1,12 @@
 # -*- coding: utf-8 -*-
 
+import tornado
+from tornado import gen
 from bson import DBRef
 from mongoengine.queryset.queryset import QuerySet
 from mongoengine.base.metaclasses import TopLevelDocumentMetaclass
 from mongoengine.fields import ReferenceField, ListField, DictField, MapField
 from mongoengine import dereference, Document, EmbeddedDocument
-from tornado import gen
 
 
 class DeReference(dereference.DeReference):
@@ -61,6 +62,10 @@ class DeReference(dereference.DeReference):
                             if not isinstance(v, (DBRef, Document)) else (k, v)
                             for k, v in items.items()]
                         )
+
+
+        if isinstance(items, tornado.concurrent.Future):
+            items = yield items
 
         self.reference_map = self._find_references(items)
         self.object_map = yield self._fetch_objects(doc_type=doc_type)

@@ -3,6 +3,7 @@
 import pymongo
 import motor
 from mongoengine import connection, ConnectionError
+from mongoengine.connection import connect, get_db
 
 
 def get_connection(alias=connection.DEFAULT_CONNECTION_NAME, reconnect=False):
@@ -24,18 +25,18 @@ def get_connection(alias=connection.DEFAULT_CONNECTION_NAME, reconnect=False):
         except KeyError:
             conn_name = conn_settings['db']
 
-        if hasattr(pymongo, 'version_tuple'):  # Support for 2.1+
-            conn_settings.pop('name', None)
-            conn_settings.pop('slaves', None)
-            conn_settings.pop('is_slave', None)
-        else:
-            # Get all the slave connections
-            if 'slaves' in conn_settings:
-                slaves = []
-                for slave_alias in conn_settings['slaves']:
-                    slaves.append(get_connection(slave_alias))
-                conn_settings['slaves'] = slaves
-                conn_settings.pop('read_preference', None)
+        conn_settings.pop('name', None)
+        conn_settings.pop('slaves', None)
+        conn_settings.pop('is_slave', None)
+        conn_settings.pop('authentication_source', None)
+
+        # Get all the slave connections
+        if 'slaves' in conn_settings:
+            slaves = []
+            for slave_alias in conn_settings['slaves']:
+                slaves.append(get_connection(slave_alias))
+            conn_settings['slaves'] = slaves
+            conn_settings.pop('read_preference', None)
 
         connection_class = motor.MotorClient
         if 'replicaSet' in conn_settings:
@@ -48,8 +49,12 @@ def get_connection(alias=connection.DEFAULT_CONNECTION_NAME, reconnect=False):
             connection_class = motor.MotorReplicaSetClient
 
         try:
+            # always create a conn_uri because motor uses an uri
+            # to authenticated connections
             conn_uri = _create_conn_uri(conn_name, **conn_settings)
-            connection._connections[alias] = connection_class(conn_uri)
+            conn_args = _clean_conn_settings(**conn_settings)
+            connection._connections[alias] = connection_class(conn_uri,
+                                                              **conn_args)
         except Exception as e:
             raise ConnectionError("Cannot connect to database %s :\n%s" % (
                 alias, e))
@@ -57,6 +62,10 @@ def get_connection(alias=connection.DEFAULT_CONNECTION_NAME, reconnect=False):
 
 
 def _create_conn_uri(conn_name, **kwargs):
+    # checking if already is a conn string
+    if 'mongodb://' in kwargs.get('host', ''):
+        return kwargs.get('host')
+
     uri = 'mongodb://'
     host_port_db = '%s:%s/%s' % (kwargs.get('host'),
                                  kwargs.get('port', '27017'),
@@ -68,3 +77,17 @@ def _create_conn_uri(conn_name, **kwargs):
     uri += host_port_db
 
     return uri
+
+def _clean_conn_settings(**conn_settings):
+    """Remove settings already used to create the connection string
+    leaving only the kwargs to be passed to connection_class
+    """
+    new_conn = conn_settings.copy()
+    notallowed = ['host', 'port', 'username', 'password']
+    for na in notallowed:
+        try:
+            del new_conn[na]
+        except KeyError:
+            pass
+
+    return new_conn

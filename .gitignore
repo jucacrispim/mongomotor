@@ -16,3 +16,4 @@ pip-log.txt
 dist/
 build/
 *.egg-info/
+mongoengine

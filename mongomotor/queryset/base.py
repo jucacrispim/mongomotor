@@ -177,6 +177,7 @@ class BaseQuerySet(base.BaseQuerySet):
 
         .. versionadded:: 0.3
         """
+
         queryset = self.clone()
         queryset = yield queryset.limit(2)
         queryset = queryset.filter(*q_objs, **query)
@@ -187,6 +188,7 @@ class BaseQuerySet(base.BaseQuerySet):
             msg = ("%s matching query does not exist."
                    % queryset._document._class_name)
             raise queryset._document.DoesNotExist(msg)
+
 
         if not result:
             msg = ("%s matching query does not exist."
@@ -372,6 +374,7 @@ class BaseQuerySet(base.BaseQuerySet):
     def __next__(self):
         """Wrap the result in a :class:`~mongoengine.Document` object.
         """
+
         if not hasattr(self, '_next_doc'):
             self._next_doc = yield self._get_next_doc()
 
@@ -385,8 +388,10 @@ class BaseQuerySet(base.BaseQuerySet):
             self._next_doc = yield self._get_next_doc()
             return doc
 
+
         doc = self._document._from_son(raw_doc,
                                        _auto_dereference=self._auto_dereference)
+
         if self._scalar:
             doc = self._get_scalar(doc)
             self._next_doc = yield self._get_next_doc()

@@ -88,6 +88,14 @@ class MongoMotorTest(AsyncTestCase):
         # remebering from a wired bug
         doc = self.maindoc()
         yield doc.save()
+        self.assertIsNone((yield doc.ref))
+
+    @gen_test
+    def test_get_reference_after_get(self):
+        d1 = self.maindoc()
+        yield d1.save()
+        doc = yield self.maindoc.objects.get(id=d1.id)
+        self.assertIsNone((yield doc.ref))
 
     @gen_test
     def test_delete(self):

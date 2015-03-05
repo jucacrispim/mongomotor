@@ -289,3 +289,8 @@ class EmbeddedDocument(BaseDocumentMotor, EmbeddedDocumentBase,
                        metaclass=DocumentMetaclass):
 
     my_metaclass = TopLevelDocumentMetaclass
+
+    def __init__(self, *args, **kwargs):
+        super(EmbeddedDocument, self).__init__(*args, **kwargs)
+        self._instance = None
+        self._changed_fields = []

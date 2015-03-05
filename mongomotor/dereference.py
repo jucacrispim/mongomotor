@@ -25,11 +25,10 @@ class DeReference(dereference.DeReference):
             :class:`~mongoengine.base.ComplexBaseField`
         :param get: A boolean determining if being called by __get__
         """
+
         if items is None or isinstance(items, str):
             return items
 
-        # cheapest way to convert a queryset to a list
-        # list(queryset) uses a count() query to determine length
         if isinstance(items, QuerySet):
             items = yield items.to_list()
 

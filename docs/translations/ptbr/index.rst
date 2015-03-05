@@ -30,3 +30,10 @@ E por fim, rode os testes:
 .. code-block:: sh
 
     $ python setup.py test
+
+Começando
++++++++++
+.. toctree::
+   :maxdepth: 1
+
+   tutorial

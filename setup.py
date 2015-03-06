@@ -29,7 +29,7 @@ setup(name='mongomotor',
       author_email='juca@poraodojuca.net',
       description=DESCRIPTION,
       long_description=LONG_DESCRIPTION,
-      url='https://gitorious.org/pyrocumulus',
+      url='https://gitorious.org/mongomotor',
       packages=find_packages(exclude=['tests', 'tests.*']),
       install_requires=['mongoengine>=0.8.7', 'motor>=0.3'],
       classifiers=[

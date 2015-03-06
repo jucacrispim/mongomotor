@@ -3,7 +3,7 @@
 import pymongo
 import motor
 from mongoengine import connection, ConnectionError
-from mongoengine.connection import connect, get_db
+from mongoengine.connection import connect, get_db, disconnect
 
 
 def get_connection(alias=connection.DEFAULT_CONNECTION_NAME, reconnect=False):

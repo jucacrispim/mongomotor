@@ -16,20 +16,22 @@ def get_version_from_file():
 
 VERSION = get_version_from_file()
 DESCRIPTION = """
-Mongoengine working with motor async mongodb driver for tornado
+Mongoengine integration with Motor
 """
-LONG_DESCRIPTION = DESCRIPTION
+LONG_DESCRIPTION = """
+Mongomotor lets you use the Motor async driver while keeping all the
+convenience from Mongoengine.
+"""
 
 setup(name='mongomotor',
       version=VERSION,
       author='Juca Crispim',
-      author_email='jucacrispim@gmail.com',
+      author_email='juca@poraodojuca.net',
       description=DESCRIPTION,
       long_description=LONG_DESCRIPTION,
       url='https://gitorious.org/pyrocumulus',
       packages=find_packages(exclude=['tests', 'tests.*']),
-      # install_requires=['mongoengine>=0.8.4', 'blinker==1.3',
-      #                   'motor>=0.3'],
+      install_requires=['mongoengine>=0.8.7', 'motor>=0.3'],
       classifiers=[
           'Development Status :: 3 - Alpha',
           'Intended Audience :: Developers',
@@ -39,8 +41,6 @@ setup(name='mongomotor',
           'Programming Language :: Python :: 3',
           'Programming Language :: Python :: 3.4',
           'Topic :: Software Development :: Libraries :: Python Modules',
-          'Topic :: Internet :: WWW/HTTP',
-          'Topic :: Internet :: WWW/HTTP :: Dynamic Content',
       ],
       test_suite='tests',
       provides=['mongomotor'])

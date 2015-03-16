@@ -1,6 +1,11 @@
 Bem-vindo à documentação do mongomotor!
 =======================================
 
+|mongomotor-logo|
+
+.. |mongomotor-logo| image:: ./_static/mongomotor.jpg
+    :alt: Async object document mapper for tornado
+
 O mongomotor é uma pequena integração do mongoengine, um document object
 mapper para python e mongodb com o motor, um driver assíncrono para mongodb
 feito usando o mainloop do tornado.

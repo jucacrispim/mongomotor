@@ -1,5 +1,5 @@
-Bem-vindo à documentação do MongoMotor!
-=======================================
+MongoMotor: Um document-object mapper assíncrono para MongoDB
+=============================================================
 
 |mongomotor-logo|
 

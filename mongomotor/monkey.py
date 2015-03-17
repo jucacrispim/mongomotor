@@ -67,14 +67,6 @@ def patch_visitor():
     patch_item(mongoengine.queryset.visitor, 'QCombination',
                visitor.QCombination)
 
-
-def patch_dereference():
-    import mongoengine
-    from mongomotor.dereference import DeReference
-
-    patch_item(mongoengine.dereference, 'DeReference', DeReference)
-
-
 def patch_fields():
     import mongoengine
     from mongomotor.fields import ReferenceField
@@ -85,7 +77,6 @@ def patch_all():
     # the order here is important!
     patch_document()
     patch_fields()
-    patch_dereference()
     patch_transform()
     patch_visitor()
     patch_queryset()

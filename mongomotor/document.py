@@ -163,6 +163,7 @@ class Document(BaseDocumentMotor, DocumentBase,
         self._clear_changed_fields()
         self._created = False
         signals.post_save.send(self.__class__, document=self, created=created)
+
         return self
 
     @gen.coroutine
@@ -250,11 +251,12 @@ class Document(BaseDocumentMotor, DocumentBase,
 
         for field in self._fields_ordered:
             if isinstance(obj[field], tornado.concurrent.Future):
+
                 # this will mark document as changed in this field but this is not
                 # the desired behavior, so we'll remove this mark after.
                 f = yield self._load_related(obj[field], max_depth - 1)
                 obj[field] = f
-                obj._changed_fields.pop(obj._changed_fields.index(field))
+                #obj._changed_fields.pop(obj._changed_fields.index(field))
                 setattr(self, field, self._reload(field, f))
             else:
                 setattr(self, field, self._reload(field, obj[field]))

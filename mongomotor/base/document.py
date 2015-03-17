@@ -6,7 +6,7 @@ from bson.son import SON
 from mongoengine.base import document
 from mongoengine.common import _import_class
 from mongoengine import signals
-from mongomotor.fields import ReferenceField
+from mongomotor.fields import ReferenceField, ListField
 
 
 class BaseDocumentMotor(document.BaseDocument):
@@ -36,6 +36,9 @@ class BaseDocumentMotor(document.BaseDocument):
         self._dynamic_fields = SON()
 
         # Assign default values to instance
+        # MONGOMOTOR here!
+        # the shit is, if I use getattr to everyone somethimes I will get
+        # Futures when I don't want
         for key, field in self._fields.items():
             if self._db_field_map.get(key, key) in values \
                or isinstance(field, ReferenceField):

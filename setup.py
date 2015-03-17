@@ -31,7 +31,7 @@ setup(name='mongomotor',
       long_description=LONG_DESCRIPTION,
       url='https://gitorious.org/mongomotor',
       packages=find_packages(exclude=['tests', 'tests.*']),
-      install_requires=['mongoengine>=0.8.7', 'motor>=0.3'],
+      install_requires=['mongoengine>=0.8.7', 'motor>=0.3', 'blinker>=1.3'],
       classifiers=[
           'Development Status :: 3 - Alpha',
           'Intended Audience :: Developers',

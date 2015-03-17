@@ -6,14 +6,10 @@ from bson.son import SON
 from mongoengine.base import document
 from mongoengine.common import _import_class
 from mongoengine import signals
-from mongoengine.errors import FieldDoesNotExist
-from mongoengine.base.datastructures import StrictDict, SemiStrictDict
-
-from mongomotor.fields import ReferenceField
+from mongomotor.fields import ReferenceField, ListField
 
 
 class BaseDocumentMotor(document.BaseDocument):
-
     def __init__(self, *args, **values):
         """
         Initialise a document or embedded document
@@ -21,8 +17,6 @@ class BaseDocumentMotor(document.BaseDocument):
         :param __auto_convert: Try and will cast python objects to Object types
         :param values: A dictionary of values for the document
         """
-        self._initialised = False
-        self._created = True
         if args:
             # Combine positional arguments with named arguments.
             # We only want named arguments.
@@ -33,50 +27,24 @@ class BaseDocumentMotor(document.BaseDocument):
             for value in args:
                 name = next(field)
                 if name in values:
-                    raise TypeError(
-                        "Multiple values for keyword argument '" + name + "'")
+                    raise TypeError("Multiple values for keyword argument '" + name + "'")
                 values[name] = value
-
         __auto_convert = values.pop("__auto_convert", True)
-
-        # 399: set default values only to fields loaded from DB
-        __only_fields = set(values.pop("__only_fields", values))
-
-        _created = values.pop("_created", True)
-
         signals.pre_init.send(self.__class__, document=self, values=values)
-
-        # Check if there are undefined fields supplied, if so raise an
-        # Exception.
-        if not self._dynamic:
-            for var in list(values.keys()):
-                if var not in list(self._fields.keys()) + \
-                   ['id', 'pk', '_cls', '_text_score']:
-                    msg = (
-                        "The field '{0}' does not exist on the document '{1}'"
-                    ).format(var, self._class_name)
-                    raise FieldDoesNotExist(msg)
-
-        if self.STRICT and not self._dynamic:
-            self._data = StrictDict.create(allowed_keys=self._fields_ordered)()
-        else:
-            self._data = SemiStrictDict.create(
-                allowed_keys=self._fields_ordered)()
 
         self._data = {}
         self._dynamic_fields = SON()
 
         # Assign default values to instance
+        # MONGOMOTOR here!
+        # the shit is, if I use getattr to everyone somethimes I will get
+        # Futures when I don't want
         for key, field in self._fields.items():
-            if self._db_field_map.get(key, key) in __only_fields \
+            if self._db_field_map.get(key, key) in values \
                or isinstance(field, ReferenceField):
                 continue
-
             value = getattr(self, key, None)
             setattr(self, key, value)
-
-        if "_cls" not in values:
-            self._cls = self._class_name
 
         # Set passed values after initialisation
         if self._dynamic:
@@ -111,7 +79,6 @@ class BaseDocumentMotor(document.BaseDocument):
 
         # Flag initialised
         self._initialised = True
-        self._created = _created
         signals.post_init.send(self.__class__, document=self)
 
     @gen.coroutine

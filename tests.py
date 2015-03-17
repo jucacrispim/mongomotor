@@ -59,11 +59,9 @@ class MongoMotorTest(AsyncTestCase):
         # asserting if our reference document was created
         self.assertTrue(ref.id)
         # and if the listfield is ok
-        # note the yields here
-        # when handling with ReferenceFields, ListFields and DictFields
-        # you need to yield things.
-        embedlist = yield ref.embedlist
-        self.assertEqual((yield embedlist[0].list_field),
+
+        embedlist = ref.embedlist
+        self.assertEqual(embedlist[0].list_field,
                          ['uma', 'lista', 'nota', 10])
 
         # creating the main document

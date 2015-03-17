@@ -3,23 +3,28 @@ Uso do mongomotor
 
 Usar o mongomotor é bem similar ao uso do mongoengine. Para escrever seus
 modelos não há diferença, a não ser no import. Por isso, usaremos o mesmo
-exemplo usado no tutorial do mongoengine (só com o slugzinho a mais ali :)).
-Vamos criar um blog simples.
+exemplo usado no tutorial do mongoengine. Vamos criar um tumblelog simples.
 
-Pra começar, vamos escrever os seguintes modelos:
+
+Definindo nossos documentos
++++++++++++++++++++++++++++
+
+Para começar, vamos definir os seguintes documentos:
 
 .. code-block:: python
 
+    # Os imports são como os do mongoengine, só alterando ``mongoengine``
+    # para ``mongomotor``.
     from mongomotor import connect, Document, EmbeddedDocument
     from mongomotor.fields import (StringField, ReferenceField, ListField,
 				   EmbeddedDocumentField)
     from tornado import gen
 
-    # criando a conexão com o banco de dados.
+    # Primeiro criando a conexão com o banco de dados.
     connect('mongomotor-test')
 
 
-    # Aqui os modelos iguais aos do tutorial do mongoengine
+    # Aqui os documentos iguais aos do tutorial do mongoengine
     class Comment(EmbeddedDocument):
 	content = StringField()
 	name = StringField(max_length=120)
@@ -36,18 +41,8 @@ Pra começar, vamos escrever os seguintes modelos:
 	author = ReferenceField(User)
 	tags = ListField(StringField(max_length=30))
 	comments = ListField(EmbeddedDocumentField(Comment))
-	slug = StringField(max_length=120, required=True)
 
 	meta = {'allow_inheritance': True}
-
-	@gen.coroutine
-	def save(self, *args, **kwargs):
-	    """Se não houver slug, criamos um"""
-	    if not self.slug:
-		# enough for demo purposes... ;)
-		self.slug = self.title.replace(' ', '-').lower()
-
-	    yield super(Post, self).save(*args, **kwargs)
 
 
     class TextPost(Post):
@@ -62,217 +57,64 @@ Pra começar, vamos escrever os seguintes modelos:
 	link_url = StringField()
 
 
-Agora, como estamos usando o motor como driver para o mongodb, precisamos
-criar uma aplicação tornado.
+Agora, o uso é praticamente igual ao do mongoengine. Vejamos:
+
+
+Adicionando dados ao nosso tumblelog
+++++++++++++++++++++++++++++++++++++
+
+Para adicionar um novo documento à base de dados, faremos tudo
+como no mongoengine, a diferença é que quando formos usar o método
+save, usaremos ``yield``
 
 .. code-block:: python
 
-    # Agora aqui uma aplicação tornado pra testar o mongomotor.
-    import json
-    from tornado import ioloop, gen
-    from tornado.web import RequestHandler, HTTPError, URLSpec, Application
+    author = User(email='ross@example.com', first_name='Nice', last_name='Guy')
+    yield author.save()
+
+    post1 = TextPost(title='Fun with MongoMotor', author=author)
+    post1.content = 'Took a look at MongoEngine today, looks pretty cool.'
+    post1.tags = ['mongodb', 'mongoengine', 'mongomotor']
+    yield post1.save()
+
+    post2 = LinkPost(title='MongoMotor Documentation', author=author)
+    post2.link_url = 'http://mongomotor-ptbr.readthedocs.org/pt/latest/'
+    post2.tags = ['mongomotor']
+    yield post2.save()
 
 
-    class TextPostHandler(RequestHandler):
+Acessando nossos dados
+++++++++++++++++++++++
 
-	@gen.coroutine
-	def get(self, slug=None):
-	    """No tornado, o método get é o que trata as requisições GET.
-	    O funcionamento do nosso será o seguinte:
-	    Se o request for direto em ``/``, isto é, não tiver slug nenhum,
-	    listaremos os posts, se houver um slug
-	    (a url seria algo assim: ``/slug-do-post``) exibiremos o post
-	    correspondente.
-	    """
-	    if not slug:
-		ret = yield self.list_objects()
-	    else:
-		ret = yield self.get_object(slug)
-
-	    self.write(ret)
-
-	@gen.coroutine
-	def put(self, operation):
-	    """Método responsável por tratar requisições PUT.
-	    Aqui funciona assim: Pode-se enviar PUT requests para
-	    ``/``, ``/putpost`` ou ``/putcomment``,
-	    sendo ``/`` ou ``/putpost`` para cadastrar
-	    um post e ``/putcomment`` para cadastrar um comentário
-	    """
-	    if not operation:
-		operation = 'putpost'
-
-	    operations = {'putpost': self.put_post,
-			  'putcomment': self.put_comment}
-
-	    if operation not in operations:
-		raise HTTPError(404)
-
-	    method = operations.get(operation)
-	    ret = yield method()
-	    self.write(ret)
-
-	@gen.coroutine
-	def delete(self, operation):
-	    """Método que trata DELETE requests.
-	    Aqui serve pra apagar um post.
-	    """
-	    # id vem como parâmetro do request
-	    post_id = self.request.arguments['id'][0].decode()
-	    # primeiro pegar o post com o id desejado
-	    # repare no yield quando usamos get()
-	    post = yield TextPost.objects.get(id=post_id)
-	    # e agora apagar o post, também usando yield com delete()
-	    yield post.delete()
-
-	    self.write(json.dumps((yield self._post2dict(post))))
-
-	@gen.coroutine
-	def put_post(self):
-	    """Método que cadastra um novo post
-	    """
-	    params = {k: v[0] for k, v in self.request.arguments.items()}
-
-	    # criando uma nova instância
-	    post = TextPost(**params)
-	    # salvando no banco de dados.
-	    # Repare no yield que usamos com save()
-	    yield post.save()
-	    return json.dumps((yield self._post2dict(post)))
-
-	@gen.coroutine
-	def put_comment(self):
-	    """Método que cadastra um novo comentário
-	    """
-	    # primeiro pegamos o post que será o alvo do comentário
-	    post_id = self.request.arguments['post_id'][0].decode()
-	    # não esqueça que precisamos usar yield com get()
-	    post = yield TextPost.objects.get(id=post_id)
-
-	    params = self.request.arguments.copy()
-	    del params['post_id']
-
-	    # Agora simplismente criar o comentário
-	    comment = Comment(**params)
-	    # adicionar na lista de comentários do post
-	    post.comments = (yield post.comments).append(comment)
-	    # e salvar o post, sempre com yield
-	    yield post.save()
-
-	    return json.dumps(self._comment2dict(comment))
-
-	@gen.coroutine
-	def get_object(self, slug):
-	    """Método que pega um post do banco de dados, através do slug
-	    """
-	    post = yield TextPost.objects.get(slug=slug)
-	    return json.dumps((yield self._post2dict(post)))
-
-	@gen.coroutine
-	def list_objects(self):
-	    """
-	    Método que lista os posts
-	    """
-
-	    qs = TextPost.objects.filter(**self.request.arguments)
-	    # qs.to_list() transforma o queryset em uma lista de documentos.
-	    posts = yield qs.to_list()
-	    post_list = []
-
-	    for p in posts:
-		d = yield self._post2dict(p)
-		post_list.append(d)
-	    return json.dumps(post_list)
-
-	@gen.coroutine
-	def _post2dict(self, post):
-
-	    post_dict = {}
-	    post_dict['id'] = str(post.id)
-	    post_dict['title'] = post.title
-	    author = yield post.author
-	    post_dict['author'] = author.name if author else ''
-	    post_dict['content'] = post.content
-	    return post_dict
-
-	def _comment2dict(self, comment):
-	    comment_dict = {}
-	    comment_dict['content'] = comment.content
-	    comment_dict['name'] = comment.name
-
-
-    # Criando o mapeamento de url para a aplicação
-    url = URLSpec('/textpost/(.*)$', TextPostHandler, name='textposthandler')
-    app = Application([url])
-
-    # com este mapeamento, as urls que podemos acessar são:
-    # GET em /textpost/ para listar os posts
-    # GET em /textpost/<slug> para pegar um post específico
-    # DELETE em /textpost/ para apagar um post
-    # PUT em /textpost/ ou /textpost/putpost para criar um novo post
-    # PUT em /textpost/putcomment para criar um novo comentário
-
-    if __name__ == '__main__':
-
-	# Aqui simplesmente iniciamos o server do tornado na porta 8888
-	port = 8888
-	app.listen(port)
-	ioloop.IOLoop.instance().start()
-
-
-Depois desse código já podemos subir a nossa aplicação.
-
-.. code-block:: sh
-
-    $ python tut.py
-
-
-Agora, para fins de testes vamos escrever o seguinte script:
+Agora que já temos alguns posts, podemos acessá-los. Novamente é como o
+mongoengine, só com uns ``yield`` por aí. Vamos lá acessar os nossos dados:
 
 .. code-block:: python
 
-    # -*- coding: utf-8 -*-
+    # Aqui listando todos os posts que heraram de Post
+    for post_future in Post.objects:
+        post = yield post_future
+        print(post.title)
 
-    import requests
+    # Aqui só os TextPost do ator ``author``
+    for post_future in TextPost.objects.filter(author=author):
+        post = yield post_future
+        print(post.content)
 
-    BASE_URL = 'http://localhost:8888/textpost/'
-    COMMENT_URL = BASE_URL + 'putcomment'
+    # E aqui filtrando por tags
+    for post_future in TextPost.objects(tags='mongomotor'):
+        post = yield post_future
+        print(post.content)
 
-    POSTS = [{'title': 'cacilds!',
-	      'content': "Mussum ipsum cacilds, vidis litro abertis."},
+Bom, aí você pode estar se perguntando, com esse monte de ``yield`` no loop,
+mas o mongomotor faz uma consulta ao banco em cada iteração? Não, não faz.
+É o mesmo comportamento do motor, veja mais aqui <LINK>
 
-	     {'title': 'Suco de cevadis!',
-	      'content': 'Suco de cevadis, é um leite divinis, qui tem lupuliz, maltis, aguis e fermentis.'}]
+Quando usamos get() e delete() também precisamos usar ``yield``, assim:
 
-    print('Cadastrando os novos posts')
+.. code-block:: python
 
-    for p in POSTS:
-	response = requests.put(BASE_URL, params=p)
-	response.connection.close()
+    post = yield TextPost.objects.get(title='Fun with MongoMotor')
+    yield post.delete()
 
-
-    print('Listando os posts')
-
-    response = requests.get(BASE_URL)
-    response.connection.close()
-    post_list = response.json()
-
-    for p in post_list:
-	print(p['title'])
-	print(p['content'])
-	print('\n')
-
-
-    print('Fazendo um comentário no post %s' % post_list[1]['title'])
-
-    comment = {'name': 'Mussum', 'content': 'E o mézis tambénzis!',
-	       'post_id': post_list[1]['id']}
-
-    requests.put(COMMENT_URL, params=comment)
-
-
-    print('Apagando os posts')
-
-    for p in post_list:
-	response = requests.delete(BASE_URL, params = {'id': p['id']})
-	response.connection.close()
+Bom, é isso.

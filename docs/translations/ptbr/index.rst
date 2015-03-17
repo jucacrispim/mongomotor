@@ -1,4 +1,4 @@
-Bem-vindo à documentação do mongomotor!
+Bem-vindo à documentação do MongoMotor!
 =======================================
 
 |mongomotor-logo|
@@ -6,39 +6,188 @@ Bem-vindo à documentação do mongomotor!
 .. |mongomotor-logo| image:: ./_static/mongomotor.jpg
     :alt: Async object document mapper for tornado
 
-O mongomotor é uma pequena integração do mongoengine, um document object
-mapper para python e mongodb com o motor, um driver assíncrono para mongodb
-feito usando o mainloop do tornado.
+O MongoMotor é uma pequena integração do
+`MongoEngine <http://docs.mongoengine.org/en/latest/index.html>`_ , um
+document object mapper para python e mongodb, com o
+`motor <http://motor.readthedocs.org/en/stable/>`_, um driver assíncrono para
+mongodb feito usando o mainloop do tornado.
 
-Usando o mongomotor você pode escrever seus modelos como você já faz utilizando
-o mongoengine e fazer as operações em banco de dados assincronamente utilizando
+Usando o MongoMotor você pode definir seus documentos como você já faz com o
+MongoEngine, utilizar todas as facilidades para fazer as queries que você já
+conhece, e fazer as operações em banco de dados assincronamente utilizando
 o motor.
 
 
 Instalação
 ==========
 
-Primeiro, clone o projeto no gitorious:
+A instalação comum, via pip.
 
 .. code-block:: sh
 
-    $ git clone https://gitorious.org/mongomotor/mongomotor.git
+    $ pip install mongomotor
 
-Depois, instale as dependências:
+E é isso!
 
-.. code-block:: sh
 
-    $ cd mongomotor && pip install -r requirements.txt
+Uso do mongomotor
+=================
 
-E por fim, rode os testes:
+Usar o mongomotor é bem similar ao uso do mongoengine. Para definir seus
+documentos não há diferença, a não ser no import. Por isso, usaremos o mesmo
+exemplo usado no tutorial do mongoengine. Vamos criar um tumblelog simples.
 
-.. code-block:: sh
 
-    $ python setup.py test
+Definindo nossos documentos
++++++++++++++++++++++++++++
 
-Começando
-+++++++++
-.. toctree::
-   :maxdepth: 1
+Para começar, vamos definir os seguintes documentos:
 
-   tutorial
+.. code-block:: python
+
+    # Os imports são como os do mongoengine, só alterando ``mongoengine``
+    # para ``mongomotor``.
+    from mongomotor import connect, Document, EmbeddedDocument
+    from mongomotor.fields import (StringField, ReferenceField, ListField,
+				   EmbeddedDocumentField)
+    from tornado import gen
+
+    # Primeiro criando a conexão com o banco de dados.
+    connect('mongomotor-test')
+
+
+    # Aqui os documentos iguais aos do tutorial do mongoengine.
+    # Primeiro, definindo User. Intâncias de user serão os autores dos posts.
+    class User(Document):
+	email = StringField(required=True)
+	first_name = StringField(max_length=50)
+	last_name = StringField(max_length=50)
+
+
+    class Comment(EmbeddedDocument):
+	content = StringField()
+	name = StringField(max_length=120)
+
+
+    class Post(Document):
+	title = StringField(max_length=120, required=True)
+	author = ReferenceField(User)
+	tags = ListField(StringField(max_length=30))
+	comments = ListField(EmbeddedDocumentField(Comment))
+
+	meta = {'allow_inheritance': True}
+
+
+    class TextPost(Post):
+	content = StringField()
+
+
+    class ImagePost(Post):
+	image_path = StringField()
+
+
+    class LinkPost(Post):
+	link_url = StringField()
+
+
+Agora, o uso é praticamente igual ao do mongoengine. Vejamos:
+
+
+Adicionando dados ao nosso tumblelog
+++++++++++++++++++++++++++++++++++++
+
+Para adicionar um novo documento à base de dados, faremos tudo
+como no mongoengine, a diferença é que quando formos usar o método
+save, usaremos ``yield``
+
+.. code-block:: python
+
+    author = User(email='ross@example.com', first_name='Nice', last_name='Guy')
+    yield author.save()
+
+    post1 = TextPost(title='Fun with MongoMotor', author=author)
+    post1.content = 'Took a look at MongoEngine today, looks pretty cool.'
+    post1.tags = ['mongodb', 'mongoengine', 'mongomotor']
+    yield post1.save()
+
+    post2 = LinkPost(title='MongoMotor Documentation', author=author)
+    post2.link_url = 'http://mongomotor-ptbr.readthedocs.org/pt/latest/'
+    post2.tags = ['mongomotor']
+    yield post2.save()
+
+
+Acessando nossos dados
+++++++++++++++++++++++
+
+Agora que já temos alguns posts, podemos acessá-los. Novamente é como o
+mongoengine, só com uns ``yield`` por aí. Vamos lá acessar os nossos dados:
+
+.. code-block:: python
+
+    # Aqui listando todos os posts que heraram de Post
+    for post_future in Post.objects:
+        post = yield post_future
+        print(post.title)
+
+    # Aqui só os TextPost do ator ``author``
+    for post_future in TextPost.objects.filter(author=author):
+        post = yield post_future
+        print(post.content)
+
+    # E aqui filtrando por tags
+    for post_future in TextPost.objects(tags='mongomotor'):
+        post = yield post_future
+        print(post.content)
+
+    # Poderiamos também usar o método ``to_list()`` para transformar
+    # um queryset em uma lista
+    posts = yield TextPost.objects.filter(tags='mongomotor')[:10].to_list()
+    for post in posts:
+        print(post.title)
+
+
+Bom, aí você pode estar se perguntando, com esse monte de ``yield`` no loop,
+mas o mongomotor faz uma consulta ao banco em cada iteração? Não, não faz.
+É o mesmo comportamento de ``fetch_index``, do mongomotor. O que ocorre é
+que quando necessário, o motor pega os documentos em lotes grandes. Veja mais
+`aqui <http://motor.readthedocs.org/en/stable/api/motor_cursor.html#motor.MotorCursor.fetch_next>`_
+
+Quando usamos get() também precisamos usar ``yield``, assim:
+
+.. code-block:: python
+
+    post = yield TextPost.objects.get(title='Fun with MongoMotor')
+
+O mesmo quando vamos acessar um ReferenceField,
+
+.. code-block:: python
+
+    author = yield post.author
+
+usar o método ``first()`` que (obviamente) retorna o primeiro resultado da query,
+
+.. code-block:: python
+
+    post = yield Post.objects.order_by('-title').first()
+
+ou quando se vai apagar um documento do banco de dados:
+
+.. code-block:: python
+
+    yield post.delete()
+
+Outros métodos do MongoEngine também são suportados, como ``sum()``,
+``average()`` e os outros métodos de agregação. Pode testá-los!
+
+
+Contribuindo
+============
+
+O código do MongoMotor está hospedado no
+`gitlab <https://gitlab.com/mongomotor/mongomotor>`_ e por lá também está
+o `issue tracker <https://gitlab.com/mongomotor/mongomotor/issues>`_. Fique
+à vontade para criar um fork do projeto, abrir issues, fazer merge requests...
+
+
+Bom, é isso.
+Obrigado!

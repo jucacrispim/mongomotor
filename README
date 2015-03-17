@@ -1,7 +1,7 @@
 MongoMotor is a tiny integration of
-`MongoEngine <http://docs.mongoengine.org/en/latest/index.html>`_, a document
+[MongoEngine](http://docs.mongoengine.org/en/latest/index.html), a document
 object mapper for python and mongodb, with
-`motor <http://motor.readthedocs.org/en/stable/>`_, a async driver to mongodb
+[motor](http://motor.readthedocs.org/en/stable/), a async driver to mongodb
 built using tornado's mainloop.
 
 Using MongoMotor you can define your document as you already do with

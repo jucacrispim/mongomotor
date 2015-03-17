@@ -155,7 +155,7 @@ mongoengine, só com uns ``yield`` por aí. Vamos lá acessar os nossos dados:
    `lotes grandes <http://docs.mongodb.org/manual/core/cursors/#cursor-batches>`_.
 
 
-Quando usamos get() também precisamos usar ``yield``, assim:
+Quando usamos ``get()`` também precisamos usar ``yield``, assim:
 
 .. code-block:: python
 
@@ -186,6 +186,12 @@ como ``sum()``, ``count()``, ``average()``...
 
     total_posts = yield Post.objects.count()
     tags_frequencies = yield Post.objects.item_frequencies('tags')
+
+
+Licensa
+=======
+
+MongoMotor é software livre, licenciado sob a GPL versão 3 ou posterior.
 
 
 Contribuindo

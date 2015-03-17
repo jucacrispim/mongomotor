@@ -146,11 +146,14 @@ mongoengine, só com uns ``yield`` por aí. Vamos lá acessar os nossos dados:
         print(post.title)
 
 
-Bom, aí você pode estar se perguntando, com esse monte de ``yield`` no loop,
-mas o mongomotor faz uma consulta ao banco em cada iteração? Não, não faz.
-É o mesmo comportamento de ``fetch_index``, do mongomotor. O que ocorre é
-que quando necessário, o motor pega os documentos em lotes grandes. Veja mais
-`aqui <http://motor.readthedocs.org/en/stable/api/motor_cursor.html#motor.MotorCursor.fetch_next>`_
+.. note::
+
+   Apeser de parecer que cada documento é recuperado individualmente (por causa
+   deste monte de ``yield``), na verdade é o
+   `mesmo comportamento <http://motor.readthedocs.org/en/stable/api/motor_cursor.html#motor.MotorCursor.fetch_next>`_
+   de ``fetch_next`` do mongomotor, que que por sua vez recupera os documentos em
+   `lotes grandes <http://docs.mongodb.org/manual/core/cursors/#cursor-batches>`_.
+
 
 Quando usamos get() também precisamos usar ``yield``, assim:
 
@@ -176,8 +179,13 @@ ou quando se vai apagar um documento do banco de dados:
 
     yield post.delete()
 
-Outros métodos do MongoEngine também são suportados, como ``sum()``,
-``average()`` e os outros métodos de agregação. Pode testá-los!
+A gente também pode usar os métodos de agregação do MongoEngine,
+como ``sum()``, ``count()``, ``average()``...
+
+.. code-block:: python
+
+    total_posts = yield Post.objects.count()
+    tags_frequencies = yield Post.objects.item_frequencies('tags')
 
 
 Contribuindo

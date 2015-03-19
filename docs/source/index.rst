@@ -7,7 +7,6 @@ MongoMotor: An asynchronous document-object mapper for MongoDB
     :alt: Async object document mapper for tornado
 
 MongoMotor is a tiny integration of
-O MongoMotor é uma pequena integração do
 `MongoEngine <http://docs.mongoengine.org/en/latest/index.html>`_, a
 document-object mapper for python and mongodb, with
 `Motor <http://motor.readthedocs.org/en/stable/>`_, an asynchronous driver

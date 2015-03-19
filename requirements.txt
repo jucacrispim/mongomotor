@@ -9,3 +9,4 @@ sphinx==1.2.3
 tornado==4.1
 ipdb==0.8
 ipython==3.0.0
+sphinx-rtd-theme==0.1.7

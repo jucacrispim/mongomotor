@@ -1,5 +1,5 @@
-Bem-vindo à documentação do MongoMotor!
-=======================================
+MongoMotor: Um document-object mapper assíncrono para MongoDB
+=============================================================
 
 |mongomotor-logo|
 
@@ -9,7 +9,7 @@ Bem-vindo à documentação do MongoMotor!
 O MongoMotor é uma pequena integração do
 `MongoEngine <http://docs.mongoengine.org/en/latest/index.html>`_ , um
 document object mapper para python e mongodb, com o
-`motor <http://motor.readthedocs.org/en/stable/>`_, um driver assíncrono para
+`Motor <http://motor.readthedocs.org/en/stable/>`_, um driver assíncrono para
 mongodb feito usando o mainloop do tornado.
 
 Usando o MongoMotor você pode definir seus documentos como você já faz com o
@@ -38,8 +38,8 @@ documentos não há diferença, a não ser no import. Por isso, usaremos o mesmo
 exemplo usado no tutorial do mongoengine. Vamos criar um tumblelog simples.
 
 
-Definindo nossos documentos
-+++++++++++++++++++++++++++
+Definindo documentos
+++++++++++++++++++++
 
 Para começar, vamos definir os seguintes documentos:
 
@@ -93,8 +93,8 @@ Para começar, vamos definir os seguintes documentos:
 Agora, o uso é praticamente igual ao do mongoengine. Vejamos:
 
 
-Adicionando dados ao nosso tumblelog
-++++++++++++++++++++++++++++++++++++
+Adicionando dados
++++++++++++++++++
 
 Para adicionar um novo documento à base de dados, faremos tudo
 como no mongoengine, a diferença é que quando formos usar o método
@@ -116,8 +116,8 @@ save, usaremos ``yield``
     yield post2.save()
 
 
-Acessando nossos dados
-++++++++++++++++++++++
+Acessando os dados
+++++++++++++++++++
 
 Agora que já temos alguns posts, podemos acessá-los. Novamente é como o
 mongoengine, só com uns ``yield`` por aí. Vamos lá acessar os nossos dados:
@@ -155,7 +155,7 @@ mongoengine, só com uns ``yield`` por aí. Vamos lá acessar os nossos dados:
    `lotes grandes <http://docs.mongodb.org/manual/core/cursors/#cursor-batches>`_.
 
 
-Quando usamos get() também precisamos usar ``yield``, assim:
+Quando usamos ``get()`` também precisamos usar ``yield``, assim:
 
 .. code-block:: python
 
@@ -186,6 +186,12 @@ como ``sum()``, ``count()``, ``average()``...
 
     total_posts = yield Post.objects.count()
     tags_frequencies = yield Post.objects.item_frequencies('tags')
+
+
+Licensa
+=======
+
+MongoMotor é software livre, licenciado sob a GPL versão 3 ou posterior.
 
 
 Contribuindo

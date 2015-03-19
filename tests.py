@@ -230,3 +230,16 @@ class MongoMotorTest(AsyncTestCase):
                 d.ref = r
 
             yield d.save()
+
+    @gen_test
+    def test_distinct(self):
+        """ Ensure distinct method works properly
+        """
+        d1 = self.maindoc(docname='d1')
+        yield d1.save()
+        d2 = self.maindoc(docname='d2')
+        yield d2.save()
+
+        expected = ['d1', 'd2']
+        returned = yield self.maindoc.objects.distinct('docname')
+        self.assertEqual(expected, returned)

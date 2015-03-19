@@ -371,6 +371,35 @@ class BaseQuerySet(base.BaseQuerySet):
         return queryset
 
     @gen.coroutine
+    def distinct(self, field):
+        """Return a list of distinct values for a given field.
+
+        :param field: the field to select distinct values from
+
+        .. note:: This is a command and won't take ordering or limit into
+           account.
+
+        .. versionadded:: 0.4
+        .. versionchanged:: 0.5 - Fixed handling references
+        .. versionchanged:: 0.6 - Improved db_field refrence handling
+        """
+        queryset = self.clone()
+        try:
+            field = self._fields_to_dbfields([field]).pop()
+        finally:
+            cursor = yield queryset._cursor
+            distinct = yield cursor.distinct(field)
+            distinct = self._dereference(distinct, 1,
+                                         name=field, instance=self._document)
+
+            # We may need to cast to the correct type eg. ListField(EmbeddedDocumentField)
+            doc_field = getattr(self._document._fields.get(field), "field", None)
+            instance = getattr(doc_field, "document_type", False)
+            if instance:
+                distinct = [instance(**doc) for doc in distinct]
+            return distinct
+
+    @gen.coroutine
     def __next__(self):
         """Wrap the result in a :class:`~mongoengine.Document` object.
         """

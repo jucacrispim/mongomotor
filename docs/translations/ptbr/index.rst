@@ -188,7 +188,7 @@ como ``sum()``, ``count()``, ``average()``...
     tags_frequencies = yield Post.objects.item_frequencies('tags')
 
 
-Licensa
+Licença
 =======
 
 MongoMotor é software livre, licenciado sob a GPL versão 3 ou posterior.

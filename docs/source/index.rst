@@ -204,5 +204,10 @@ MongoMotor's code is hosted on
 Feel free to create a fork of the project, open issues, do merge requests...
 
 
+Documentation translations
+==========================
+`Documentação do MongoMotor em português <http://mongomotor.poraodojuca.net/ptbr/>`_
+
+
 Well, that's it!
 Thank you!

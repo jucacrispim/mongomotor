@@ -203,5 +203,9 @@ o `issue tracker <https://gitlab.com/mongomotor/mongomotor/issues>`_. Fique
 à vontade para criar um fork do projeto, abrir issues, fazer merge requests...
 
 
+Traduções da documentação
+=========================
+`MongoMotor docs in english <http://mongomotor.poraodojuca.net/en/>`_
+
 Bom, é isso.
 Obrigado!

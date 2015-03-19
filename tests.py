@@ -243,3 +243,16 @@ class MongoMotorTest(AsyncTestCase):
         expected = ['d1', 'd2']
         returned = yield self.maindoc.objects.distinct('docname')
         self.assertEqual(expected, returned)
+
+    @gen_test
+    def test_first(self):
+        """ Ensure that first() method works properly
+        """
+
+        d1 = self.maindoc(docname='d1')
+        yield d1.save()
+        d2 = self.maindoc(docname='d2')
+        yield d2.save()
+
+        returned = yield self.maindoc.objects.order_by('docname').first()
+        self.assertEqual(d1, returned)

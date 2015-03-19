@@ -287,6 +287,17 @@ class BaseQuerySet(base.BaseQuerySet):
                                           write_concern=write_concern)
 
     @gen.coroutine
+    def first(self):
+        """Retrieve the first object matching the query.
+        """
+        queryset = self.clone()
+        try:
+            result = yield queryset[0]
+        except IndexError:
+            result = None
+        return result
+
+    @gen.coroutine
     def insert(self, doc_or_docs, load_bulk=True, write_concern=None):
         """bulk insert documents
 

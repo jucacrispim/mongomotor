@@ -14,14 +14,19 @@ def get_version_from_file():
     return version_line.split('=')[1].strip().strip("'").strip('"')
 
 
+def get_long_description_from_file():
+    # content of README will be the long description
+
+    fname = 'README'
+    with open(fname) as f:
+        fcontent = f.read()
+    return fcontent
+
 VERSION = get_version_from_file()
 DESCRIPTION = """
-Mongoengine integration with Motor
+MongoMotor: An async document-object mapper for MongoDB
 """
-LONG_DESCRIPTION = """
-Mongomotor lets you use the Motor async driver while keeping all the
-convenience from Mongoengine.
-"""
+LONG_DESCRIPTION = get_long_description_from_file()
 
 setup(name='mongomotor',
       version=VERSION,
@@ -29,7 +34,7 @@ setup(name='mongomotor',
       author_email='juca@poraodojuca.net',
       description=DESCRIPTION,
       long_description=LONG_DESCRIPTION,
-      url='https://gitorious.org/mongomotor',
+      url='http://mongomotor.poraodojuca.net/en/',
       packages=find_packages(exclude=['tests', 'tests.*']),
       install_requires=['mongoengine>=0.8.7', 'motor>=0.3', 'blinker>=1.3'],
       classifiers=[

@@ -9,7 +9,6 @@ MongoEngine, use all querying niceties that you already know and do all db
 operations asynchronously using motor.
 
 Take a look at the
-`full documentation <http://mongomotor.readthedocs.org/en/latest/>`_ at
-readthedocs.
-`Portuguese version <http://mongomotor.readthedocs.org/pt/latest/>`_ available
+`full documentation <http://mongomotor.poraodojuca.net/en/>`_.
+`Portuguese version <http://mongomotor.poraodojuca.net/ptbr/>`_ available
 too.

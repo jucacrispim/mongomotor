@@ -17,6 +17,15 @@ class MongoMotorTest(AsyncTestCase):
 
         # some models to simple tests over
         # mongomotor
+
+        class SuperDoc(Document):
+            some_field = StringField()
+
+            meta = {'allow_inheritance': True}
+
+        class OtherDoc(SuperDoc):
+            pass
+
         class EmbedRef(EmbeddedDocument):
             list_field = ListField()
 
@@ -38,6 +47,7 @@ class MongoMotorTest(AsyncTestCase):
         self.embed = Embed
         self.refdoc = RefDoc
         self.embedref = EmbedRef
+        self.otherdoc = OtherDoc
 
     @gen_test
     def tearDown(self):
@@ -256,3 +266,10 @@ class MongoMotorTest(AsyncTestCase):
 
         returned = yield self.maindoc.objects.order_by('docname').first()
         self.assertEqual(d1, returned)
+
+    @gen_test
+    def test_document_with_super_document(self):
+        """ Ensures that inheritance works properly.
+        """
+        d1 = self.otherdoc(some_field='bla')
+        yield d1.save()

@@ -2,6 +2,7 @@
 
 import re
 import pymongo
+import tornado
 from tornado import gen
 from bson.code import Code
 from mongoengine.fields import ReferenceField
@@ -202,6 +203,7 @@ class BaseQuerySet(base.BaseQuerySet):
             return result
 
         if not n:
+            result = yield self._consume_references_futures(result)
             return result
 
         yield queryset.rewind()
@@ -438,6 +440,8 @@ class BaseQuerySet(base.BaseQuerySet):
             return doc
 
         self._next_doc = yield self._get_next_doc()
+
+        doc = yield self._consume_references_futures(doc)
         return doc
 
     @gen.coroutine
@@ -445,6 +449,7 @@ class BaseQuerySet(base.BaseQuerySet):
         """Support skip and limit using getitem and slicing syntax.
         """
         queryset = self.clone()
+
         # Slice provided
         if isinstance(key, slice):
             try:
@@ -472,19 +477,35 @@ class BaseQuerySet(base.BaseQuerySet):
             new_cursor = new_cursor[key]
             yield new_cursor.fetch_next
             raw_doc = new_cursor.next_object()
+            doc = queryset._document._from_son(
+                raw_doc, _auto_dereference=self._auto_dereference)
+
+            doc = yield self._consume_references_futures(doc)
+
             if queryset._scalar:
-                return queryset._get_scalar(
-                    queryset._document._from_son(
-                        raw_doc,
-                        _auto_dereference=self._auto_dereference))
+                return queryset._get_scalar(doc)
             if queryset._as_pymongo:
                 n = yield next(queryset._cursor)
                 return queryset._get_as_pymongo(n)
-            return queryset._document._from_son(
+
+            son = queryset._document._from_son(
                 raw_doc,
                 _auto_dereference=self._auto_dereference)
+
+            return doc
         raise AttributeError
 
+    @gen.coroutine
+    def _consume_references_futures(self, doc):
+        doc_attrs = [a for a in dir(doc) if not a.startswith('_')
+                     and a != 'objects' and a != 'STRICT']
+        for attr_name in doc_attrs:
+            attr = getattr(doc, attr_name)
+            if isinstance(attr, tornado.concurrent.Future):
+                attr = yield attr
+                setattr(doc, attr_name, attr)
+
+        return doc
 
     @gen.coroutine
     def  _get_next_doc(self):

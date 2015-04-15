@@ -18,13 +18,6 @@ class MongoMotorTest(AsyncTestCase):
         # some models to simple tests over
         # mongomotor
 
-        class SuperDoc(Document):
-            some_field = StringField()
-
-            meta = {'allow_inheritance': True}
-
-        class OtherDoc(SuperDoc):
-            pass
 
         class EmbedRef(EmbeddedDocument):
             list_field = ListField()
@@ -33,10 +26,19 @@ class MongoMotorTest(AsyncTestCase):
             refname = StringField()
             embedlist = ListField(EmbeddedDocumentField(EmbedRef))
 
+        class SuperDoc(Document):
+            some_field = StringField()
+            reflist = ListField(ReferenceField(RefDoc))
+
+            meta = {'allow_inheritance': True}
+
+        class OtherDoc(SuperDoc):
+            pass
+
         class Embed(EmbeddedDocument):
             dict_field = DictField()
 
-        class MainDoc(Document):
+        class MainDoc(SuperDoc):
             docname = StringField()
             docint = IntField()
             list_field = ListField(StringField())
@@ -268,8 +270,30 @@ class MongoMotorTest(AsyncTestCase):
         self.assertEqual(d1, returned)
 
     @gen_test
-    def test_document_with_super_document(self):
-        """ Ensures that inheritance works properly.
-        """
-        d1 = self.otherdoc(some_field='bla')
-        yield d1.save()
+    def test_document_dereference_with_list(self):
+        r = self.refdoc()
+        yield r.save()
+
+        m = self.maindoc(reflist=[r])
+        yield m.save()
+
+        m = yield self.maindoc.objects.all()[0]
+
+        reflist = getattr(m, 'reflist')
+        self.assertEqual(len(reflist), 1)
+
+        m = yield self.maindoc.objects.get(id=m.id)
+
+        reflist = getattr(m, 'reflist')
+        self.assertEqual(len(reflist), 1)
+
+        mlist = yield self.maindoc.objects.all().to_list()
+        for m in mlist:
+            reflist = getattr(m, 'reflist')
+            self.assertEqual(len(reflist), 1)
+
+        mlist = self.maindoc.objects.all()
+        for m in mlist:
+            m = yield m
+            reflist = getattr(m, 'reflist')
+            self.assertEqual(len(reflist), 1)

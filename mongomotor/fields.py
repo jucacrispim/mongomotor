@@ -9,7 +9,7 @@ from mongoengine.fields import (StringField, URLField, EmailField, IntField,
                                 EmbeddedDocumentField,
                                 GenericEmbeddedDocumentField,DynamicField,
                                 ListField, SortedListField, DictField,
-                                ObjectIdField)
+                                ObjectIdField, MapField)
 
 
 class ReferenceField(fields.ReferenceField):
@@ -33,7 +33,6 @@ class ReferenceField(fields.ReferenceField):
                 instance._data[self.name] = self.document_type._from_son(value)
 
         return super(fields.ReferenceField, self).__get__(instance, owner)
-
 
 # now let's make pyflakes happy
 to_del = [StringField, URLField, EmailField, IntField, LongField, FloatField,

@@ -48,6 +48,7 @@ class QuerySet(BaseQuerySet, queryset.QuerySet):
         for obj in self:
             doc = yield obj
             if doc:
+                doc = yield self._consume_references_futures(doc)
                 l.append(doc)
         return l
 

@@ -73,6 +73,12 @@ def patch_fields():
 
     patch_item(mongoengine, 'ReferenceField', ReferenceField)
 
+def patch_dereference():
+    import mongoengine
+    from mongomotor.dereference import DeReferenceMotor
+
+    patch_item(mongoengine.dereference, 'DeReference', DeReferenceMotor)
+
 def patch_all():
     # the order here is important!
     patch_document()
@@ -80,6 +86,7 @@ def patch_all():
     patch_transform()
     patch_visitor()
     patch_queryset()
+    patch_dereference()
 
     patch_connection()
 

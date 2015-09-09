@@ -309,3 +309,11 @@ class MongoMotorTest(AsyncTestCase):
         d = yield (yield self.maindoc.objects.order_by('-docname').skip(1))[0]
 
         self.assertEqual(d, m0)
+
+    @gen_test
+    def test_delete_query_skip_without_documents(self):
+        """Ensures that deleting a empty queryset works."""
+
+        # no exceptions, ok!
+        to_delete = yield self.maindoc.objects.skip(10)
+        yield to_delete.delete()

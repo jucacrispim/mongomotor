@@ -251,6 +251,9 @@ class BaseQuerySet(base.BaseQuerySet):
         if call_document_delete:
             for d in queryset:
                 doc = yield d
+                if not doc:
+                    continue
+
                 yield doc.delete(write_concern=write_concern)
             return
 

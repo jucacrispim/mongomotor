@@ -53,8 +53,8 @@ class MongoMotorTest(AsyncTestCase):
 
     @gen_test
     def tearDown(self):
-        self.maindoc.drop_collection()
-        self.refdoc.drop_collection()
+        yield self.maindoc.drop_collection()
+        yield self.refdoc.drop_collection()
         super(MongoMotorTest, self).tearDown()
 
     def get_new_ioloop(self):
@@ -297,3 +297,15 @@ class MongoMotorTest(AsyncTestCase):
             m = yield m
             reflist = getattr(m, 'reflist')
             self.assertEqual(len(reflist), 1)
+
+    @gen_test
+    def test_query_skip(self):
+        """ Ensure that the skip method works properly. """
+        m0 = self.maindoc(docname='d0')
+        m1 = self.maindoc(docname='d1')
+        yield m0.save()
+        yield m1.save()
+
+        d = yield (yield self.maindoc.objects.order_by('-docname').skip(1))[0]
+
+        self.assertEqual(d, m0)

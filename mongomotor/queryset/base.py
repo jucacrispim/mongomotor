@@ -384,6 +384,19 @@ class BaseQuerySet(base.BaseQuerySet):
         return queryset
 
     @gen.coroutine
+    def skip(self, n):
+        """Skip `n` documents before returning the results. This may also be
+        achieved using array-slicing syntax (e.g. ``User.objects[5:]``).
+
+        :param n: the number of objects to skip before returning results
+        """
+        queryset = self.clone()
+        cursor = yield queryset._cursor
+        cursor.skip(n)
+        queryset._skip = n
+        return queryset
+
+    @gen.coroutine
     def distinct(self, field):
         """Return a list of distinct values for a given field.
 

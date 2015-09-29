@@ -7,6 +7,13 @@ from mongoengine.common import _import_class
 from mongoengine.errors import InvalidQueryError
 from mongoengine.queryset import transform
 
+COMPARISON_OPERATORS = ('ne', 'gt', 'gte', 'lt', 'lte', 'in', 'nin', 'mod',
+                        'all', 'size', 'exists', 'not', 'elemMatch', 'type')
+
+UPDATE_OPERATORS = ('set', 'unset', 'inc', 'dec', 'pop', 'push',
+                    'push_all', 'pull', 'pull_all', 'add_to_set',
+                    'set_on_insert', 'min', 'max')
+
 
 @gen.coroutine
 def query(_doc_cls=None, _field_operation=False, **query):
@@ -59,7 +66,7 @@ def query(_doc_cls=None, _field_operation=False, **query):
             if op in singular_ops:
                 if isinstance(field, str):
                     if (op in transform.STRING_OPERATORS and
-                       isinstance(value, str)):
+                            isinstance(value, str)):
                         StringField = _import_class('StringField')
                         value = StringField.prepare_query_value(op, value)
                     else:
@@ -131,3 +138,135 @@ def query(_doc_cls=None, _field_operation=False, **query):
                 mongo_query['$and'] = value
 
     return mongo_query
+
+
+def update(_doc_cls=None, **update):
+    """Transform an update spec from Django-style format to Mongo format.
+    """
+    mongo_update = {}
+    for key, value in list(update.items()):
+        if key == "__raw__":
+            mongo_update.update(value)
+            continue
+        parts = key.split('__')
+        # if there is no operator, default to "set"
+        if len(parts) < 3 and parts[0] not in UPDATE_OPERATORS:
+            parts.insert(0, 'set')
+        # Check for an operator and transform to mongo-style if there is
+        op = None
+        if parts[0] in UPDATE_OPERATORS:
+            op = parts.pop(0)
+            # Convert Pythonic names to Mongo equivalents
+            if op in ('push_all', 'pull_all'):
+                op = op.replace('_all', 'All')
+            elif op == 'dec':
+                # Support decrement by flipping a positive value's sign
+                # and using 'inc'
+                op = 'inc'
+                if value > 0:
+                    value = -value
+            elif op == 'add_to_set':
+                op = 'addToSet'
+            elif op == 'set_on_insert':
+                op = "setOnInsert"
+
+        match = None
+        if parts[-1] in COMPARISON_OPERATORS:
+            match = parts.pop()
+
+        if _doc_cls:
+            # Switch field names to proper names [set in Field(name='foo')]
+            try:
+                fields = _doc_cls._lookup_field(parts)
+            except Exception as e:
+                raise InvalidQueryError(e)
+            parts = []
+
+            cleaned_fields = []
+            appended_sub_field = False
+            for field in fields:
+                append_field = True
+                if isinstance(field, str):
+                    # Convert the S operator to $
+                    if field == 'S':
+                        field = '$'
+                    parts.append(field)
+                    append_field = False
+                else:
+                    parts.append(field.db_field)
+                if append_field:
+                    appended_sub_field = False
+                    cleaned_fields.append(field)
+                    if hasattr(field, 'field'):
+                        cleaned_fields.append(field.field)
+                        appended_sub_field = True
+
+            # Convert value to proper value
+            if appended_sub_field:
+                field = cleaned_fields[-2]
+            else:
+                field = cleaned_fields[-1]
+
+            GeoJsonBaseField = _import_class("GeoJsonBaseField")
+            if isinstance(field, GeoJsonBaseField):
+                value = field.to_mongo(value)
+
+            if op in (None, 'set', 'push', 'pull'):
+                if field.required or value is not None:
+                    value = field.prepare_query_value(op, value)
+            elif op in ('pushAll', 'pullAll'):
+                value = [field.prepare_query_value(op, v) for v in value]
+            elif op in ('addToSet', 'setOnInsert'):
+                if isinstance(value, (list, tuple, set)):
+                    value = [field.prepare_query_value(op, v) for v in value]
+                elif field.required or value is not None:
+                    value = field.prepare_query_value(op, value)
+            elif op == "unset":
+                value = 1
+
+        if match:
+            match = '$' + match
+            value = {match: value}
+
+        key = '.'.join(parts)
+
+        if not op:
+            raise InvalidQueryError("Updates must supply an operation "
+                                    "eg: set__FIELD=value")
+
+        if 'pull' in op and '.' in key:
+            # Dot operators don't work on pull operations
+            # unless they point to a list field
+            # Otherwise it uses nested dict syntax
+            if op == 'pullAll':
+                raise InvalidQueryError("pullAll operations only support "
+                                        "a single field depth")
+
+            # Look for the last list field and use dot notation until there
+            field_classes = [c.__class__ for c in cleaned_fields]
+            field_classes.reverse()
+            ListField = _import_class('ListField')
+            if ListField in field_classes:
+                # Join all fields via dot notation to the last ListField
+                # Then process as normal
+                last_listField = len(
+                    cleaned_fields) - field_classes.index(ListField)
+                key = ".".join(parts[:last_listField])
+                parts = parts[last_listField:]
+                parts.insert(0, key)
+
+            parts.reverse()
+            for key in parts:
+                value = {key: value}
+        elif op == 'addToSet' and isinstance(value, list):
+            value = {key: {"$each": value}}
+        else:
+            value = {key: value}
+        key = '$' + op
+
+        if key not in mongo_update:
+            mongo_update[key] = value
+        elif key in mongo_update and isinstance(mongo_update[key], dict):
+            mongo_update[key].update(value)
+
+    return mongo_update

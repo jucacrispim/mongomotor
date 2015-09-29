@@ -10,6 +10,7 @@ from mongoengine.common import _import_class
 from mongoengine.queryset import base
 from mongoengine.errors import NotUniqueError
 from mongomotor import signals
+from mongomotor.queryset import transform
 
 
 class BaseQuerySet(base.BaseQuerySet):
@@ -365,75 +366,75 @@ class BaseQuerySet(base.BaseQuerySet):
             self._document, documents=results, loaded=True)
         return return_one and results[0] or results
 
-    # @gen.coroutine
-    # def update(self, upsert=False, multi=True, write_concern=None,
-    #            full_result=False, **update):
-    #     """Perform an atomic update on the fields matched by the query.
+    @gen.coroutine
+    def update(self, upsert=False, multi=True, write_concern=None,
+               full_result=False, **update):
+        """Perform an atomic update on the fields matched by the query.
 
-    #     :param upsert: Any existing document with that "_id" is overwritten.
-    #     :param multi: Update multiple documents.
-    #     :param write_concern: Extra keyword arguments are passed down which
-    #         will be used as options for the resultant
-    #         ``getLastError`` command.  For example,
-    #         ``save(..., write_concern={w: 2, fsync: True}, ...)`` will
-    #         wait until at least two servers have recorded the write and
-    #         will force an fsync on the primary server.
-    #     :param full_result: Return the full result rather than just the number
-    #         updated.
-    #     :param update: Django-style update keyword arguments
+        :param upsert: Any existing document with that "_id" is overwritten.
+        :param multi: Update multiple documents.
+        :param write_concern: Extra keyword arguments are passed down which
+            will be used as options for the resultant
+            ``getLastError`` command.  For example,
+            ``save(..., write_concern={w: 2, fsync: True}, ...)`` will
+            wait until at least two servers have recorded the write and
+            will force an fsync on the primary server.
+        :param full_result: Return the full result rather than just the number
+            updated.
+        :param update: Django-style update keyword arguments
 
-    #     .. versionadded:: 0.2
-    #     """
-    #     if not update and not upsert:
-    #         raise OperationError("No update parameters, would remove data")
+        .. versionadded:: 0.2
+        """
+        if not update and not upsert:
+            raise OperationError("No update parameters, would remove data")
 
-    #     if write_concern is None:
-    #         write_concern = {}
+        if write_concern is None:
+            write_concern = {}
 
-    #     queryset = self.clone()
-    #     query = yield queryset._query
-    #     update = transform.update(queryset._document, **update)
+        queryset = self.clone()
+        query = yield queryset._query
+        update = transform.update(queryset._document, **update)
 
-    #     # If doing an atomic upsert on an inheritable class
-    #     # then ensure we add _cls to the update operation
-    #     if upsert and '_cls' in query:
-    #         if '$set' in update:
-    #             update["$set"]["_cls"] = queryset._document._class_name
-    #         else:
-    #             update["$set"] = {"_cls": queryset._document._class_name}
-    #     try:
-    #         result = queryset._collection.update(query, update, multi=multi,
-    #                                              upsert=upsert, **write_concern)
-    #         if full_result:
-    #             return result
-    #         elif result:
-    #             return result['n']
-    #     except pymongo.errors.DuplicateKeyError as err:
-    #         raise NotUniqueError('Update failed (%s)' % str(err))
-    #     except pymongo.errors.OperationFailure as err:
-    #         if str(err) == 'multi not coded yet':
-    #             message = 'update() method requires MongoDB 1.1.3+'
-    #             raise OperationError(message)
-    #         raise OperationError('Update failed (%s)' % str(err))
+        # If doing an atomic upsert on an inheritable class
+        # then ensure we add _cls to the update operation
+        if upsert and '_cls' in query:
+            if '$set' in update:
+                update["$set"]["_cls"] = queryset._document._class_name
+            else:
+                update["$set"] = {"_cls": queryset._document._class_name}
+        try:
+            result = yield queryset._collection.update(
+                query, update, multi=multi, upsert=upsert, **write_concern)
+            if full_result:
+                return result
+            elif result:
+                return result['n']
+        except pymongo.errors.DuplicateKeyError as err:
+            raise NotUniqueError('Update failed (%s)' % str(err))
+        except pymongo.errors.OperationFailure as err:
+            if str(err) == 'multi not coded yet':
+                message = 'update() method requires MongoDB 1.1.3+'
+                raise OperationError(message)
+            raise OperationError('Update failed (%s)' % str(err))
 
-    # @gen.coroutine
-    # def update_one(self, upsert=False, write_concern=None, **update):
-    #     """Perform an atomic update on first field matched by the query.
+    @gen.coroutine
+    def update_one(self, upsert=False, write_concern=None, **update):
+        """Perform an atomic update on first field matched by the query.
 
-    #     :param upsert: Any existing document with that "_id" is overwritten.
-    #     :param write_concern: Extra keyword arguments are passed down which
-    #         will be used as options for the resultant
-    #         ``getLastError`` command.  For example,
-    #         ``save(..., write_concern={w: 2, fsync: True}, ...)`` will
-    #         wait until at least two servers have recorded the write and
-    #         will force an fsync on the primary server.
-    #     :param update: Django-style update keyword arguments
+        :param upsert: Any existing document with that "_id" is overwritten.
+        :param write_concern: Extra keyword arguments are passed down which
+            will be used as options for the resultant
+            ``getLastError`` command.  For example,
+            ``save(..., write_concern={w: 2, fsync: True}, ...)`` will
+            wait until at least two servers have recorded the write and
+            will force an fsync on the primary server.
+        :param update: Django-style update keyword arguments
 
-    #     .. versionadded:: 0.2
-    #     """
-    #     result = yield self.update(
-    #         upsert=upsert, multi=False, write_concern=write_concern, **update)
-    #     return result
+        .. versionadded:: 0.2
+        """
+        result = yield self.update(
+            upsert=upsert, multi=False, write_concern=write_concern, **update)
+        return result
 
     @gen.coroutine
     def limit(self, n):

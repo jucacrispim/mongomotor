@@ -329,3 +329,16 @@ class MongoMotorTest(AsyncTestCase):
         # no exceptions, ok!
         to_delete = yield self.maindoc.objects.skip(10)
         yield to_delete.delete()
+
+    @gen_test
+    def test_update_document(self):
+        """Ensures that updating a document works properly."""
+
+        doc = self.maindoc(docname='d0')
+        yield doc.save()
+
+        yield doc.update(set__docname='d1')
+
+        doc = yield self.maindoc.objects.get(docname='d1')
+
+        self.assertTrue(doc.id)

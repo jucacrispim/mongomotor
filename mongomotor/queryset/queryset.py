@@ -46,7 +46,10 @@ class QuerySet(BaseQuerySet, queryset.QuerySet):
     def to_list(self):
         l = []
         for obj in self:
-            doc = yield obj
+            try:
+                doc = yield obj
+            except StopIteration:
+                continue
             if doc:
                 doc = yield self._consume_references_futures(doc)
                 l.append(doc)

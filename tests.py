@@ -10,6 +10,7 @@ from mongomotor.fields import (StringField, IntField, ListField, DictField,
 
 
 class MongoMotorTest(AsyncTestCase):
+
     def setUp(self):
         super(MongoMotorTest, self).setUp()
 
@@ -17,7 +18,6 @@ class MongoMotorTest(AsyncTestCase):
 
         # some models to simple tests over
         # mongomotor
-
 
         class EmbedRef(EmbeddedDocument):
             list_field = ListField()
@@ -209,6 +209,18 @@ class MongoMotorTest(AsyncTestCase):
         self.assertEqual(len(lista), 3)
 
     @gen_test
+    def test_query_to_list_with_empty_queryset(self):
+        """Ensure that a list can be made from a queryset using to_list() when
+        the queryset is empty
+        """
+
+        # note here that again we need to yield something.
+        # In this case, we use yield with to_list()
+        yield self.maindoc.objects.delete()
+        lista = yield self.maindoc.objects.to_list()
+        self.assertEqual(len(lista), 0)
+
+    @gen_test
     def test_query_average(self):
         """Ensure that we can get the average of a field using average()
         """
@@ -235,9 +247,9 @@ class MongoMotorTest(AsyncTestCase):
         yield r.save()
         to_list_field = ['string0', 'string1', 'string2']
         for i in range(3):
-            d = self.maindoc(docname='d%s' %i)
+            d = self.maindoc(docname='d%s' % i)
             d.docint = i
-            d.list_field = to_list_field[:i+1]
+            d.list_field = to_list_field[:i + 1]
             if i < 2:
                 d.ref = r
 

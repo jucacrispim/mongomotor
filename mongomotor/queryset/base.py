@@ -68,7 +68,7 @@ class BaseQuerySet(base.BaseQuerySet):
         reduce_f_code = queryset._sub_js_fields(reduce_f)
         reduce_f = Code(reduce_f_code, reduce_f_scope)
 
-        mr_args = {'query': ( yield queryset._query)}
+        mr_args = {'query': (yield queryset._query)}
 
         if finalize_f:
             finalize_f_scope = {}
@@ -92,7 +92,7 @@ class BaseQuerySet(base.BaseQuerySet):
             mr_args['out'] = output
 
         results = getattr(queryset._collection, map_reduce_function)(
-                          map_f, reduce_f, **mr_args)
+            map_f, reduce_f, **mr_args)
         results = yield results
 
         if map_reduce_function == 'map_reduce':
@@ -100,7 +100,6 @@ class BaseQuerySet(base.BaseQuerySet):
 
         if queryset._ordering:
             results = results.sort(queryset._ordering)
-
 
         return [MapReduceDocument(queryset._document, queryset._collection,
                                   doc['_id'], doc['value']) for doc in results]
@@ -136,7 +135,6 @@ class BaseQuerySet(base.BaseQuerySet):
                                                            normalize=normalize)
             return freq
         yield self._item_frequencies_exec_js(field, normalize=normalize)
-
 
     @gen.coroutine
     def in_bulk(self, object_ids):
@@ -190,12 +188,10 @@ class BaseQuerySet(base.BaseQuerySet):
                    % queryset._document._class_name)
             raise queryset._document.DoesNotExist(msg)
 
-
         if not result:
             msg = ("%s matching query does not exist."
                    % queryset._document._class_name)
             raise queryset._document.DoesNotExist(msg)
-
 
         try:
             n = yield next(queryset)
@@ -276,7 +272,7 @@ class BaseQuerySet(base.BaseQuerySet):
                 ref_q = document_cls.objects(**{field_name + '__in': self})
                 ref_q_count = yield ref_q.count()
                 if (doc != document_cls and ref_q_count > 0
-                   or (doc == document_cls and ref_q_count > 0)):
+                        or (doc == document_cls and ref_q_count > 0)):
                     yield ref_q.delete(write_concern=write_concern)
 
             # Need to work on .update
@@ -369,6 +365,76 @@ class BaseQuerySet(base.BaseQuerySet):
             self._document, documents=results, loaded=True)
         return return_one and results[0] or results
 
+    # @gen.coroutine
+    # def update(self, upsert=False, multi=True, write_concern=None,
+    #            full_result=False, **update):
+    #     """Perform an atomic update on the fields matched by the query.
+
+    #     :param upsert: Any existing document with that "_id" is overwritten.
+    #     :param multi: Update multiple documents.
+    #     :param write_concern: Extra keyword arguments are passed down which
+    #         will be used as options for the resultant
+    #         ``getLastError`` command.  For example,
+    #         ``save(..., write_concern={w: 2, fsync: True}, ...)`` will
+    #         wait until at least two servers have recorded the write and
+    #         will force an fsync on the primary server.
+    #     :param full_result: Return the full result rather than just the number
+    #         updated.
+    #     :param update: Django-style update keyword arguments
+
+    #     .. versionadded:: 0.2
+    #     """
+    #     if not update and not upsert:
+    #         raise OperationError("No update parameters, would remove data")
+
+    #     if write_concern is None:
+    #         write_concern = {}
+
+    #     queryset = self.clone()
+    #     query = yield queryset._query
+    #     update = transform.update(queryset._document, **update)
+
+    #     # If doing an atomic upsert on an inheritable class
+    #     # then ensure we add _cls to the update operation
+    #     if upsert and '_cls' in query:
+    #         if '$set' in update:
+    #             update["$set"]["_cls"] = queryset._document._class_name
+    #         else:
+    #             update["$set"] = {"_cls": queryset._document._class_name}
+    #     try:
+    #         result = queryset._collection.update(query, update, multi=multi,
+    #                                              upsert=upsert, **write_concern)
+    #         if full_result:
+    #             return result
+    #         elif result:
+    #             return result['n']
+    #     except pymongo.errors.DuplicateKeyError as err:
+    #         raise NotUniqueError('Update failed (%s)' % str(err))
+    #     except pymongo.errors.OperationFailure as err:
+    #         if str(err) == 'multi not coded yet':
+    #             message = 'update() method requires MongoDB 1.1.3+'
+    #             raise OperationError(message)
+    #         raise OperationError('Update failed (%s)' % str(err))
+
+    # @gen.coroutine
+    # def update_one(self, upsert=False, write_concern=None, **update):
+    #     """Perform an atomic update on first field matched by the query.
+
+    #     :param upsert: Any existing document with that "_id" is overwritten.
+    #     :param write_concern: Extra keyword arguments are passed down which
+    #         will be used as options for the resultant
+    #         ``getLastError`` command.  For example,
+    #         ``save(..., write_concern={w: 2, fsync: True}, ...)`` will
+    #         wait until at least two servers have recorded the write and
+    #         will force an fsync on the primary server.
+    #     :param update: Django-style update keyword arguments
+
+    #     .. versionadded:: 0.2
+    #     """
+    #     result = yield self.update(
+    #         upsert=upsert, multi=False, write_concern=write_concern, **update)
+    #     return result
+
     @gen.coroutine
     def limit(self, n):
         """Limit the number of returned documents to `n`. This may also be
@@ -421,8 +487,10 @@ class BaseQuerySet(base.BaseQuerySet):
             distinct = self._dereference(distinct, 1,
                                          name=field, instance=self._document)
 
-            # We may need to cast to the correct type eg. ListField(EmbeddedDocumentField)
-            doc_field = getattr(self._document._fields.get(field), "field", None)
+            # We may need to cast to the correct type eg.
+            # ListField(EmbeddedDocumentField)
+            doc_field = getattr(
+                self._document._fields.get(field), "field", None)
             instance = getattr(doc_field, "document_type", False)
             if instance:
                 distinct = [instance(**doc) for doc in distinct]
@@ -445,7 +513,6 @@ class BaseQuerySet(base.BaseQuerySet):
             doc = self._get_as_pymongo(raw_doc)
             self._next_doc = yield self._get_next_doc()
             return doc
-
 
         doc = self._document._from_son(raw_doc,
                                        _auto_dereference=self._auto_dereference)
@@ -524,11 +591,11 @@ class BaseQuerySet(base.BaseQuerySet):
         return doc
 
     @gen.coroutine
-    def  _get_next_doc(self):
+    def _get_next_doc(self):
         cursor = yield self._cursor
         yield cursor.fetch_next
         n = cursor.next_object()
-        return  n
+        return n
 
     @property
     @gen.coroutine
@@ -568,7 +635,6 @@ class BaseQuerySet(base.BaseQuerySet):
             if self._class_check:
                 self._mongo_query.update(self._initial_query)
         return self._mongo_query
-
 
     @gen.coroutine
     def count(self, with_limit_and_skip=True):

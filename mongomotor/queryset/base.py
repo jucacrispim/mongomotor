@@ -8,7 +8,7 @@ from bson.code import Code
 from mongoengine.fields import ReferenceField
 from mongoengine.common import _import_class
 from mongoengine.queryset import base
-from mongoengine.errors import NotUniqueError
+from mongoengine.errors import NotUniqueError, OperationError
 from mongomotor import signals
 from mongomotor.queryset import transform
 

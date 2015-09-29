@@ -3,6 +3,7 @@
 import tornado
 from tornado import gen
 from tornado.testing import AsyncTestCase, gen_test
+from mongoengine.errors import OperationError
 from mongomotor.connection import connect
 from mongomotor import Document, EmbeddedDocument
 from mongomotor.fields import (StringField, IntField, ListField, DictField,
@@ -342,3 +343,13 @@ class MongoMotorTest(AsyncTestCase):
         doc = yield self.maindoc.objects.get(docname='d1')
 
         self.assertTrue(doc.id)
+
+    @gen_test
+    def test_insert_document_with_operation_error(self):
+        """Ensures that updating a document works properly."""
+
+        doc = self.maindoc(docname='d0')
+        yield doc.save()
+
+        with self.assertRaises(OperationError):
+            doc = yield self.maindoc.objects.insert([doc])

@@ -80,7 +80,7 @@ def query(_doc_cls=None, _field_operation=False, **query):
             elif op in ('in', 'nin', 'all', 'near') and not isinstance(
                     value, dict):
                 # 'in', 'nin' and 'all' require a list of values
-                if not isinstance(value, list):
+                if isinstance(value, tornado.concurrent.Future):
                     vlist = yield value.to_list()
                 else:
                     vlist = value

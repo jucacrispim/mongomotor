@@ -215,11 +215,18 @@ class MongoMotorTest(AsyncTestCase):
         the queryset is empty
         """
 
-        # note here that again we need to yield something.
-        # In this case, we use yield with to_list()
         yield self.maindoc.objects.delete()
         lista = yield self.maindoc.objects.to_list()
         self.assertEqual(len(lista), 0)
+
+    @gen_test
+    def test_query_to_set_with_in_operator(self):
+        yield self._create_data()
+        mydict = {'d0': True, 'd1': True}
+        mylist = yield self.maindoc.objects.filter(
+            docname__in=mydict.keys()).to_list()
+
+        self.assertTrue(len(mylist), 2)
 
     @gen_test
     def test_query_average(self):

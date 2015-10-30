@@ -5,7 +5,7 @@ from tornado import gen
 from tornado.testing import AsyncTestCase, gen_test
 from mongoengine.errors import OperationError
 from mongomotor.connection import connect
-from mongomotor import Document, EmbeddedDocument
+from mongomotor import Document, EmbeddedDocument, MapReduceDocument
 from mongomotor.fields import (StringField, IntField, ListField, DictField,
                                EmbeddedDocumentField, ReferenceField)
 
@@ -398,3 +398,34 @@ function(key, values){
 """
         r = yield self.maindoc.objects.all().map_reduce(mapf, reducef,
                                                         {'merge': 'testcol'})
+
+    @gen_test
+    def test_map_reduce_document(self):
+
+        class Reduced(MapReduceDocument):
+            pass
+
+        d = self.maindoc(list_field=['a', 'b'])
+        yield d.save()
+        d = self.maindoc(list_field=['a', 'c'])
+        yield d.save()
+
+        mapf = """
+function(){
+  this.list_field.forEach(function(f){
+    emit({'n': f, 'v': 1}, 1);
+  });
+}
+"""
+        reducef = """
+function(key, values){
+  return Array.sum(values)
+}
+"""
+        col = Reduced._get_collection_name()
+        r = yield self.maindoc.objects.all().map_reduce(mapf, reducef,
+                                                        {'merge': col})
+
+        reduced = yield Reduced.objects.get(id__n='a')
+
+        self.assertEqual(reduced.value, 2)

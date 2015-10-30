@@ -16,6 +16,7 @@ from mongoengine.document import _import_class
 from tornado import gen
 from mongomotor import signals
 from mongomotor.base.document import BaseDocumentMotor
+from mongomotor.base.metaclasses import MapReduceDocumentMetaclass
 
 
 class Document(BaseDocumentMotor, DocumentBase,
@@ -99,7 +100,7 @@ class Document(BaseDocumentMotor, DocumentBase,
                 if force_insert:
                     # I realy don't know why this stupid line isn't covered. Maybe later
                     # I take a look at it.
-                    object_id = yield collection.insert(doc, **write_concern) # pragma: no cover
+                    object_id = yield collection.insert(doc, **write_concern)  # pragma: no cover
                 else:
                     object_id = yield collection.save(doc, **write_concern)
             else:
@@ -134,7 +135,7 @@ class Document(BaseDocumentMotor, DocumentBase,
 
             if cascade is None:
                 cascade = self._meta.get('cascade', False) or \
-                          cascade_kwargs is not None
+                    cascade_kwargs is not None
 
             if cascade:
                 kwargs = {
@@ -194,7 +195,6 @@ class Document(BaseDocumentMotor, DocumentBase,
                 yield ref.save(**kwargs)
                 ref._changed_fields = []
 
-
     @classmethod
     @gen.coroutine
     def drop_collection(cls):
@@ -243,7 +243,6 @@ class Document(BaseDocumentMotor, DocumentBase,
         obj = (yield (yield self._qs.read_preference(ReadPreference.PRIMARY).filter(
             **self._object_key).limit(1)).select_related(max_depth=max_depth))
 
-
         if obj:
             obj = obj[0]
         else:
@@ -256,7 +255,7 @@ class Document(BaseDocumentMotor, DocumentBase,
                 # the desired behavior, so we'll remove this mark after.
                 f = yield self._load_related(obj[field], max_depth - 1)
                 obj[field] = f
-                #obj._changed_fields.pop(obj._changed_fields.index(field))
+                # obj._changed_fields.pop(obj._changed_fields.index(field))
                 setattr(self, field, self._reload(field, f))
             else:
                 setattr(self, field, self._reload(field, obj[field]))
@@ -275,11 +274,10 @@ class Document(BaseDocumentMotor, DocumentBase,
         #     for f in dir(field):
 
 
-
 class DynamicDocument(Document, DynamicDocumentBase,
                       metaclass=TopLevelDocumentMetaclass):
 
-    my_metaclass  = TopLevelDocumentMetaclass
+    my_metaclass = TopLevelDocumentMetaclass
 
     _dynamic = True
 
@@ -296,3 +294,10 @@ class EmbeddedDocument(BaseDocumentMotor, EmbeddedDocumentBase,
         super(EmbeddedDocument, self).__init__(*args, **kwargs)
         self._instance = None
         self._changed_fields = []
+
+
+class MapReduceDocument(DynamicDocument, metaclass=MapReduceDocumentMetaclass):
+    """This MapReduceDocument is different from the mongoengine's one
+    because its intent is to allow you to query over."""
+
+    my_metaclass = MapReduceDocumentMetaclass

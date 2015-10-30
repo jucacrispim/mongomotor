@@ -360,3 +360,19 @@ class MongoMotorTest(AsyncTestCase):
 
         with self.assertRaises(OperationError):
             doc = yield self.maindoc.objects.insert([doc])
+
+    @gen_test
+    def test_aggregate(self):
+        d = self.maindoc(list_field=['a', 'b'])
+        yield d.save()
+        d = self.maindoc(list_field=['a', 'c'])
+        yield d.save()
+
+        group = {'$group': {'_id': '$list_field',
+                            'total': {'$sum': 1}}}
+        unwind = {'$unwind': '$list_field'}
+
+        result = yield self.maindoc.objects.aggregate(unwind, group)
+        for r in result['result']:
+            if r['_id'] == 'a':
+                self.assertEqual(r['total'], 2)

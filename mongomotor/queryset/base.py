@@ -19,6 +19,35 @@ class BaseQuerySet(base.BaseQuerySet):
     """
 
     @gen.coroutine
+    def aggregate(self, *pipeline, **kwargs):
+        """
+        Perform a aggregate function based in your queryset params
+        :param pipeline: list of aggregation commands,\
+            see: http://docs.mongodb.org/manual/core/aggregation-pipeline/
+
+        .. versionadded:: 0.4.2
+        """
+        initial_pipeline = []
+
+        if self._query:
+            initial_pipeline.append({'$match': (yield self._query)})
+
+        if self._ordering:
+            initial_pipeline.append({'$sort': dict(self._ordering)})
+
+        if self._limit is not None:
+            initial_pipeline.append({'$limit': self._limit})
+
+        if self._skip is not None:
+            initial_pipeline.append({'$skip': self._skip})
+
+        pipeline = initial_pipeline + list(pipeline)
+
+        collection = self._collection
+        result = yield collection.aggregate(pipeline, **kwargs)
+        return result
+
+    @gen.coroutine
     def map_reduce(self, map_f, reduce_f, output, finalize_f=None, limit=None,
                    scope=None):
         """map_reduce that uses motor

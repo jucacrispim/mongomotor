@@ -131,6 +131,13 @@ class BaseQuerySet(base.BaseQuerySet):
         if queryset._ordering:
             results = results.sort(queryset._ordering)
 
+        if map_reduce_function == 'map_reduce':
+            rlist = []
+            while (yield results.fetch_next):
+                doc = results.next_object()
+                rlist.append(doc)
+            results = rlist
+
         return [MapReduceDocument(queryset._document, queryset._collection,
                                   doc['_id'], doc['value']) for doc in results]
         # for doc in results:

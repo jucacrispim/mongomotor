@@ -6,4 +6,4 @@ patch_all()
 from mongoengine.connection import connect, disconnect
 from mongomotor.document import Document, EmbeddedDocument, DynamicDocument
 
-VERSION = '0.4.2'
+VERSION = '0.4.3'

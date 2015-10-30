@@ -353,7 +353,7 @@ class MongoMotorTest(AsyncTestCase):
 
     @gen_test
     def test_insert_document_with_operation_error(self):
-        """Ensures that updating a document works properly."""
+        """Ensures that inserting a doc already saved raises."""
 
         doc = self.maindoc(docname='d0')
         yield doc.save()
@@ -376,3 +376,25 @@ class MongoMotorTest(AsyncTestCase):
         for r in result['result']:
             if r['_id'] == 'a':
                 self.assertEqual(r['total'], 2)
+
+    @gen_test
+    def test_map_reduce(self):
+        d = self.maindoc(list_field=['a', 'b'])
+        yield d.save()
+        d = self.maindoc(list_field=['a', 'c'])
+        yield d.save()
+
+        mapf = """
+function(){
+  this.list_field.forEach(function(f){
+    emit(f, 1);
+  });
+}
+"""
+        reducef = """
+function(key, values){
+  return Array.sum(values)
+}
+"""
+        r = yield self.maindoc.objects.all().map_reduce(mapf, reducef,
+                                                        {'merge': 'testcol'})

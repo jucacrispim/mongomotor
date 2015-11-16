@@ -238,12 +238,30 @@ class MongoMotorTest(AsyncTestCase):
         self.assertEqual(avg, 1)
 
     @gen_test
+    def test_query_aggregate_average(self):
+        """Ensure we can get the average of a field using aggregate_average()
+        """
+        yield self._create_data()
+
+        avg = yield self.maindoc.objects.aggregate_average('docint')
+        self.assertEqual(avg, 1)
+
+    @gen_test
     def test_query_sum(self):
         """Ensure that we can get the sum of a field using sum()
         """
         yield self._create_data()
 
         summed = yield self.maindoc.objects.sum('docint')
+        self.assertEqual(summed, 3)
+
+    @gen_test
+    def test_query_aggregate_sum(self):
+        """Ensure that we can get the sum of a field using aggregate_sum()
+        """
+        yield self._create_data()
+
+        summed = yield self.maindoc.objects.aggregate_sum('docint')
         self.assertEqual(summed, 3)
 
     @gen.coroutine

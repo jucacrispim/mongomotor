@@ -7,4 +7,4 @@ from mongoengine.connection import connect, disconnect
 from mongomotor.document import(
     Document, EmbeddedDocument, DynamicDocument, MapReduceDocument)
 
-VERSION = '0.5'
+VERSION = '0.6'

@@ -9,6 +9,7 @@ from mongoengine.fields import ReferenceField
 from mongoengine.common import _import_class
 from mongoengine.queryset import base
 from mongoengine.errors import NotUniqueError, OperationError
+from mongoengine.python_support import IS_PYMONGO_3
 from mongomotor import signals
 from mongomotor.queryset import transform
 
@@ -786,6 +787,28 @@ class BaseQuerySet(base.BaseQuerySet):
             return 0
 
     @gen.coroutine
+    def aggregate_average(self, field):
+        """Average over the values of the specified field.
+
+        :param field: the field to average over; use dot-notation to refer to
+            embedded document fields
+
+        This method is more performant than the regular `average`, because it
+        uses the aggregation framework instead of map-reduce.
+        """
+        result = yield self._document._get_collection().aggregate([
+            {'$match': (yield self._query)},
+            {'$group': {'_id': 'avg', 'total': {'$avg': '$' + field}}}
+        ])
+        if IS_PYMONGO_3:
+            result = list(result)
+        else:
+            result = result.get('result')
+        if result:
+            return result[0]['total']
+        return 0
+
+    @gen.coroutine
     def sum(self, field):
         """Sum over the values of the specified field.
 
@@ -832,6 +855,28 @@ class BaseQuerySet(base.BaseQuerySet):
             return result.value
         else:
             return 0
+
+    @gen.coroutine
+    def aggregate_sum(self, field):
+        """Sum over the values of the specified field.
+
+        :param field: the field to sum over; use dot-notation to refer to
+            embedded document fields
+
+        This method is more performant than the regular `sum`, because it uses
+        the aggregation framework instead of map-reduce.
+        """
+        result = yield self._document._get_collection().aggregate([
+            {'$match': (yield self._query)},
+            {'$group': {'_id': 'sum', 'total': {'$sum': '$' + field}}}
+        ])
+        if IS_PYMONGO_3:
+            result = list(result)
+        else:
+            result = result.get('result')
+        if result:
+            return result[0]['total']
+        return 0
 
     @gen.coroutine
     def _item_frequencies_map_reduce(self, field, normalize=False):

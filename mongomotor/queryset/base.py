@@ -145,6 +145,51 @@ class BaseQuerySet(base.BaseQuerySet):
         #                             doc['_id'], doc['value'])
 
     @gen.coroutine
+    def exec_js(self, code, *fields, **options):
+        """Execute a Javascript function on the server. A list of fields may be
+        provided, which will be translated to their correct names and supplied
+        as the arguments to the function. A few extra variables are added to
+        the function's scope: ``collection``, which is the name of the
+        collection in use; ``query``, which is an object representing the
+        current query; and ``options``, which is an object containing any
+        options specified as keyword arguments.
+
+        As fields in MongoEngine may use different names in the database (set
+        using the :attr:`db_field` keyword argument to a :class:`Field`
+        constructor), a mechanism exists for replacing MongoEngine field names
+        with the database field names in Javascript code. When accessing a
+        field, use square-bracket notation, and prefix the MongoEngine field
+        name with a tilde (~).
+
+        :param code: a string of Javascript code to execute
+        :param fields: fields that you will be using in your function, which
+            will be passed in to your function as arguments
+        :param options: options that you want available to the function
+            (accessed in Javascript through the ``options`` object)
+        """
+        queryset = self.clone()
+
+        code = queryset._sub_js_fields(code)
+
+        fields = [queryset._document._translate_field_name(f) for f in fields]
+        collection = queryset._document._get_collection_name()
+
+        scope = {
+            'collection': collection,
+            'options': options or {},
+        }
+
+        query = yield queryset._query
+        if queryset._where_clause:
+            query['$where'] = queryset._where_clause
+
+        scope['query'] = query
+        code = Code(code, scope=scope)
+
+        db = queryset._document._get_db()
+        return (yield db.eval(code, *fields))
+
+    @gen.coroutine
     def item_frequencies(self, field, normalize=False, map_reduce=True):
         """Returns a dictionary of all items present in a field across
         the whole queried set of documents, and their corresponding frequency.
@@ -164,8 +209,6 @@ class BaseQuerySet(base.BaseQuerySet):
         :param normalize: normalize the results so they add to 1.0
         :param map_reduce: Use map_reduce over exec_js
 
-        .. versionchanged:: 0.5 defaults to map_reduce and can handle embedded
-                            document lookups
         """
         if map_reduce:
             freq = yield self._item_frequencies_map_reduce(field,
@@ -181,7 +224,6 @@ class BaseQuerySet(base.BaseQuerySet):
         :rtype: dict of ObjectIds as keys and collection-specific
                 Document subclasses as values.
 
-        .. versionadded:: 0.3
         """
         doc_map = {}
 

@@ -429,3 +429,10 @@ function(key, values){
         reduced = yield Reduced.objects.get(id__n='a')
 
         self.assertEqual(reduced.value, 2)
+
+    @gen_test
+    def test_exec_js(self):
+        d = self.maindoc(list_field=['a', 'b'])
+        yield d.save()
+        r = yield self.maindoc.objects.exec_js('db.getCollectionNames()')
+        self.assertTrue(r)

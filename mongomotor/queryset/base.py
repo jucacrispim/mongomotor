@@ -50,7 +50,7 @@ class BaseQuerySet(base.BaseQuerySet):
 
     @gen.coroutine
     def map_reduce(self, map_f, reduce_f, output, finalize_f=None, limit=None,
-                   scope=None):
+                   scope=None, get_out_docs=True):
         """map_reduce that uses motor
 
         Perform a map/reduce query using the current query spec
@@ -73,10 +73,12 @@ class BaseQuerySet(base.BaseQuerySet):
                            performs any post-reduction processing.
         :param scope: values to insert into map/reduce global scope. Optional.
         :param limit: number of objects from current query to provide
-                      to map/reduce method
+                      to map/reduce method.
+        :param get_out_docs: Indicates if should return the documents from
+          the map reduce. Useful if your return is very big and you are
+          setting the output to a collection.
 
-        Returns an iterator yielding
-        :class:`~mongoengine.document.MapReduceDocument`.
+        Returns a list of :class:`~mongoengine.document.MapReduceDocument`.
 
         """
         queryset = self.clone()
@@ -138,6 +140,9 @@ class BaseQuerySet(base.BaseQuerySet):
                 doc = results.next_object()
                 rlist.append(doc)
             results = rlist
+
+        if not get_out_docs:
+            return []
 
         return [MapReduceDocument(queryset._document, queryset._collection,
                                   doc['_id'], doc['value']) for doc in results]

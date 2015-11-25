@@ -449,6 +449,39 @@ function(key, values){
         self.assertEqual(reduced.value, 2)
 
     @gen_test
+    def test_map_reduce_document_without_out_docs(self):
+
+        class Reduced(MapReduceDocument):
+            pass
+
+        d = self.maindoc(list_field=['a', 'b'])
+        yield d.save()
+        d = self.maindoc(list_field=['a', 'c'])
+        yield d.save()
+
+        mapf = """
+function(){
+  this.list_field.forEach(function(f){
+    emit({'n': f, 'v': 1}, 1);
+  });
+}
+"""
+        reducef = """
+function(key, values){
+  return Array.sum(values)
+}
+"""
+        col = Reduced._get_collection_name()
+        r = yield self.maindoc.objects.all().map_reduce(mapf, reducef,
+                                                        {'merge': col},
+                                                        get_out_docs=False)
+
+        reduced = yield Reduced.objects.get(id__n='a')
+
+        self.assertEqual(reduced.value, 2)
+        self.assertFalse(r)
+
+    @gen_test
     def test_exec_js(self):
         d = self.maindoc(list_field=['a', 'b'])
         yield d.save()

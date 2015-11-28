@@ -127,10 +127,10 @@ class BaseQuerySet(base.BaseQuerySet):
         results = getattr(queryset._collection, map_reduce_function)(
             map_f, reduce_f, **mr_args)
 
+        results = yield results
+
         if not get_out_docs:
             return []
-
-        results = yield results
 
         if map_reduce_function == 'map_reduce':
             results = results.find()

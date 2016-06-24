@@ -13,7 +13,6 @@ from mongoengine import (Document as DocumentBase,
 from mongoengine.base.metaclasses import (TopLevelDocumentMetaclass,
                                           DocumentMetaclass)
 from mongoengine.document import _import_class
-from tornado import gen
 from mongomotor import signals
 from mongomotor.base.document import BaseDocumentMotor
 from mongomotor.base.metaclasses import MapReduceDocumentMetaclass

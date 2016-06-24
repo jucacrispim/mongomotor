@@ -5,8 +5,6 @@
 # all imports here are made inside functions or the
 # queryset patch won't work
 
-import imp
-
 
 saved = {}
 
@@ -28,7 +26,6 @@ def patch_connection():
 
 def patch_document():
     import mongoengine
-    from mongomotor.base.document import BaseDocumentMotor as BaseDocument
     from mongomotor.document import Document, DynamicDocument, EmbeddedDocument
 
     patch_item(mongoengine, 'Document', Document)
@@ -67,17 +64,20 @@ def patch_visitor():
     patch_item(mongoengine.queryset.visitor, 'QCombination',
                visitor.QCombination)
 
+
 def patch_fields():
     import mongoengine
     from mongomotor.fields import ReferenceField
 
     patch_item(mongoengine, 'ReferenceField', ReferenceField)
 
+
 def patch_dereference():
     import mongoengine
     from mongomotor.dereference import DeReferenceMotor
 
     patch_item(mongoengine.dereference, 'DeReference', DeReferenceMotor)
+
 
 def patch_all():
     # the order here is important!

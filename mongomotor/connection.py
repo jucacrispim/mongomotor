@@ -1,12 +1,24 @@
 # -*- coding: utf-8 -*-
 
-import pymongo
 import motor
-from mongoengine import connection, ConnectionError
-from mongoengine.connection import connect, get_db, disconnect
+from mongoengine import connection, register_connection, ConnectionError
 
 
-def get_connection(alias=connection.DEFAULT_CONNECTION_NAME, reconnect=False):
+CONNECTION_TYPES = {'tornado': motor.MotorClient,
+                    'asyncio': motor.AsyncIOMotorClient}
+
+REPLICASET_TYPES = {'tornado': motor.MotorReplicaSetClient,
+                    'asyncio': motor.AsyncIOMotorReplicaSetClient}
+
+
+def get_connection(alias=connection.DEFAULT_CONNECTION_NAME, reconnect=False,
+                   connection_type='tornado'):
+    """Returns a connection to mongod.
+    :param alias: An alias to a different instance of mongod.
+    :param reconnect: Disconnects and reconnects to the database if
+      already connected.
+    :param connection_type: What type of async framework should be used.
+      It can be ``tornado`` or ``asyncio``. Defaults to ``tornado``."""
 
     # Connect to the database if not already connected
     if reconnect:
@@ -38,7 +50,7 @@ def get_connection(alias=connection.DEFAULT_CONNECTION_NAME, reconnect=False):
             conn_settings['slaves'] = slaves
             conn_settings.pop('read_preference', None)
 
-        connection_class = motor.MotorClient
+        connection_class = CONNECTION_TYPES[connection_type]
         if 'replicaSet' in conn_settings:
             conn_settings['hosts_or_uri'] = conn_settings.pop('host', None)
             # Discard port since it can't be used on MongoReplicaSetClient
@@ -46,7 +58,7 @@ def get_connection(alias=connection.DEFAULT_CONNECTION_NAME, reconnect=False):
             # Discard replicaSet if not base string
             if not isinstance(conn_settings['replicaSet'], str):
                 conn_settings.pop('replicaSet', None)
-            connection_class = motor.MotorReplicaSetClient
+            connection_class = REPLICASET_TYPES[connection_type]
 
         try:
             # always create a conn_uri because motor uses an uri
@@ -59,6 +71,27 @@ def get_connection(alias=connection.DEFAULT_CONNECTION_NAME, reconnect=False):
             raise ConnectionError("Cannot connect to database %s :\n%s" % (
                 alias, e))
     return connection._connections[alias]
+
+
+def connect(db=None, alias=DEFAULT_CONNECTION_NAME, **kwargs):
+    """Connect to the database specified by the 'db' argument.
+
+    Connection settings may be provided here as well if the database is not
+    running on the default port on localhost. If authentication is needed,
+    provide username and password arguments as well.
+
+    Multiple databases are supported by using aliases.  Provide a separate
+    `alias` to connect to a different instance of :program:`mongod`.
+
+     Changed in mongomotor to pass a connection_type to get_connection
+
+    """
+    global _connections
+    if alias not in _connections:
+        register_connection(alias, db, **kwargs)
+
+    connection_type = kwargs.get('connection_type', 'tornado')
+    return get_connection(alias, connection_type=connection_type)
 
 
 def _create_conn_uri(conn_name, **kwargs):
@@ -77,6 +110,7 @@ def _create_conn_uri(conn_name, **kwargs):
     uri += host_port_db
 
     return uri
+
 
 def _clean_conn_settings(**conn_settings):
     """Remove settings already used to create the connection string

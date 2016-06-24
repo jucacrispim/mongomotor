@@ -26,7 +26,6 @@ class BaseQuerySet(base.BaseQuerySet):
         :param pipeline: list of aggregation commands,\
             see: http://docs.mongodb.org/manual/core/aggregation-pipeline/
 
-        .. versionadded:: 0.4.2
         """
         initial_pipeline = []
 
@@ -263,7 +262,6 @@ class BaseQuerySet(base.BaseQuerySet):
         and :class:`~mongoengine.queryset.DoesNotExist` or
         `DocumentName.DoesNotExist` if no results are found.
 
-        .. versionadded:: 0.3
         """
 
         queryset = self.clone()
@@ -299,7 +297,6 @@ class BaseQuerySet(base.BaseQuerySet):
     def rewind(self):
         """Rewind the cursor to its unevaluated state.
 
-        .. versionadded:: 0.3
         """
         self._iter = False
         cursor = yield self._cursor
@@ -405,7 +402,6 @@ class BaseQuerySet(base.BaseQuerySet):
         By default returns document instances, set ``load_bulk`` to False to
         return just ``ObjectIds``
 
-        .. versionadded:: 0.5
         """
         Document = _import_class('Document')
 
@@ -471,7 +467,6 @@ class BaseQuerySet(base.BaseQuerySet):
             updated.
         :param update: Django-style update keyword arguments
 
-        .. versionadded:: 0.2
         """
         if not update and not upsert:
             raise OperationError("No update parameters, would remove data")
@@ -518,7 +513,6 @@ class BaseQuerySet(base.BaseQuerySet):
             will force an fsync on the primary server.
         :param update: Django-style update keyword arguments
 
-        .. versionadded:: 0.2
         """
         result = yield self.update(
             upsert=upsert, multi=False, write_concern=write_concern, **update)
@@ -563,9 +557,6 @@ class BaseQuerySet(base.BaseQuerySet):
         .. note:: This is a command and won't take ordering or limit into
            account.
 
-        .. versionadded:: 0.4
-        .. versionchanged:: 0.5 - Fixed handling references
-        .. versionchanged:: 0.6 - Improved db_field refrence handling
         """
         queryset = self.clone()
         try:

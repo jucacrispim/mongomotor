@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+from bson.objectid import ObjectId
 import tornado
 from tornado import gen
 from tornado.testing import AsyncTestCase, gen_test
@@ -400,6 +401,32 @@ class MongoMotorTest(AsyncTestCase):
                 self.assertEqual(r['total'], 2)
             else:
                 self.assertEqual(r['total'], 1)
+
+    @gen_test
+    def test_modify_upsert(self):
+        """Ensures that queryset modify works upserting."""
+
+        r = yield self.maindoc.objects.modify(upsert=True, new=True,
+                                              docname='doc')
+        self.assertTrue(r.id)
+
+    @gen_test
+    def test_modify(self):
+        """Ensures that queryset modify works."""
+        d = self.maindoc(docname='dn')
+        yield d.save()
+        r = yield self.maindoc.objects.modify(new=True,  id=d.id,
+                                              docname='dnn')
+        self.assertEqual(r.docname, 'dnn')
+
+    @gen_test
+    def test_modify_unknown_object(self):
+        r = yield self.maindoc.objects.modify(id=ObjectId(), docname='dn')
+        total = yield self.maindoc.objects.all().count()
+
+        self.assertEqual(total, 0)
+        self.assertFalse(None)
+
 
     @gen_test
     def test_map_reduce(self):

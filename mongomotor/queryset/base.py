@@ -8,7 +8,6 @@ from bson.code import Code
 from mongoengine.common import _import_class
 from mongoengine.queryset import base
 from mongoengine.errors import NotUniqueError, OperationError
-from mongoengine.python_support import IS_PYMONGO_3
 from mongomotor import signals
 from mongomotor.queryset import transform
 
@@ -524,6 +523,62 @@ class BaseQuerySet(base.BaseQuerySet):
         return result
 
     @gen.coroutine
+    def modify(self, upsert=False, full_response=False, remove=False,
+               new=False, **update):
+        """Update and return the updated document.
+
+        Returns either the document before or after modification based on `new`
+        parameter. If no documents match the query and `upsert` is false,
+        returns ``None``. If upserting and `new` is false, returns ``None``.
+
+        If the full_response parameter is ``True``, the return value will be
+        the entire response object from the server, including the 'ok' and
+        'lastErrorObject' fields, rather than just the modified document.
+        This is useful mainly because the 'lastErrorObject' document holds
+        information about the command's execution.
+
+        :param upsert: insert if document doesn't exist (default ``False``)
+        :param full_response: return the entire response object from the
+            server (default ``False``, not available for PyMongo 3+)
+        :param remove: remove rather than updating (default ``False``)
+        :param new: return updated rather than original document
+            (default ``False``)
+        :param update: Django-style update keyword arguments
+
+        """
+
+        if remove and new:
+            raise OperationError("Conflicting parameters: remove and new")
+
+        if not update and not upsert and not remove:
+            raise OperationError(
+                "No update parameters, must either update or remove")
+
+        queryset = self.clone()
+        query = yield queryset._query
+        sort = queryset._ordering
+
+        try:
+            result = yield queryset._collection.find_and_modify(
+                query, update, upsert=upsert, sort=sort, remove=remove,
+                new=new, full_response=full_response, **self._cursor_args)
+        except pymongo.errors.DuplicateKeyError as err:
+            raise NotUniqueError("Update failed (%s)" % err)
+        except pymongo.errors.OperationFailure as err:
+            raise OperationError("Update failed (%s)" % err)
+
+        if full_response:
+            if result["value"] is not None:
+                result["value"] = self._document._from_son(
+                    result["value"], only_fields=self.only_fields)
+        else:
+            if result is not None:
+                result = self._document._from_son(
+                    result, only_fields=self.only_fields)
+
+        return result
+
+    @gen.coroutine
     def limit(self, n):
         """Limit the number of returned documents to `n`. This may also be
         achieved using array-slicing syntax (e.g. ``User.objects[:5]``).
@@ -685,6 +740,16 @@ class BaseQuerySet(base.BaseQuerySet):
         yield cursor.fetch_next
         n = cursor.next_object()
         return n
+
+    @property
+    def _cursor_args(self):
+        # Motor does not support slave_okay
+        r = super()._cursor_args
+        try:
+            del r['slave_okay']
+        except KeyError:
+            pass
+        return r
 
     @property
     @gen.coroutine

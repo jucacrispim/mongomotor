@@ -107,9 +107,12 @@ class MongoMotorTest(AsyncTestCase):
 
     @gen_test
     def test_get_reference_after_get(self):
+        """Ensures that a reference field is dereferenced properly after
+        retrieving a object from database."""
         d1 = self.maindoc()
         yield d1.save()
         doc = yield self.maindoc.objects.get(id=d1.id)
+        # It fails if doc.ref is stil a future even after using yield.
         self.assertIsNone((yield doc.ref))
 
     @gen_test

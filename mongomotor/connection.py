@@ -1,9 +1,8 @@
 # -*- coding: utf-8 -*-
 
-import pymongo
 import motor
 from mongoengine import connection, ConnectionError
-from mongoengine.connection import connect, get_db, disconnect
+from mongoengine.connection import connect, disconnect
 
 
 def get_connection(alias=connection.DEFAULT_CONNECTION_NAME, reconnect=False):
@@ -77,6 +76,7 @@ def _create_conn_uri(conn_name, **kwargs):
     uri += host_port_db
 
     return uri
+
 
 def _clean_conn_settings(**conn_settings):
     """Remove settings already used to create the connection string

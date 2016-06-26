@@ -44,35 +44,13 @@ class MapReduceDocumentMetaclass(TopLevelDocumentMetaclass):
         # Set flag marking as document class - as opposed to an object mixin
         attrs['_is_document'] = True
 
-        # Ensure queryset_class is inherited
-        if 'objects' in attrs:
-            manager = attrs['objects']
-            if hasattr(manager, 'queryset_class'):
-                attrs['_meta']['queryset_class'] = manager.queryset_class
-
-        # Clean up top level meta
-        if 'meta' in attrs:
-            del(attrs['meta'])
-
         # Find the parent document class
         parent_doc_cls = [b for b in flattened_bases
                           if b.__class__ == MapReduceDocumentMetaclass]
         parent_doc_cls = None if not parent_doc_cls else parent_doc_cls[0]
 
-        # Prevent classes setting collection different to their parents
-        # If parent wasn't an abstract class
-        if (parent_doc_cls and 'collection' in attrs.get('_meta', {})
-                and not parent_doc_cls._meta.get('abstract', True)):
-            msg = "Trying to set a collection on a subclass (%s)" % name
-            warnings.warn(msg, SyntaxWarning)
-            del(attrs['_meta']['collection'])
-
         # Ensure abstract documents have abstract bases
         if attrs.get('_is_base_cls') or attrs['_meta'].get('abstract'):
-            if (parent_doc_cls and
-                    not parent_doc_cls._meta.get('abstract', False)):
-                msg = "Abstract document cannot have non-abstract base"
-                raise ValueError(msg)
             return super_new(cls, name, bases, attrs)
 
         # Merge base class metas.
@@ -80,28 +58,10 @@ class MapReduceDocumentMetaclass(TopLevelDocumentMetaclass):
         meta = MetaDict()
         for base in flattened_bases[::-1]:
             # Add any mixin metadata from plain objects
-            if hasattr(base, 'meta'):
-                meta.merge(base.meta)
-            elif hasattr(base, '_meta'):
+            if hasattr(base, '_meta'):
                 meta.merge(base._meta)
 
-            # Set collection in the meta if its callable
-            if (getattr(base, '_is_document', False) and
-                    not base._meta.get('abstract')):
-                collection = meta.get('collection', None)
-                if isinstance(collection, collections.Callable):
-                    meta['collection'] = collection(base)
-
         meta.merge(attrs.get('_meta', {}))  # Top level meta
-
-        # Only simple classes (direct subclasses of Document)
-        # may set allow_inheritance to False
-        simple_class = all([b._meta.get('abstract')
-                            for b in flattened_bases if hasattr(b, '_meta')])
-        if (not simple_class and meta['allow_inheritance'] is False and
-                not meta['abstract']):
-            raise ValueError('Only direct subclasses of Document may set '
-                             '"allow_inheritance" to False')
 
         # Set default collection name
         if 'collection' not in meta:
@@ -117,27 +77,9 @@ class MapReduceDocumentMetaclass(TopLevelDocumentMetaclass):
         # Set index specifications
         meta['index_specs'] = new_class._build_index_specs(meta['indexes'])
 
-        # If collection is a callable - call it and set the value
-        collection = meta.get('collection')
-        if isinstance(collection, collections.Callable):
-            new_class._meta['collection'] = collection(new_class)
-
         # Provide a default queryset unless exists or one has been set
         if 'objects' not in dir(new_class):
             new_class.objects = QuerySetManager()
-
-        # Validate the fields and set primary key if needed
-        for field_name, field in new_class._fields.items():
-            if field.primary_key:
-                # Ensure only one primary key is set
-                current_pk = new_class._meta.get('id_field')
-                if current_pk and current_pk != field_name:
-                    raise ValueError('Cannot override primary key field')
-
-                # Set primary key
-                if not current_pk:
-                    new_class._meta['id_field'] = field_name
-                    new_class.id = field
 
         # Set primary key if not defined by the document
         new_class._auto_id_field = getattr(parent_doc_cls,

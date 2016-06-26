@@ -82,7 +82,7 @@ class Document(BaseDocumentMotor, DocumentBase,
         signals.pre_save.send(self.__class__, document=self)
 
         if validate:
-            yield self.validate(clean=clean)
+            self.validate(clean=clean)
 
         if write_concern is None:
             write_concern = {"w": 1}

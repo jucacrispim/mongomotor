@@ -5,7 +5,6 @@ import pymongo
 import tornado
 from tornado import gen
 from bson.code import Code
-from mongoengine.fields import ReferenceField
 from mongoengine.common import _import_class
 from mongoengine.queryset import base
 from mongoengine.errors import NotUniqueError, OperationError
@@ -26,7 +25,6 @@ class BaseQuerySet(base.BaseQuerySet):
         :param pipeline: list of aggregation commands,\
             see: http://docs.mongodb.org/manual/core/aggregation-pipeline/
 
-        .. versionadded:: 0.4.2
         """
         initial_pipeline = []
 
@@ -45,7 +43,8 @@ class BaseQuerySet(base.BaseQuerySet):
         pipeline = initial_pipeline + list(pipeline)
 
         collection = self._collection
-        result = yield collection.aggregate(pipeline, **kwargs)
+        result = collection.aggregate(pipeline, **kwargs)
+
         return result
 
     @gen.coroutine
@@ -603,8 +602,8 @@ class BaseQuerySet(base.BaseQuerySet):
             self._next_doc = yield self._get_next_doc()
             return doc
 
-        doc = self._document._from_son(raw_doc,
-                                       _auto_dereference=self._auto_dereference)
+        doc = self._document._from_son(
+            raw_doc, _auto_dereference=self._auto_dereference)
 
         if self._scalar:
             doc = self._get_scalar(doc)
@@ -626,10 +625,11 @@ class BaseQuerySet(base.BaseQuerySet):
         if isinstance(key, slice):
             try:
                 cursor = yield queryset._cursor
-                queryset._cursor_obj = cursor[key]
-                queryset._skip, queryset._limit = key.start, key.stop
+                limit = key.stop
                 if key.start and key.stop:
-                    queryset._limit = key.stop - key.start
+                    limit = key.stop - key.start
+                queryset._cursor_obj = cursor.skip(key.start).limit(limit)
+                queryset._skip, queryset._limit = key.start, limit
             except IndexError as err:
                 # PyMongo raises an error if key.start == key.stop, catch it,
                 # bin it, kill it.
@@ -646,7 +646,7 @@ class BaseQuerySet(base.BaseQuerySet):
         # Integer index provided
         elif isinstance(key, int):
             new_cursor = yield queryset._cursor
-            new_cursor = new_cursor[key]
+            new_cursor = new_cursor.skip(key).limit(-1)
             yield new_cursor.fetch_next
             raw_doc = new_cursor.next_object()
             doc = queryset._document._from_son(
@@ -805,14 +805,11 @@ class BaseQuerySet(base.BaseQuerySet):
         This method is more performant than the regular `average`, because it
         uses the aggregation framework instead of map-reduce.
         """
-        result = yield self._document._get_collection().aggregate([
+        result = self._document._get_collection().aggregate([
             {'$match': (yield self._query)},
             {'$group': {'_id': 'avg', 'total': {'$avg': '$' + field}}}
         ])
-        if IS_PYMONGO_3:
-            result = list(result)
-        else:
-            result = result.get('result')
+        result = yield result.to_list(1)
         if result:
             return result[0]['total']
         return 0
@@ -875,14 +872,11 @@ class BaseQuerySet(base.BaseQuerySet):
         This method is more performant than the regular `sum`, because it uses
         the aggregation framework instead of map-reduce.
         """
-        result = yield self._document._get_collection().aggregate([
+        result = self._document._get_collection().aggregate([
             {'$match': (yield self._query)},
             {'$group': {'_id': 'sum', 'total': {'$sum': '$' + field}}}
         ])
-        if IS_PYMONGO_3:
-            result = list(result)
-        else:
-            result = result.get('result')
+        result = yield result.to_list(1)
         if result:
             return result[0]['total']
         return 0

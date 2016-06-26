@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from bson import DBRef, SON
+from motor.motor_tornado import MotorCursor
 from mongoengine.dereference import DeReference
 from mongoengine.base import (
     BaseDict, BaseList, EmbeddedDocumentList,
@@ -9,9 +10,7 @@ from mongoengine.base import (
 from mongoengine.fields import (ListField, DictField, MapField)
 from mongoengine.connection import get_db
 
-from mongomotor.fields import ListField, DictField, MapField
 from mongomotor.document import Document, EmbeddedDocument
-from motor import MotorCursor
 import tornado
 
 
@@ -23,7 +22,8 @@ class DeReferenceMotor(DeReference):
         object_map = {}
         for collection, dbrefs in self.reference_map.items():
             keys = list(object_map.keys())
-            refs = list(set([dbref for dbref in dbrefs if str(dbref).encode('utf-8') not in keys]))
+            refs = list(
+                set([dbref for dbref in dbrefs if str(dbref).encode('utf-8') not in keys]))
             if hasattr(collection, 'objects'):  # We have a document class for the refs
                 references = collection.objects.in_bulk(refs)
                 for key, doc in references.items():
@@ -33,23 +33,27 @@ class DeReferenceMotor(DeReference):
                     continue
 
                 if doc_type:
-                    # MONGOMOTOR HERE! Making lists of references became lists of futures
-                    references = doc_type._get_db()[collection].find({'_id': {'$in': refs}})
+                    # MONGOMOTOR HERE! Making lists of references became lists
+                    # of futures
+                    references = doc_type._get_db()[collection].find(
+                        {'_id': {'$in': refs}})
                     if isinstance(references, MotorCursor):
-                        object_map = self._async_dereference(references, doc_type)
+                        object_map = self._async_dereference(
+                            references, doc_type)
                     else:
                         for ref in references:
                             doc = doc_type._from_son(ref)
                             object_map[doc.id] = doc
                 else:
-                    references = get_db()[collection].find({'_id': {'$in': refs}})
+                    references = get_db()[collection].find(
+                        {'_id': {'$in': refs}})
                     for ref in references:
                         if '_cls' in ref:
                             doc = get_document(ref["_cls"])._from_son(ref)
                         elif doc_type is None:
                             doc = get_document(
                                 ''.join(x.capitalize()
-                                    for x in collection.split('_')))._from_son(ref)
+                                        for x in collection.split('_')))._from_son(ref)
                         else:
                             doc = doc_type._from_son(ref)
                         object_map[doc.id] = doc
@@ -127,16 +131,21 @@ class DeReferenceMotor(DeReference):
                 for field_name, field in v._fields.items():
                     v = data[k]._data.get(field_name, None)
                     if isinstance(v, (DBRef)):
-                        data[k]._data[field_name] = self.object_map.get(v.id, v)
+                        data[k]._data[
+                            field_name] = self.object_map.get(v.id, v)
                     elif isinstance(v, (dict, SON)) and '_ref' in v:
-                        data[k]._data[field_name] = self.object_map.get(v['_ref'].id, v)
+                        data[k]._data[field_name] = self.object_map.get(
+                            v['_ref'].id, v)
                     elif isinstance(v, dict) and depth <= self.max_depth:
-                        data[k]._data[field_name] = self._attach_objects(v, depth, instance=instance, name=name)
+                        data[k]._data[field_name] = self._attach_objects(
+                            v, depth, instance=instance, name=name)
                     elif isinstance(v, (list, tuple)) and depth <= self.max_depth:
-                        data[k]._data[field_name] = self._attach_objects(v, depth, instance=instance, name=name)
+                        data[k]._data[field_name] = self._attach_objects(
+                            v, depth, instance=instance, name=name)
             elif isinstance(v, (dict, list, tuple)) and depth <= self.max_depth:
                 item_name = '%s.%s' % (name, k) if name else name
-                data[k] = self._attach_objects(v, depth - 1, instance=instance, name=item_name)
+                data[k] = self._attach_objects(
+                    v, depth - 1, instance=instance, name=item_name)
             elif hasattr(v, 'id'):
                 data[k] = self.object_map.get(v.id, v)
 
@@ -159,7 +168,7 @@ class DeReferenceMotor(DeReference):
         return object_map
 
     @tornado.gen.coroutine
-    def  _get_next_doc(self, cursor):
+    def _get_next_doc(self, cursor):
         yield cursor.fetch_next
         n = cursor.next_object()
-        return  n
+        return n

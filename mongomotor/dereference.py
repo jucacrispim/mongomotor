@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from bson import DBRef, SON
+from motor.motor_tornado import MotorCursor
 from mongoengine.dereference import DeReference
 from mongoengine.base import (
     BaseDict, BaseList, EmbeddedDocumentList,
@@ -10,7 +11,6 @@ from mongoengine.fields import (ListField, DictField, MapField)
 from mongoengine.connection import get_db
 
 from mongomotor.document import Document, EmbeddedDocument
-from motor import MotorCursor
 import tornado
 
 

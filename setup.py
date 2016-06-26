@@ -1,4 +1,4 @@
-#-*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 
 from setuptools import setup, find_packages
 
@@ -36,7 +36,8 @@ setup(name='mongomotor',
       long_description=LONG_DESCRIPTION,
       url='http://mongomotor.poraodojuca.net/en/',
       packages=find_packages(exclude=['tests', 'tests.*']),
-      install_requires=['mongoengine>=0.10', 'motor>=0.3', 'blinker>=1.3'],
+      install_requires=['mongoengine>=0.10', 'motor>=0.6.2', 'blinker>=1.3',
+                        'pymongo==2.8'],
       classifiers=[
           'Development Status :: 3 - Alpha',
           'Intended Audience :: Developers',

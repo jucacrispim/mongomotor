@@ -56,6 +56,9 @@ class MongoMotorTest(AsyncTestCase):
     def tearDown(self):
         yield self.maindoc.drop_collection()
         yield self.refdoc.drop_collection()
+        yield self.otherdoc.drop_collection()
+        yield self.refdoc.drop_collection()
+
         super(MongoMotorTest, self).tearDown()
 
     def get_new_ioloop(self):
@@ -339,13 +342,13 @@ class MongoMotorTest(AsyncTestCase):
     @gen_test
     def test_query_skip(self):
         """ Ensure that the skip method works properly. """
-        m0 = self.maindoc(docname='d0')
-        m1 = self.maindoc(docname='d1')
+        m0 = self.maindoc(docname='dz')
+        m1 = self.maindoc(docname='dx')
         yield m0.save()
         yield m1.save()
 
-        d = yield (yield self.maindoc.objects.order_by('-docname').skip(1))[0]
-
+        d = yield self.maindoc.objects.order_by('-docname').skip(1)
+        d = yield d[0]
         self.assertEqual(d, m0)
 
     @gen_test
@@ -391,9 +394,12 @@ class MongoMotorTest(AsyncTestCase):
         unwind = {'$unwind': '$list_field'}
 
         result = yield self.maindoc.objects.aggregate(unwind, group)
-        for r in result['result']:
+
+        for r in (yield result.to_list(3)):
             if r['_id'] == 'a':
                 self.assertEqual(r['total'], 2)
+            else:
+                self.assertEqual(r['total'], 1)
 
     @gen_test
     def test_map_reduce(self):

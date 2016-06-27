@@ -1,3 +1,5 @@
+:tocdepth: 1
+
 MongoMotor: An asynchronous document-object mapper for MongoDB
 ==============================================================
 
@@ -7,7 +9,7 @@ MongoMotor: An asynchronous document-object mapper for MongoDB
     :alt: Async object document mapper for tornado
 
 MongoMotor is a tiny integration of
-`MongoEngine <http://docs.mongoengine.org/en/latest/index.html>`_, a
+`MongoEngine <http://mongoengine.org/>`_, a
 document-object mapper for python and mongodb, with
 `Motor <http://motor.readthedocs.org/en/stable/>`_, an asynchronous driver
 for mongodb built on top of tornado's mainloop
@@ -203,8 +205,20 @@ MongoMotor's code is hosted on
 Feel free to create a fork of the project, open issues, do merge requests...
 
 
+Changelog
+=========
+
+v0.6.2
+++++++
+
+* Adding modify() to queryset
+* Updating motor to 0.6.2. That changed aggregate interface. It now returns
+  a cursor.
+
+
 Documentation translations
 ==========================
+
 `Documentação do MongoMotor em português <http://mongomotor.poraodojuca.net/ptbr/>`_
 
 

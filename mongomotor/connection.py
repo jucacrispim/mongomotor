@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 
 import motor
-from mongoengine import connection, register_connection, ConnectionError
+from mongoengine import connection, ConnectionError
+from mongoengine.connection import connect, disconnect
 
 
 CONNECTION_TYPES = {'tornado': motor.MotorClient,

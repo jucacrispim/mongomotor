@@ -93,7 +93,7 @@ class MongoMotorTest(AsyncTestCase):
         self.assertTrue(main.id)
         # and if the reference points to the right place.
         # note that you need to yield reference fields.
-        self.assertEqual((yield main.ref), ref)
+        self.assertEqual(main.ref, ref)
 
     @gen_test
     def test_save_with_no_ref(self):
@@ -103,7 +103,7 @@ class MongoMotorTest(AsyncTestCase):
         # remebering from a wired bug
         doc = self.maindoc()
         yield doc.save()
-        self.assertIsNone((yield doc.ref))
+        self.assertIsNone(doc.ref)
 
     @gen_test
     def test_get_reference_after_get(self):
@@ -112,8 +112,35 @@ class MongoMotorTest(AsyncTestCase):
         d1 = self.maindoc()
         yield d1.save()
         doc = yield self.maindoc.objects.get(id=d1.id)
-        # It fails if doc.ref is stil a future even after using yield.
-        self.assertIsNone((yield doc.ref))
+        self.assertIsNone(doc.ref)
+
+    @gen_test
+    def test_get_real_reference(self):
+        """Ensures that a reference field point to something works."""
+
+        r = self.refdoc(refname='r')
+        yield r.save()
+        d = self.maindoc(docname='d', ref=r)
+        yield d.save()
+
+        d = yield self.maindoc.objects.get(id=d.id)
+
+        self.assertTrue(d.ref.id)
+
+    @gen_test
+    def test_get_reference_from_class(self):
+        """Ensures that getting a reference from a class does not returns
+        a future"""
+
+        ref = getattr(self.maindoc, 'ref')
+        self.assertTrue(isinstance(ref, ReferenceField), ref)
+
+    @gen_test
+    def test_get_none_reference(self):
+        """Ensures that references that were not set returns None"""
+        doc = self.maindoc()
+        yield doc.save()
+        self.assertFalse(doc.ref)
 
     @gen_test
     def test_delete(self):
@@ -298,6 +325,7 @@ class MongoMotorTest(AsyncTestCase):
         yield d2.save()
 
         expected = ['d1', 'd2']
+
         returned = yield self.maindoc.objects.distinct('docname')
         self.assertEqual(expected, returned)
 
@@ -324,24 +352,48 @@ class MongoMotorTest(AsyncTestCase):
 
         m = yield self.maindoc.objects.all()[0]
 
-        reflist = getattr(m, 'reflist')
+        reflist = yield m.reflist
         self.assertEqual(len(reflist), 1)
 
         m = yield self.maindoc.objects.get(id=m.id)
 
-        reflist = getattr(m, 'reflist')
+        reflist = yield getattr(m, 'reflist')
         self.assertEqual(len(reflist), 1)
 
         mlist = yield self.maindoc.objects.all().to_list()
         for m in mlist:
-            reflist = getattr(m, 'reflist')
+            reflist = yield getattr(m, 'reflist')
             self.assertEqual(len(reflist), 1)
 
         mlist = self.maindoc.objects.all()
         for m in mlist:
             m = yield m
-            reflist = getattr(m, 'reflist')
+            reflist = yield getattr(m, 'reflist')
             self.assertEqual(len(reflist), 1)
+
+    @gen_test
+    def test_complex_base_field_get(self):
+        r = self.refdoc()
+        yield r.save()
+
+        m = self.maindoc(reflist=[r])
+        yield m.save()
+
+        # without future, as it is already in memory, no need to
+        # reach the database again
+        self.assertEqual(len(m.reflist), 1)
+
+        m = yield self.maindoc.objects.get(id=m.id)
+        # now a future
+        self.assertEqual(len((yield m.reflist)), 1)
+
+        # no ref, no future
+        m = self.maindoc(list_field=['a', 'b'])
+        yield m.save()
+
+        m = yield self.maindoc.objects.get(id=m.id)
+
+        self.assertEqual(m.list_field, ['a', 'b'])
 
     @gen_test
     def test_query_skip(self):
@@ -429,7 +481,6 @@ class MongoMotorTest(AsyncTestCase):
 
         self.assertEqual(total, 0)
         self.assertFalse(None)
-
 
     @gen_test
     def test_map_reduce(self):

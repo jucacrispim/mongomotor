@@ -261,7 +261,6 @@ class BaseQuerySet(base.BaseQuerySet):
         and :class:`~mongoengine.queryset.DoesNotExist` or
         `DocumentName.DoesNotExist` if no results are found.
 
-        .. versionadded:: 0.3
         """
 
         queryset = self.clone()
@@ -627,8 +626,9 @@ class BaseQuerySet(base.BaseQuerySet):
         finally:
             cursor = yield queryset._cursor
             distinct = yield cursor.distinct(field)
-            distinct = self._dereference(distinct, 1,
-                                         name=field, instance=self._document)
+            distinct = yield self._dereference(distinct, 1,
+                                               name=field,
+                                               instance=self._document)
 
             # We may need to cast to the correct type eg.
             # ListField(EmbeddedDocumentField)
@@ -666,8 +666,7 @@ class BaseQuerySet(base.BaseQuerySet):
             return doc
 
         self._next_doc = yield self._get_next_doc()
-
-        doc = yield self._consume_references_futures(doc)
+        # doc = yield self._consume_references_futures(doc)
         return doc
 
     @gen.coroutine

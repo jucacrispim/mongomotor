@@ -254,13 +254,17 @@ class BaseQuerySet(base.BaseQuerySet):
         return doc_map
 
     @gen.coroutine
-    def get(self, *q_objs, **query):
+    def get(self, *q_objs, eager_on=[], **query):
         """Retrieve the the matching object raising
         :class:`~mongoengine.queryset.MultipleObjectsReturned` or
         `DocumentName.MultipleObjectsReturned` exception if multiple results
         and :class:`~mongoengine.queryset.DoesNotExist` or
         `DocumentName.DoesNotExist` if no results are found.
 
+        :param eager_on: Fields that must be dereferenced before returning
+          the query result. Note that a new query is done to the database,
+          it is only a convenience to not handle with futures while accessing
+          references.
         """
 
         queryset = self.clone()
@@ -285,7 +289,7 @@ class BaseQuerySet(base.BaseQuerySet):
             return result
 
         if not n:
-            # result = yield self._consume_references_futures(result)
+            result = yield self._consume_references_futures(result, eager_on)
             return result
 
         yield queryset.rewind()
@@ -706,7 +710,7 @@ class BaseQuerySet(base.BaseQuerySet):
             doc = queryset._document._from_son(
                 raw_doc, _auto_dereference=self._auto_dereference)
 
-            doc = yield self._consume_references_futures(doc)
+            # doc = yield self._consume_references_futures(doc)
 
             if queryset._scalar:
                 return queryset._get_scalar(doc)
@@ -722,14 +726,13 @@ class BaseQuerySet(base.BaseQuerySet):
         raise AttributeError
 
     @gen.coroutine
-    def _consume_references_futures(self, doc):
-        doc_attrs = [a for a in dir(doc) if not a.startswith('_')
-                     and a != 'objects' and a != 'STRICT']
-        for attr_name in doc_attrs:
-            attr = getattr(doc, attr_name)
+    def _consume_references_futures(self, doc, fields):
+
+        for field in fields:
+            attr = getattr(doc, field)
             if isinstance(attr, tornado.concurrent.Future):
                 attr = yield attr
-                setattr(doc, attr_name, attr)
+                setattr(doc, field, attr)
 
         return doc
 

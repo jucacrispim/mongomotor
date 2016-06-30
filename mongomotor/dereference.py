@@ -107,7 +107,7 @@ class DeReferenceMotor(DeReference):
                     next_ref = yield self._get_next_doc(references)
                     while next_ref:
                         doc = doc_type._from_son(next_ref)
-                        object_map[doc.id] = doc
+                        object_map[(collection, doc.id)] = doc
                         next_ref = yield self._get_next_doc(references)
 
                 else:
@@ -124,7 +124,7 @@ class DeReferenceMotor(DeReference):
                             doc = doc._from_son(ref)
                         else:
                             doc = doc_type._from_son(ref)
-                        object_map[doc.id] = doc
+                        object_map[(collection, doc.id)] = doc
                         ref = yield self._get_next_doc(references)
 
         return object_map

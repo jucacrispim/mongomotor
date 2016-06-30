@@ -211,6 +211,7 @@ Changelog
 v0.7
 ++++++
 
+* Added eager_on on get() method of queryset.
 * Corrected how ComplexBaseField and ReferenceField handle references.
   Now it only returns a future when the database is really reached.
 * Adding modify() to queryset

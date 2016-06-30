@@ -208,9 +208,11 @@ Feel free to create a fork of the project, open issues, do merge requests...
 Changelog
 =========
 
-v0.6.2
+v0.7
 ++++++
 
+* Corrected how ComplexBaseField and ReferenceField handle references.
+  Now it only returns a future when the database is really reached.
 * Adding modify() to queryset
 * Updating motor to 0.6.2. That changed aggregate interface. It now returns
   a cursor.

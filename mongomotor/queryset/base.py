@@ -285,7 +285,7 @@ class BaseQuerySet(base.BaseQuerySet):
             return result
 
         if not n:
-            result = yield self._consume_references_futures(result)
+            # result = yield self._consume_references_futures(result)
             return result
 
         yield queryset.rewind()

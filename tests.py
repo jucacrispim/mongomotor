@@ -125,7 +125,7 @@ class MongoMotorTest(AsyncTestCase):
 
         d = yield self.maindoc.objects.get(id=d.id)
 
-        self.assertTrue(d.ref.id)
+        self.assertTrue((yield d.ref).id)
 
     @gen_test
     def test_get_reference_from_class(self):

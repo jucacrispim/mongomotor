@@ -411,6 +411,13 @@ class MongoMotorTest(AsyncTestCase):
         self.assertEqual(m.list_field, ['a', 'b'])
 
     @gen_test
+    def test_complex_base_field_get_with_empty_object(self):
+        m = self.maindoc(reflist=[])
+        yield m.save()
+        m = yield self.maindoc.objects.get(id=m.id)
+        self.assertFalse(m.reflist)
+
+    @gen_test
     def test_query_skip(self):
         """ Ensure that the skip method works properly. """
         m0 = self.maindoc(docname='dz')

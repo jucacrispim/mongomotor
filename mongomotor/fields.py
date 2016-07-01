@@ -75,8 +75,8 @@ class ComplexBaseField(fields.ComplexBaseField):
 
         _dereference = _import_class("DeReference")()
         if (self._auto_dereference and instance._initialised and
-                isinstance(value, (BaseList, BaseDict)) and
-                not value._dereferenced and not is_refcls):
+            isinstance(value, (BaseList, BaseDict)) and
+            value and not value._dereferenced and not is_refcls):
 
             @gen.coroutine
             def deref(instance, value):

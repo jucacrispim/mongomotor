@@ -121,24 +121,6 @@ class ReferenceField(fields.ReferenceField):
                 instance, owner)
         return deref(value)
 
-    @gen.coroutine
-    def validate(self, value):
-        if isinstance(value, Future):
-            value = yield value
-
-        if not isinstance(value, (self.document_type, DBRef)):
-            self.error("A ReferenceField only accepts DBRef or documents")
-
-        if isinstance(value, Document) and value.id is None:
-            self.error('You can only reference documents once they have been '
-                       'saved to the database')
-
-        if self.document_type._meta.get('abstract') and \
-                not isinstance(value, self.document_type):
-            self.error('%s is not an instance of abstract reference'
-                       ' type %s' % (value._class_name,
-                                     self.document_type._class_name))
-
 
 class ListField(ComplexBaseField, fields.ListField):
     pass

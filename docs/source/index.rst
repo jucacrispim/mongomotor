@@ -208,6 +208,12 @@ Feel free to create a fork of the project, open issues, do merge requests...
 Changelog
 =========
 
+v0.8
+++++
+
+* Backing ComplexBaseField and ReferenceField behavior to old one. It
+  now always returns a future. The other way was confusing.
+
 v0.7
 ++++++
 

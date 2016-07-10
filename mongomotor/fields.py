@@ -8,8 +8,9 @@ from mongoengine import fields
 from mongoengine.base.datastructures import (
     BaseDict, BaseList, EmbeddedDocumentList
 )
+
+
 from mongoengine.fields import *
-from mongoengine import Document
 
 
 class ComplexBaseField(fields.ComplexBaseField):
@@ -24,7 +25,7 @@ class ComplexBaseField(fields.ComplexBaseField):
         ReferenceField = _import_class('ReferenceField')
         GenericReferenceField = _import_class('GenericReferenceField')
         dereference = (self._auto_dereference and
-                       (self.field is None or isinstance(
+                       (isinstance(
                            self.field,
                            (GenericReferenceField, ReferenceField))))
 
@@ -32,13 +33,11 @@ class ComplexBaseField(fields.ComplexBaseField):
 
         self._auto_dereference = instance._fields[self.name]._auto_dereference
         initialised = instance._initialised
-        is_refcls = instance._data.get(self.name) and not isinstance(
-            instance._data.get(self.name), Future)
         is_dbref = instance._data.get(self.name) and bool(
             [v for v in instance._data.get(self.name) if isinstance(v, DBRef)])
 
         if is_dbref or (initialised and dereference and
-                        instance._data.get(self.name) and not is_refcls):
+                        instance._data.get(self.name)):
             @gen.coroutine
             def deref(instance):
                 instance._data[self.name] = yield _dereference(
@@ -75,8 +74,8 @@ class ComplexBaseField(fields.ComplexBaseField):
 
         _dereference = _import_class("DeReference")()
         if (self._auto_dereference and instance._initialised and
-            isinstance(value, (BaseList, BaseDict)) and
-            value and not value._dereferenced and not is_refcls):
+                isinstance(value, (BaseList, BaseDict)) and
+                value and not value._dereferenced and not is_refcls):
 
             @gen.coroutine
             def deref(instance, value):
@@ -106,22 +105,20 @@ class ReferenceField(fields.ReferenceField):
         # self._auto_dereference = True
         self._auto_dereference = instance._fields[self.name]._auto_dereference
 
-        # Dereference DBRefs
-        if self._auto_dereference and isinstance(value, DBRef):
-            @gen.coroutine
-            def deref(value):
-
+        @gen.coroutine
+        def deref(value):
+            # Dereference DBRefs
+            if self._auto_dereference and isinstance(value, DBRef):
                 db = self.document_type._get_db()
 
                 value = yield db.dereference(value)
                 if value is not None:
                     instance._data[self.name] = self.document_type._from_son(
                         value)
-                return super(fields.ReferenceField, self).__get__(
-                    instance, owner)
-            return deref(value)
-        else:
-            return super(fields.ReferenceField, self).__get__(instance, owner)
+
+            return super(fields.ReferenceField, self).__get__(
+                instance, owner)
+        return deref(value)
 
 
 class ListField(ComplexBaseField, fields.ListField):

@@ -254,7 +254,7 @@ class BaseQuerySet(base.BaseQuerySet):
         return doc_map
 
     @gen.coroutine
-    def get(self, *q_objs, eager_on=[], **query):
+    def get(self, *q_objs, **query):
         """Retrieve the the matching object raising
         :class:`~mongoengine.queryset.MultipleObjectsReturned` or
         `DocumentName.MultipleObjectsReturned` exception if multiple results
@@ -289,7 +289,6 @@ class BaseQuerySet(base.BaseQuerySet):
             return result
 
         if not n:
-            result = yield self._consume_references_futures(result, eager_on)
             return result
 
         yield queryset.rewind()

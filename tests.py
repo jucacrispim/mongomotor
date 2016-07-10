@@ -106,20 +106,6 @@ class MongoMotorTest(AsyncTestCase):
         self.assertIsNone(doc.ref)
 
     @gen_test
-    def test_get_eager_on(self):
-        ref = self.refdoc()
-        yield ref.save()
-        doc = self.maindoc(list_field=['a', 'b'], reflist=[ref],
-                           ref=ref)
-
-        yield doc.save()
-        doc = yield self.maindoc.objects.get(
-            id=doc.id, eager_on=['reflist', 'ref'])
-
-        self.assertTrue(doc.ref.id)
-        self.assertTrue(doc.reflist[0].id)
-
-    @gen_test
     def test_get_reference_after_get(self):
         """Ensures that a reference field is dereferenced properly after
         retrieving a object from database."""

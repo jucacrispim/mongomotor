@@ -8,8 +8,9 @@ from mongoengine import fields
 from mongoengine.base.datastructures import (
     BaseDict, BaseList, EmbeddedDocumentList
 )
+
+
 from mongoengine.fields import *
-from mongoengine import Document
 
 
 class ComplexBaseField(fields.ComplexBaseField):
@@ -24,7 +25,7 @@ class ComplexBaseField(fields.ComplexBaseField):
         ReferenceField = _import_class('ReferenceField')
         GenericReferenceField = _import_class('GenericReferenceField')
         dereference = (self._auto_dereference and
-                       (self.field is None or isinstance(
+                       (isinstance(
                            self.field,
                            (GenericReferenceField, ReferenceField))))
 
@@ -32,13 +33,11 @@ class ComplexBaseField(fields.ComplexBaseField):
 
         self._auto_dereference = instance._fields[self.name]._auto_dereference
         initialised = instance._initialised
-        is_refcls = instance._data.get(self.name) and not isinstance(
-            instance._data.get(self.name), Future)
         is_dbref = instance._data.get(self.name) and bool(
             [v for v in instance._data.get(self.name) if isinstance(v, DBRef)])
 
         if is_dbref or (initialised and dereference and
-                        instance._data.get(self.name) and not is_refcls):
+                        instance._data.get(self.name)):
             @gen.coroutine
             def deref(instance):
                 instance._data[self.name] = yield _dereference(

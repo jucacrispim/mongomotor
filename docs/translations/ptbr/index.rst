@@ -208,6 +208,13 @@ o `issue tracker <https://gitlab.com/mongomotor/mongomotor/issues>`_. Fique
 Changelog
 =========
 
+v0.8
+++++
+
+* Backing ComplexBaseField and ReferenceField behavior to old one. It
+  now always returns a future. The other way was confusing.
+
+
 v0.7
 ++++++
 

@@ -76,7 +76,6 @@ class MongoMotorTest(AsyncTestCase):
         # asserting if our reference document was created
         self.assertTrue(ref.id)
         # and if the listfield is ok
-
         embedlist = ref.embedlist
         self.assertEqual(embedlist[0].list_field,
                          ['uma', 'lista', 'nota', 10])
@@ -373,12 +372,10 @@ class MongoMotorTest(AsyncTestCase):
         m = self.maindoc(reflist=[r])
         yield m.save()
 
-        # without future, as it is already in memory, no need to
-        # reach the database again
-        self.assertEqual(len(m.reflist), 1)
+        # when it is a reference it is a future
+        self.assertEqual(len((yield m.reflist)), 1)
 
         m = yield self.maindoc.objects.get(id=m.id)
-        # now a future
         self.assertEqual(len((yield m.reflist)), 1)
 
         # no ref, no future

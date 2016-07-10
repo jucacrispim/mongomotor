@@ -14,10 +14,12 @@ from mongoengine.base.metaclasses import (TopLevelDocumentMetaclass,
                                           DocumentMetaclass)
 from mongoengine.document import _import_class, includes_cls
 from mongomotor import signals
+from mongomotor.base.document import BaseDocumentMotor
 from mongomotor.base.metaclasses import MapReduceDocumentMetaclass
 
 
-class Document(DocumentBase, metaclass=TopLevelDocumentMetaclass):
+class Document(BaseDocumentMotor, DocumentBase,
+               metaclass=TopLevelDocumentMetaclass):
     """
     Document version that uses motor mongodb driver.
     It's a copy of some mongoengine.Document methods

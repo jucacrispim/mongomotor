@@ -93,7 +93,7 @@ class MongoMotorTest(AsyncTestCase):
         self.assertTrue(main.id)
         # and if the reference points to the right place.
         # note that you need to yield reference fields.
-        self.assertEqual(main.ref, ref)
+        self.assertEqual((yield main.ref), ref)
 
     @gen_test
     def test_save_with_no_ref(self):
@@ -103,7 +103,7 @@ class MongoMotorTest(AsyncTestCase):
         # remebering from a wired bug
         doc = self.maindoc()
         yield doc.save()
-        self.assertIsNone(doc.ref)
+        self.assertIsNone((yield doc.ref))
 
     @gen_test
     def test_get_reference_after_get(self):
@@ -112,7 +112,7 @@ class MongoMotorTest(AsyncTestCase):
         d1 = self.maindoc()
         yield d1.save()
         doc = yield self.maindoc.objects.get(id=d1.id)
-        self.assertIsNone(doc.ref)
+        self.assertIsNone((yield doc.ref))
 
     @gen_test
     def test_get_real_reference(self):
@@ -134,13 +134,6 @@ class MongoMotorTest(AsyncTestCase):
 
         ref = getattr(self.maindoc, 'ref')
         self.assertTrue(isinstance(ref, ReferenceField), ref)
-
-    @gen_test
-    def test_get_none_reference(self):
-        """Ensures that references that were not set returns None"""
-        doc = self.maindoc()
-        yield doc.save()
-        self.assertFalse(doc.ref)
 
     @gen_test
     def test_delete(self):

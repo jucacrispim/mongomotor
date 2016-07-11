@@ -208,6 +208,11 @@ o `issue tracker <https://gitlab.com/mongomotor/mongomotor/issues>`_. Fique
 Changelog
 =========
 
+v0.8.1
+++++++
+
+* Correcting __getitem__ on queryset
+
 v0.8
 ++++
 

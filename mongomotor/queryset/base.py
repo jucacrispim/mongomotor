@@ -381,10 +381,7 @@ class BaseQuerySet(base.BaseQuerySet):
         """Retrieve the first object matching the query.
         """
         queryset = self.clone()
-        try:
-            result = yield queryset[0]
-        except IndexError:
-            result = None
+        result = yield queryset[0]
         return result
 
     @gen.coroutine
@@ -703,9 +700,12 @@ class BaseQuerySet(base.BaseQuerySet):
         # Integer index provided
         elif isinstance(key, int):
             new_cursor = yield queryset._cursor
-            new_cursor = new_cursor.skip(key).limit(-1)
+            skip = queryset._skip or 0
+            new_cursor = new_cursor.skip(skip + key).limit(-1)
             yield new_cursor.fetch_next
             raw_doc = new_cursor.next_object()
+            if not raw_doc:
+                return raw_doc
             doc = queryset._document._from_son(
                 raw_doc, _auto_dereference=self._auto_dereference)
 
@@ -717,9 +717,9 @@ class BaseQuerySet(base.BaseQuerySet):
                 n = yield next(queryset._cursor)
                 return queryset._get_as_pymongo(n)
 
-            son = queryset._document._from_son(
-                raw_doc,
-                _auto_dereference=self._auto_dereference)
+            # son = queryset._document._from_son(
+            #     raw_doc,
+            #     _auto_dereference=self._auto_dereference)
 
             return doc
         raise AttributeError

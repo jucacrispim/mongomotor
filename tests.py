@@ -336,6 +336,25 @@ class MongoMotorTest(AsyncTestCase):
         self.assertEqual(d1, returned)
 
     @gen_test
+    def test_first_with_empty_queryset(self):
+        returned = yield self.maindoc.objects.order_by('docname').first()
+        self.assertFalse(returned)
+
+    @gen_test
+    def test_first_with_slice(self):
+        d1 = self.maindoc(docname='d1')
+        yield d1.save()
+        d2 = self.maindoc(docname='d2')
+        yield d2.save()
+
+        queryset = yield self.maindoc.objects.order_by('docname')[1:2]
+        returned = yield queryset.first()
+        queryset = yield self.maindoc.objects.order_by('docname').skip(1)
+        returned = yield queryset.first()
+
+        self.assertEqual(d2, returned)
+
+    @gen_test
     def test_document_dereference_with_list(self):
         r = self.refdoc()
         yield r.save()
@@ -403,7 +422,7 @@ class MongoMotorTest(AsyncTestCase):
 
         d = yield self.maindoc.objects.order_by('-docname').skip(1)
         d = yield d[0]
-        self.assertEqual(d, m0)
+        self.assertEqual(d, m1)
 
     @gen_test
     def test_delete_query_skip_without_documents(self):

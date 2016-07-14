@@ -410,7 +410,9 @@ class MongoMotorTest(AsyncTestCase):
         m = self.maindoc(reflist=[])
         yield m.save()
         m = yield self.maindoc.objects.get(id=m.id)
-        self.assertFalse(m.reflist)
+        self.assertIsInstance(m.reflist, tornado.concurrent.Future)
+        reflist = yield m.reflist
+        self.assertFalse(reflist)
 
     @gen_test
     def test_query_skip(self):

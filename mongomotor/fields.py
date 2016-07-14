@@ -36,8 +36,7 @@ class ComplexBaseField(fields.ComplexBaseField):
         is_dbref = instance._data.get(self.name) and bool(
             [v for v in instance._data.get(self.name) if isinstance(v, DBRef)])
 
-        if is_dbref or (initialised and dereference and
-                        instance._data.get(self.name)):
+        if is_dbref or (initialised and dereference):
             @gen.coroutine
             def deref(instance):
                 instance._data[self.name] = yield _dereference(

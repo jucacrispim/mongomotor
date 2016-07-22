@@ -208,6 +208,11 @@ o `issue tracker <https://gitlab.com/mongomotor/mongomotor/issues>`_. Fique
 Changelog
 =========
 
+v0.8.2
+++++++
+
+* Correcting __get__ on empty ComplexBaseField.
+
 v0.8.1
 ++++++
 

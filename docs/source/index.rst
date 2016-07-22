@@ -208,6 +208,11 @@ Feel free to create a fork of the project, open issues, do merge requests...
 Changelog
 =========
 
+v0.8.2
+++++++
+
+* Correcting __get__ on empty ComplexBaseField.
+
 v0.8.1
 ++++++
 

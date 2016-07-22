@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from bson.objectid import ObjectId
+import sys
 import tornado
 from tornado import gen
 from tornado.testing import AsyncTestCase, gen_test
@@ -11,12 +12,15 @@ from mongomotor.fields import (StringField, IntField, ListField, DictField,
                                EmbeddedDocumentField, ReferenceField)
 
 
+db = 'mongomotor-test-{}'.format(sys.version_info.major,
+                                 sys.version_info.minor)
+connect(db)
+
+
 class MongoMotorTest(AsyncTestCase):
 
     def setUp(self):
         super(MongoMotorTest, self).setUp()
-
-        connect('mongomotor-test')
 
         # some models to simple tests over
         # mongomotor

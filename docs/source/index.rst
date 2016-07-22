@@ -1,3 +1,5 @@
+:tocdepth: 1
+
 MongoMotor: An asynchronous document-object mapper for MongoDB
 ==============================================================
 
@@ -7,7 +9,7 @@ MongoMotor: An asynchronous document-object mapper for MongoDB
     :alt: Async object document mapper for tornado
 
 MongoMotor is a tiny integration of
-`MongoEngine <http://docs.mongoengine.org/en/latest/index.html>`_, a
+`MongoEngine <http://mongoengine.org/>`_, a
 document-object mapper for python and mongodb, with
 `Motor <http://motor.readthedocs.org/en/stable/>`_, an asynchronous driver
 for mongodb built on top of tornado's mainloop
@@ -203,8 +205,39 @@ MongoMotor's code is hosted on
 Feel free to create a fork of the project, open issues, do merge requests...
 
 
+Changelog
+=========
+
+v0.8.2
+++++++
+
+* Correcting __get__ on empty ComplexBaseField.
+
+v0.8.1
+++++++
+
+* Correcting __getitem__ on queryset
+
+v0.8
+++++
+
+* Backing ComplexBaseField and ReferenceField behavior to old one. It
+  now always returns a future. The other way was confusing.
+
+v0.7
+++++++
+
+* Added eager_on on get() method of queryset.
+* Corrected how ComplexBaseField and ReferenceField handle references.
+  Now it only returns a future when the database is really reached.
+* Adding modify() to queryset
+* Updating motor to 0.6.2. That changed aggregate interface. It now returns
+  a cursor.
+
+
 Documentation translations
 ==========================
+
 `Documentação do MongoMotor em português <http://mongomotor.poraodojuca.net/ptbr/>`_
 
 

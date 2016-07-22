@@ -67,8 +67,7 @@ def patch_visitor():
 
 def patch_fields():
     import mongoengine
-    from mongomotor.fields import ReferenceField
-
+    from mongomotor.fields import ReferenceField, ComplexBaseField
     patch_item(mongoengine, 'ReferenceField', ReferenceField)
 
 

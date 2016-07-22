@@ -260,7 +260,6 @@ class BaseQuerySet(base.BaseQuerySet):
         `DocumentName.MultipleObjectsReturned` exception if multiple results
         and :class:`~mongoengine.queryset.DoesNotExist` or
         `DocumentName.DoesNotExist` if no results are found.
-
         """
 
         queryset = self.clone()
@@ -285,7 +284,6 @@ class BaseQuerySet(base.BaseQuerySet):
             return result
 
         if not n:
-            result = yield self._consume_references_futures(result)
             return result
 
         yield queryset.rewind()
@@ -377,10 +375,7 @@ class BaseQuerySet(base.BaseQuerySet):
         """Retrieve the first object matching the query.
         """
         queryset = self.clone()
-        try:
-            result = yield queryset[0]
-        except IndexError:
-            result = None
+        result = yield queryset[0]
         return result
 
     @gen.coroutine
@@ -619,8 +614,9 @@ class BaseQuerySet(base.BaseQuerySet):
         finally:
             cursor = yield queryset._cursor
             distinct = yield cursor.distinct(field)
-            distinct = self._dereference(distinct, 1,
-                                         name=field, instance=self._document)
+            distinct = yield self._dereference(distinct, 1,
+                                               name=field,
+                                               instance=self._document)
 
             # We may need to cast to the correct type eg.
             # ListField(EmbeddedDocumentField)
@@ -658,8 +654,7 @@ class BaseQuerySet(base.BaseQuerySet):
             return doc
 
         self._next_doc = yield self._get_next_doc()
-
-        doc = yield self._consume_references_futures(doc)
+        # doc = yield self._consume_references_futures(doc)
         return doc
 
     @gen.coroutine
@@ -693,13 +688,16 @@ class BaseQuerySet(base.BaseQuerySet):
         # Integer index provided
         elif isinstance(key, int):
             new_cursor = yield queryset._cursor
-            new_cursor = new_cursor.skip(key).limit(-1)
+            skip = queryset._skip or 0
+            new_cursor = new_cursor.skip(skip + key).limit(-1)
             yield new_cursor.fetch_next
             raw_doc = new_cursor.next_object()
+            if not raw_doc:
+                return raw_doc
             doc = queryset._document._from_son(
                 raw_doc, _auto_dereference=self._auto_dereference)
 
-            doc = yield self._consume_references_futures(doc)
+            # doc = yield self._consume_references_futures(doc)
 
             if queryset._scalar:
                 return queryset._get_scalar(doc)
@@ -707,22 +705,21 @@ class BaseQuerySet(base.BaseQuerySet):
                 n = yield next(queryset._cursor)
                 return queryset._get_as_pymongo(n)
 
-            son = queryset._document._from_son(
-                raw_doc,
-                _auto_dereference=self._auto_dereference)
+            # son = queryset._document._from_son(
+            #     raw_doc,
+            #     _auto_dereference=self._auto_dereference)
 
             return doc
         raise AttributeError
 
     @gen.coroutine
-    def _consume_references_futures(self, doc):
-        doc_attrs = [a for a in dir(doc) if not a.startswith('_')
-                     and a != 'objects' and a != 'STRICT']
-        for attr_name in doc_attrs:
-            attr = getattr(doc, attr_name)
+    def _consume_references_futures(self, doc, fields):
+
+        for field in fields:
+            attr = getattr(doc, field)
             if isinstance(attr, tornado.concurrent.Future):
                 attr = yield attr
-                setattr(doc, attr_name, attr)
+                setattr(doc, field, attr)
 
         return doc
 

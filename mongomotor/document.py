@@ -12,7 +12,7 @@ from mongoengine import (Document as DocumentBase,
                          DynamicDocument as DynamicDocumentBase)
 from mongoengine.base.metaclasses import (TopLevelDocumentMetaclass,
                                           DocumentMetaclass)
-from mongoengine.document import _import_class
+from mongoengine.document import _import_class, includes_cls
 from mongomotor import signals
 from mongomotor.base.document import BaseDocumentMotor
 from mongomotor.base.metaclasses import MapReduceDocumentMetaclass
@@ -284,7 +284,7 @@ class DynamicDocument(Document, DynamicDocumentBase,
         DynamicDocumentBase.__delattr__(self, *args, **kwargs)
 
 
-class EmbeddedDocument(BaseDocumentMotor, EmbeddedDocumentBase,
+class EmbeddedDocument(EmbeddedDocumentBase,
                        metaclass=DocumentMetaclass):
 
     my_metaclass = TopLevelDocumentMetaclass

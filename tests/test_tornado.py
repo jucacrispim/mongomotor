@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from bson.objectid import ObjectId
+import sys
 import tornado
 from tornado import gen
 from tornado.testing import AsyncTestCase, gen_test
@@ -11,12 +12,15 @@ from mongomotor.fields import (StringField, IntField, ListField, DictField,
                                EmbeddedDocumentField, ReferenceField)
 
 
+db = 'mongomotor-test-{}'.format(sys.version_info.major,
+                                 sys.version_info.minor)
+connect(db)
+
+
 class MongoMotorTest(AsyncTestCase):
 
     def setUp(self):
         super(MongoMotorTest, self).setUp()
-
-        connect('mongomotor-test')
 
         # some models to simple tests over
         # mongomotor
@@ -76,7 +80,6 @@ class MongoMotorTest(AsyncTestCase):
         # asserting if our reference document was created
         self.assertTrue(ref.id)
         # and if the listfield is ok
-
         embedlist = ref.embedlist
         self.assertEqual(embedlist[0].list_field,
                          ['uma', 'lista', 'nota', 10])
@@ -112,8 +115,28 @@ class MongoMotorTest(AsyncTestCase):
         d1 = self.maindoc()
         yield d1.save()
         doc = yield self.maindoc.objects.get(id=d1.id)
-        # It fails if doc.ref is stil a future even after using yield.
         self.assertIsNone((yield doc.ref))
+
+    @gen_test
+    def test_get_real_reference(self):
+        """Ensures that a reference field point to something works."""
+
+        r = self.refdoc(refname='r')
+        yield r.save()
+        d = self.maindoc(docname='d', ref=r)
+        yield d.save()
+
+        d = yield self.maindoc.objects.get(id=d.id)
+
+        self.assertTrue((yield d.ref).id)
+
+    @gen_test
+    def test_get_reference_from_class(self):
+        """Ensures that getting a reference from a class does not returns
+        a future"""
+
+        ref = getattr(self.maindoc, 'ref')
+        self.assertTrue(isinstance(ref, ReferenceField), ref)
 
     @gen_test
     def test_delete(self):
@@ -213,6 +236,7 @@ class MongoMotorTest(AsyncTestCase):
 
         # note here that again we need to yield something.
         # In this case, we use yield with to_list()
+
         lista = yield self.maindoc.objects.to_list()
         self.assertEqual(len(lista), 3)
 
@@ -298,6 +322,7 @@ class MongoMotorTest(AsyncTestCase):
         yield d2.save()
 
         expected = ['d1', 'd2']
+
         returned = yield self.maindoc.objects.distinct('docname')
         self.assertEqual(expected, returned)
 
@@ -315,6 +340,25 @@ class MongoMotorTest(AsyncTestCase):
         self.assertEqual(d1, returned)
 
     @gen_test
+    def test_first_with_empty_queryset(self):
+        returned = yield self.maindoc.objects.order_by('docname').first()
+        self.assertFalse(returned)
+
+    @gen_test
+    def test_first_with_slice(self):
+        d1 = self.maindoc(docname='d1')
+        yield d1.save()
+        d2 = self.maindoc(docname='d2')
+        yield d2.save()
+
+        queryset = yield self.maindoc.objects.order_by('docname')[1:2]
+        returned = yield queryset.first()
+        queryset = yield self.maindoc.objects.order_by('docname').skip(1)
+        returned = yield queryset.first()
+
+        self.assertEqual(d2, returned)
+
+    @gen_test
     def test_document_dereference_with_list(self):
         r = self.refdoc()
         yield r.save()
@@ -324,24 +368,55 @@ class MongoMotorTest(AsyncTestCase):
 
         m = yield self.maindoc.objects.all()[0]
 
-        reflist = getattr(m, 'reflist')
+        reflist = yield m.reflist
         self.assertEqual(len(reflist), 1)
 
         m = yield self.maindoc.objects.get(id=m.id)
 
-        reflist = getattr(m, 'reflist')
+        reflist = yield getattr(m, 'reflist')
         self.assertEqual(len(reflist), 1)
 
         mlist = yield self.maindoc.objects.all().to_list()
         for m in mlist:
-            reflist = getattr(m, 'reflist')
+            reflist = yield getattr(m, 'reflist')
             self.assertEqual(len(reflist), 1)
 
         mlist = self.maindoc.objects.all()
         for m in mlist:
             m = yield m
-            reflist = getattr(m, 'reflist')
+            reflist = yield getattr(m, 'reflist')
             self.assertEqual(len(reflist), 1)
+
+    @gen_test
+    def test_complex_base_field_get(self):
+        r = self.refdoc()
+        yield r.save()
+
+        m = self.maindoc(reflist=[r])
+        yield m.save()
+
+        # when it is a reference it is a future
+        self.assertEqual(len((yield m.reflist)), 1)
+
+        m = yield self.maindoc.objects.get(id=m.id)
+        self.assertEqual(len((yield m.reflist)), 1)
+
+        # no ref, no future
+        m = self.maindoc(list_field=['a', 'b'])
+        yield m.save()
+
+        m = yield self.maindoc.objects.get(id=m.id)
+
+        self.assertEqual(m.list_field, ['a', 'b'])
+
+    @gen_test
+    def test_complex_base_field_get_with_empty_object(self):
+        m = self.maindoc(reflist=[])
+        yield m.save()
+        m = yield self.maindoc.objects.get(id=m.id)
+        self.assertIsInstance(m.reflist, tornado.concurrent.Future)
+        reflist = yield m.reflist
+        self.assertFalse(reflist)
 
     @gen_test
     def test_query_skip(self):
@@ -353,7 +428,7 @@ class MongoMotorTest(AsyncTestCase):
 
         d = yield self.maindoc.objects.order_by('-docname').skip(1)
         d = yield d[0]
-        self.assertEqual(d, m0)
+        self.assertEqual(d, m1)
 
     @gen_test
     def test_delete_query_skip_without_documents(self):
@@ -429,7 +504,6 @@ class MongoMotorTest(AsyncTestCase):
 
         self.assertEqual(total, 0)
         self.assertFalse(None)
-
 
     @gen_test
     def test_map_reduce(self):

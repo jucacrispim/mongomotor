@@ -51,7 +51,7 @@ class QuerySet(BaseQuerySet, queryset.QuerySet):
             except StopIteration:
                 continue
             if doc:
-                doc = yield self._consume_references_futures(doc)
+                # doc = yield self._consume_references_futures(doc)
                 l.append(doc)
         return l
 

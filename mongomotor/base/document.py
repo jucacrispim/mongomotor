@@ -1,17 +1,15 @@
 # -*- coding: utf-8 -*-
 
 from mongoengine.base import document
-from mongomotor.fields import ReferenceField
+from mongoengine.fields import ReferenceField
 
 
 class BaseDocumentMotor(document.BaseDocument):
 
     def __init__(self, *args, **kwargs):
-
-        super().__init__(*args, **kwargs)
-        for key, field in self._fields.items():
-            # Doing thing so I retrieve a actual document in a referrence
-            # not a future.
-            # see test_get_reference_after_get
+        only_fields = kwargs.get('__only_fields', [])
+        for name, field in self._fields.items():
             if isinstance(field, ReferenceField):
-                delattr(self, key)
+                only_fields.append(name)
+        kwargs['__only_fields'] = only_fields
+        super().__init__(*args, **kwargs)

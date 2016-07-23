@@ -6,7 +6,7 @@ import tornado
 from tornado import gen
 from tornado.testing import AsyncTestCase, gen_test
 from mongoengine.errors import OperationError
-from mongomotor.connection import connect
+from mongomotor import connect, disconnect
 from mongomotor import Document, EmbeddedDocument, MapReduceDocument
 from mongomotor.fields import (StringField, IntField, ListField, DictField,
                                EmbeddedDocumentField, ReferenceField)
@@ -14,10 +14,18 @@ from mongomotor.fields import (StringField, IntField, ListField, DictField,
 
 db = 'mongomotor-test-{}'.format(sys.version_info.major,
                                  sys.version_info.minor)
-connect(db)
 
 
 class MongoMotorTest(AsyncTestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        connect(db)
+
+    @classmethod
+    def tearDownClass(cls):
+        disconnect()
 
     def setUp(self):
         super(MongoMotorTest, self).setUp()

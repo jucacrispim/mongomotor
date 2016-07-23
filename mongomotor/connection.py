@@ -1,15 +1,20 @@
 # -*- coding: utf-8 -*-
 
-import motor
+from motor.motor_asyncio import (AsyncIOMotorClient,
+                                 AsyncIOMotorReplicaSetClient)
+from motor.motor_tornado import MotorClient, MotorReplicaSetClient
 from mongoengine import connection, ConnectionError
-from mongoengine.connection import connect, disconnect
+from mongoengine.connection import (register_connection,
+                                    DEFAULT_CONNECTION_NAME,
+                                    _connections)
 
 
-CONNECTION_TYPES = {'tornado': motor.MotorClient,
-                    'asyncio': motor.AsyncIOMotorClient}
+CONNECTION_TYPES = {'tornado': MotorClient,
+                    'asyncio': AsyncIOMotorClient}
 
-REPLICASET_TYPES = {'tornado': motor.MotorReplicaSetClient,
-                    'asyncio': motor.AsyncIOMotorReplicaSetClient}
+REPLICASET_TYPES = {
+    'tornado': MotorReplicaSetClient,
+    'asyncio': AsyncIOMotorReplicaSetClient}
 
 
 def get_connection(alias=connection.DEFAULT_CONNECTION_NAME, reconnect=False,
@@ -87,11 +92,16 @@ def connect(db=None, alias=DEFAULT_CONNECTION_NAME, **kwargs):
      Changed in mongomotor to pass a connection_type to get_connection
 
     """
-    global _connections
+
+    connection_type = kwargs.get('connection_type', 'tornado')
+    try:
+        del kwargs['connection_type']
+    except KeyError:
+        pass
+
     if alias not in _connections:
         register_connection(alias, db, **kwargs)
 
-    connection_type = kwargs.get('connection_type', 'tornado')
     return get_connection(alias, connection_type=connection_type)
 
 

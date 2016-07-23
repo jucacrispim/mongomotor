@@ -19,9 +19,9 @@ def patch_item(module, attr, newitem):
 
 def patch_connection():
     from mongoengine import connection
-    from mongomotor.connection import get_connection
+    from mongomotor.connection import connect
 
-    patch_item(connection, 'get_connection', get_connection)
+    patch_item(connection, 'connect', connect)
 
 
 def patch_document():

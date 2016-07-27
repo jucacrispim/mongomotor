@@ -1,105 +1,50 @@
 # -*- coding: utf-8 -*-
 
-# thanks, gevent!
+# Copyright 2016 Juca Crispim <juca@poraodojuca.net>
 
-# all imports here are made inside functions or the
-# queryset patch won't work
+# This file is part of mongomotor.
 
+# mongomotor is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
 
-saved = {}
+# mongomotor is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
 
-
-def patch_item(module, attr, newitem):
-    NONE = object()
-    olditem = getattr(module, attr, NONE)
-    if olditem is not NONE:
-        saved.setdefault(module.__name__, {}).setdefault(attr, olditem)
-    setattr(module, attr, newitem)
-
-
-def patch_connection():
-    from mongoengine import connection
-    from mongomotor.connection import connect
-
-    patch_item(connection, 'connect', connect)
+# You should have received a copy of the GNU General Public License
+# along with mongomotor. If not, see <http://www.gnu.org/licenses/>.
 
 
-def patch_document():
-    import mongoengine
-    from mongomotor.document import Document, DynamicDocument, EmbeddedDocument
+class MonkeyPatcher:
 
-    patch_item(mongoengine, 'Document', Document)
-    patch_item(mongoengine, 'DynamicDocument', DynamicDocument)
-    patch_item(mongoengine, 'EmbeddedDocument', EmbeddedDocument)
+    def __init__(self):
+        self.patched = {}
 
+    def __enter__(self):
+        return self
 
-def patch_queryset():
-    import mongoengine
-    from mongomotor.queryset.manager import QuerySetManager
-    from mongomotor.queryset.queryset import QuerySet
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        for module, patches in self.patched.items():
+            for attr, origobj in patches.items():
+                setattr(module, attr, origobj)
 
-    patch_item(mongoengine.base.metaclasses, 'QuerySetManager',
-               QuerySetManager)
-    patch_item(mongoengine.document, 'QuerySet', QuerySet)
+    def patch_item(self, module, attr, newitem):
+        NONE = object()
+        olditem = getattr(module, attr, NONE)
+        if olditem is not NONE:
+            self.patched.setdefault(module, {}).setdefault(attr, olditem)
+        setattr(module, attr, newitem)
 
+    def patch_connection(self, client, replicaset_client):
+        """Patches the db clients used to connect to mongodb.
 
-def patch_transform():
-    import mongoengine
-    from mongomotor.queryset import transform
+        :param client: Which client should be used.
+        :param replicaset_client: Which client should be used
+          for replicasets."""
+        from mongoengine import connection
 
-    patch_item(mongoengine.queryset.transform, 'query', transform.query)
-
-
-def patch_visitor():
-    import mongoengine
-    from mongomotor.queryset import visitor
-
-    patch_item(mongoengine.queryset.visitor, 'Q', visitor.Q)
-    patch_item(mongoengine.queryset.visitor, 'QueryCompilerVisitor',
-               visitor.QueryCompilerVisitor)
-
-    patch_item(mongoengine.queryset.visitor, 'QueryCompilerVisitor',
-               visitor.QueryCompilerVisitor)
-
-    patch_item(mongoengine.queryset.visitor, 'QCombination',
-               visitor.QCombination)
-
-
-def patch_fields():
-    import mongoengine
-    from mongomotor.fields import ReferenceField, ComplexBaseField
-    patch_item(mongoengine, 'ReferenceField', ReferenceField)
-
-
-def patch_dereference():
-    import mongoengine
-    from mongomotor.dereference import DeReferenceMotor
-
-    patch_item(mongoengine.dereference, 'DeReference', DeReferenceMotor)
-
-
-def patch_all():
-    # the order here is important!
-    patch_document()
-    patch_fields()
-    patch_transform()
-    patch_visitor()
-    patch_queryset()
-    patch_dereference()
-
-    patch_connection()
-
-
-def _get_original(name, items):
-    d = saved.get(name, {})
-    values = []
-    module = None
-    for item in items:
-        if item in d:
-            values.append(d[item])
-    return values
-
-
-def get_original(name, item):
-    if isinstance(item, str):
-        return _get_original(name, [item])[0]
+        self.patch_item(connection, 'MongoClient', client)
+        self.patch_item(connection, 'MongoReplicaSetClient', replicaset_client)

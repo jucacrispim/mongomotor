@@ -18,20 +18,25 @@
 # along with mongomotor. If not, see <http://www.gnu.org/licenses/>.
 
 from unittest import TestCase
-from mongomotor import connect, disconnect
-from mongomotor.connection import (MongoMotorAsyncIOClient,
-                                   MongoMotorTornadoClient)
+from motor.metaprogramming import create_class_with_framework
+from motor.frameworks import asyncio as asyncio_framework
+from mongomotor import metaprogramming
 
 
-class ConnectionTest(TestCase):
+class SyncTest(TestCase):
 
-    def tearDown(self):
-        disconnect()
+    def test_create_attribute(self):
+        class TestDelegate:
 
-    def test_connect_with_tornado(self):
-        conn = connect(async_framework='tornado')
-        self.assertTrue(isinstance(conn, MongoMotorTornadoClient))
+            def a(self):
+                pass
 
-    def test_connect_with_asyncio(self):
-        conn = connect()
-        self.assertTrue(isinstance(conn, MongoMotorAsyncIOClient))
+        class TestClass:
+            __motor_class_name__ = 'MyDelegateTest'
+            __delegate_class__ = TestDelegate
+
+            a = metaprogramming.Sync()
+
+        tc = create_class_with_framework(TestClass, asyncio_framework,
+                                         self.__module__)
+        self.assertEqual(tc.a, TestDelegate.a)

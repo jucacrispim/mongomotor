@@ -18,20 +18,19 @@
 # along with mongomotor. If not, see <http://www.gnu.org/licenses/>.
 
 from unittest import TestCase
-from mongomotor import connect, disconnect
-from mongomotor.connection import (MongoMotorAsyncIOClient,
-                                   MongoMotorTornadoClient)
+from unittest.mock import Mock
+from mongoengine import connection as me_connection
+from mongomotor import monkey
 
 
-class ConnectionTest(TestCase):
+class MonkeyPatcherTest(TestCase):
 
-    def tearDown(self):
-        disconnect()
+    def test_patch_connection(self):
+        client = Mock()
+        replicaset_client = Mock()
+        with monkey.MonkeyPatcher() as patcher:
+            patcher.patch_connection(client, replicaset_client)
+            self.assertEqual(client, me_connection.MongoClient)
 
-    def test_connect_with_tornado(self):
-        conn = connect(async_framework='tornado')
-        self.assertTrue(isinstance(conn, MongoMotorTornadoClient))
-
-    def test_connect_with_asyncio(self):
-        conn = connect()
-        self.assertTrue(isinstance(conn, MongoMotorAsyncIOClient))
+        self.assertNotEqual(replicaset_client,
+                            me_connection.MongoReplicaSetClient)

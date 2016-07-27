@@ -17,21 +17,12 @@
 # You should have received a copy of the GNU General Public License
 # along with mongomotor. If not, see <http://www.gnu.org/licenses/>.
 
-from unittest import TestCase
-from mongomotor import connect, disconnect
-from mongomotor.connection import (MongoMotorAsyncIOClient,
-                                   MongoMotorTornadoClient)
+import greenlet
 
 
-class ConnectionTest(TestCase):
+# Thanks motor!
+def coroutine(func):
+    """Runs func in a child greenlet and returns and the result (or exception)
+    are setted in a future.
 
-    def tearDown(self):
-        disconnect()
-
-    def test_connect_with_tornado(self):
-        conn = connect(async_framework='tornado')
-        self.assertTrue(isinstance(conn, MongoMotorTornadoClient))
-
-    def test_connect_with_asyncio(self):
-        conn = connect()
-        self.assertTrue(isinstance(conn, MongoMotorAsyncIOClient))
+    :param func: callable to be asynchronized"""

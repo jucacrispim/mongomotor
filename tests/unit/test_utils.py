@@ -17,21 +17,27 @@
 # You should have received a copy of the GNU General Public License
 # along with mongomotor. If not, see <http://www.gnu.org/licenses/>.
 
+import asyncio
 from unittest import TestCase
-from mongomotor import connect, disconnect
-from mongomotor.connection import (MongoMotorAsyncIOClient,
-                                   MongoMotorTornadoClient)
+from unittest.mock import patch
+import tornado
+from mongomotor import utils
 
 
-class ConnectionTest(TestCase):
+class GetEventLoopTest(TestCase):
 
-    def tearDown(self):
-        disconnect()
+    @patch.object(utils, '_async_framework', 'asyncio')
+    def test_get_event_loop_with_asyncio(self):
+        loop = utils.get_event_loop()
+        self.assertTrue(isinstance(loop, type(asyncio.get_event_loop())))
 
-    def test_connect_with_tornado(self):
-        conn = connect(async_framework='tornado')
-        self.assertTrue(isinstance(conn, MongoMotorTornadoClient))
+    @patch.object(utils, '_async_framework', 'tornado')
+    def test_get_event_loop_with_tornado(self):
+        loop = utils.get_event_loop()
 
-    def test_connect_with_asyncio(self):
-        conn = connect()
-        self.assertTrue(isinstance(conn, MongoMotorAsyncIOClient))
+        self.assertTrue(isinstance(
+            loop, type(tornado.ioloop.IOLoop.instance())))
+
+    def test_get_event_loop_with_bad_async(self):
+        with self.assertRaises(utils.BadAsyncFrameworkError):
+            utils.get_event_loop()

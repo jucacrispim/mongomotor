@@ -17,21 +17,17 @@
 # You should have received a copy of the GNU General Public License
 # along with mongomotor. If not, see <http://www.gnu.org/licenses/>.
 
-from unittest import TestCase
-from mongomotor import connect, disconnect
-from mongomotor.connection import (MongoMotorAsyncIOClient,
-                                   MongoMotorTornadoClient)
+from motor.metaprogramming import MotorAttributeFactory
 
 
-class ConnectionTest(TestCase):
+class Sync(MotorAttributeFactory):
 
-    def tearDown(self):
-        disconnect()
+    def __init__(self, *args, **kwargs):
+        """A descriptor that wraps a Motor method, such as insert or remove
+        and returns the original PyMongo method. This is done because I want
+        to asynchronize the whole mongoengine method, not only the PyMongo
+        method.
+        """
 
-    def test_connect_with_tornado(self):
-        conn = connect(async_framework='tornado')
-        self.assertTrue(isinstance(conn, MongoMotorTornadoClient))
-
-    def test_connect_with_asyncio(self):
-        conn = connect()
-        self.assertTrue(isinstance(conn, MongoMotorAsyncIOClient))
+    def create_attribute(self, cls, attr_name):
+        return getattr(cls.__delegate_class__, attr_name)

@@ -15,6 +15,7 @@ from mongoengine.base.metaclasses import (TopLevelDocumentMetaclass,
 from mongoengine.document import _import_class, includes_cls
 from mongomotor import signals
 from mongomotor.base.metaclasses import MapReduceDocumentMetaclass
+from mongomotor.fields import ReferenceField
 from mongomotor.metaprogramming import AsyncDocumentMetaclass, Async
 
 
@@ -42,6 +43,16 @@ class Document(DocumentBase, metaclass=AsyncDocumentMetaclass):
 
     # Methods that will run asynchronally  and return a future
     save = Async()
+
+    def __init__(self, *args, **kwargs):
+        # we put reference fields in __only_fields because if not
+        # we end with futures as default values for references
+        only_fields = kwargs.get('__only_fields', [])
+        for name, field in self._fields.items():
+            if isinstance(field, ReferenceField):
+                only_fields.append(name)
+        kwargs['__only_fields'] = only_fields
+        super().__init__(*args, **kwargs)
 
     @gen.coroutine
     def delete(self, **write_concern):

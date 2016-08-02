@@ -121,3 +121,16 @@ class MongoMotorTest(unittest.TestCase):
         # and if the reference points to the right place.
         # note that you need to yield reference fields.
         self.assertEqual((yield from main.ref), ref)
+
+    @async_test
+    def test_save_with_no_ref(self):
+        """Ensure that a document which has a ReferenceField can
+        be saved with the referece being None.
+        """
+        # remebering from a wired bug
+        # the thing is: on document constructor mongoengine tries to
+        # set default values and that makes an None reference became
+        # a future.
+        doc = self.maindoc()
+        yield from doc.save()
+        self.assertIsNone((yield from doc.ref))

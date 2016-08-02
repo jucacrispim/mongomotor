@@ -6,20 +6,19 @@ from pymongo.read_preferences import ReadPreference
 from bson.dbref import DBRef
 import tornado
 from tornado import gen
-from mongoengine.queryset import OperationError, NotUniqueError
-from mongoengine import (Document as DocumentBase,
-                         EmbeddedDocument as EmbeddedDocumentBase,
+from mongoengine.queryset import OperationError
+from mongoengine import (Document as DocumentBase,  # flake8: noqa for the
+                         EmbeddedDocument,          # sake of the api
                          DynamicDocument as DynamicDocumentBase)
 from mongoengine.base.metaclasses import (TopLevelDocumentMetaclass,
                                           DocumentMetaclass)
 from mongoengine.document import _import_class, includes_cls
 from mongomotor import signals
-from mongomotor.base.document import BaseDocumentMotor
 from mongomotor.base.metaclasses import MapReduceDocumentMetaclass
+from mongomotor.metaprogramming import AsyncDocumentMetaclass, Async
 
 
-class Document(BaseDocumentMotor, DocumentBase,
-               metaclass=TopLevelDocumentMetaclass):
+class Document(DocumentBase, metaclass=AsyncDocumentMetaclass):
     """
     Document version that uses motor mongodb driver.
     It's a copy of some mongoengine.Document methods
@@ -27,7 +26,22 @@ class Document(BaseDocumentMotor, DocumentBase,
     to use motor with generator style.
     """
 
-    my_metaclass = TopLevelDocumentMetaclass
+    # setting it here so mongoengine will be happy even if I don't
+    # use TopLevelDocumentMetaclass.
+    meta = {'abstract': True,
+            'max_documents': None,
+            'max_size': None,
+            'ordering': [],
+            'indexes': [],
+            'id_field': None,
+            'index_background': False,
+            'index_drop_dups': False,
+            'index_opts': None,
+            'delete_rules': None,
+            'allow_inheritance': None}
+
+    # Methods that will run asynchronally  and return a future
+    save = Async()
 
     @gen.coroutine
     def delete(self, **write_concern):
@@ -50,121 +64,123 @@ class Document(BaseDocumentMotor, DocumentBase,
             raise OperationError(message)
         signals.post_delete.send(self.__class__, document=self)
 
-    @gen.coroutine
-    def save(self, force_insert=False, validate=True, clean=True,
-             write_concern=None,  cascade=None, cascade_kwargs=None,
-             _refs=None, **kwargs):
-        """Save the :class:`~mongoengine.Document` to the database. If the
-        document already exists, it will be updated, otherwise it will be
-        created.
+    # def save(self, force_insert=False, validate=True, clean=True,
+    #          write_concern=None,  cascade=None, cascade_kwargs=None,
+    #          _refs=None, **kwargs):
+    #     """Save the :class:`~mongoengine.Document` to the database. If the
+    #     document already exists, it will be updated, otherwise it will be
+    #     created.
 
-        :param force_insert: only try to create a new document, don't allow
-            updates of existing documents
-        :param validate: validates the document; set to ``False`` to skip.
-        :param clean: call the document clean method, requires `validate` to be
-            True.
-        :param write_concern: Extra keyword arguments are passed down to
-            :meth:`~pymongo.collection.Collection.save` OR
-            :meth:`~pymongo.collection.Collection.insert`
-            which will be used as options for the resultant
-            ``getLastError`` command.  For example,
-            ``save(..., write_concern={w: 2, fsync: True}, ...)`` will
-            wait until at least two servers have recorded the write and
-            will force an fsync on the primary server.
-        :param cascade: Sets the flag for cascading saves.  You can set a
-            default by setting "cascade" in the document __meta__
-        :param cascade_kwargs: (optional) kwargs dictionary to be passed throw
-            to cascading saves.  Implies ``cascade=True``.
-        :param _refs: A list of processed references used in cascading saves
+    #     :param force_insert: only try to create a new document, don't allow
+    #         updates of existing documents
+    #     :param validate: validates the document; set to ``False`` to skip.
+    #     :param clean: call the document clean method, requires `validate` to be
+    #         True.
+    #     :param write_concern: Extra keyword arguments are passed down to
+    #         :meth:`~pymongo.collection.Collection.save` OR
+    #         :meth:`~pymongo.collection.Collection.insert`
+    #         which will be used as options for the resultant
+    #         ``getLastError`` command.  For example,
+    #         ``save(..., write_concern={w: 2, fsync: True}, ...)`` will
+    #         wait until at least two servers have recorded the write and
+    #         will force an fsync on the primary server.
+    #     :param cascade: Sets the flag for cascading saves.  You can set a
+    #         default by setting "cascade" in the document __meta__
+    #     :param cascade_kwargs: (optional) kwargs dictionary to be passed throw
+    #         to cascading saves.  Implies ``cascade=True``.
+    #     :param _refs: A list of processed references used in cascading saves
 
-        """
-        signals.pre_save.send(self.__class__, document=self)
+    #     """
+    #     signals.pre_save.send(self.__class__, document=self)
 
-        if validate:
-            self.validate(clean=clean)
+    #     if validate:
+    #         self.validate(clean=clean)
 
-        if write_concern is None:
-            write_concern = {"w": 1}
+    #     if write_concern is None:
+    #         write_concern = {"w": 1}
 
-        doc = self.to_mongo()
+    #     doc = self.to_mongo()
 
-        created = ('_id' not in doc or self._created or force_insert)
+    #     created = ('_id' not in doc or self._created or force_insert)
 
-        signals.pre_save_post_validation.send(self.__class__, document=self,
-                                              created=created)
+    #     signals.pre_save_post_validation.send(self.__class__, document=self,
+    #                                           created=created)
 
-        try:
-            collection = self._get_collection()
-            if created:
-                if force_insert:
-                    # I realy don't know why this stupid line isn't covered. Maybe later
-                    # I take a look at it.
-                    object_id = yield collection.insert(doc, **write_concern)  # pragma: no cover
-                else:
-                    object_id = yield collection.save(doc, **write_concern)
-            else:
-                object_id = doc['_id']
-                updates, removals = self._delta()
-                # Need to add shard key to query, or you get an error
-                select_dict = {'_id': object_id}
-                shard_key = self.__class__._meta.get('shard_key', tuple())
-                for k in shard_key:
-                    actual_key = self._db_field_map.get(k, k)
-                    select_dict[actual_key] = doc[actual_key]
+    #     try:
 
-                def is_new_object(last_error):
-                    if last_error is not None:
-                        updated = last_error.get("updatedExisting")
-                        if updated is not None:
-                            return not updated
-                    return created  # pragma: no cover
+    #         collection = self._get_collection()
+    #         if created:
+    #             if force_insert:
+    #                 # I realy don't know why this stupid line isn't covered. Maybe later
+    #                 # I take a look at it.
+    #                 object_id = collection.insert(doc, **write_concern)
+    #             else:
+    #                 object_id = consume_future(
+    #                     collection.save(doc, **write_concern))
+    #         else:
+    #             object_id = doc['_id']
+    #             updates, removals = self._delta()
+    #             # Need to add shard key to query, or you get an error
+    #             select_dict = {'_id': object_id}
+    #             shard_key = self.__class__._meta.get('shard_key', tuple())
+    #             for k in shard_key:
+    #                 actual_key = self._db_field_map.get(k, k)
+    #                 select_dict[actual_key] = doc[actual_key]
 
-                update_query = {}
+    #             def is_new_object(last_error):
+    #                 if last_error is not None:
+    #                     updated = last_error.get("updatedExisting")
+    #                     if updated is not None:
+    #                         return not updated
+    #                 return created  # pragma: no cover
 
-                if updates:
-                    update_query["$set"] = updates
-                if removals:
-                    update_query["$unset"] = removals  # pragma: no cover
-                if updates or removals:
-                    last_error = yield collection.update(select_dict,
-                                                         update_query,
-                                                         upsert=True,
-                                                         **write_concern)
-                    created = is_new_object(last_error)
+    #             update_query = {}
 
-            if cascade is None:
-                cascade = self._meta.get('cascade', False) or \
-                    cascade_kwargs is not None
+    #             if updates:
+    #                 update_query["$set"] = updates
+    #             if removals:
+    #                 update_query["$unset"] = removals  # pragma: no cover
+    #             if updates or removals:
+    #                 last_error = yield collection.update(select_dict,
+    #                                                      update_query,
+    #                                                      upsert=True,
+    #                                                      **write_concern)
+    #                 created = is_new_object(last_error)
 
-            if cascade:
-                kwargs = {
-                    "force_insert": force_insert,
-                    "validate": validate,
-                    "write_concern": write_concern,
-                    "cascade": cascade
-                }
-                if cascade_kwargs:  # Allow granular control over cascades
-                    kwargs.update(cascade_kwargs)
-                kwargs['_refs'] = _refs
-                yield self.cascade_save(**kwargs)
+    #         if cascade is None:
+    #             cascade = self._meta.get('cascade', False) or \
+    #                 cascade_kwargs is not None
 
-        except pymongo.errors.OperationFailure as err:
-            message = 'Could not save document (%s)'
-            if re.match('^E1100[01] duplicate key', str(err)):
-                # E11000 - duplicate key error index
-                # E11001 - duplicate key on update
-                message = 'Tried to save duplicate unique keys (%s)'
-                raise NotUniqueError(message % str(err))
-            raise OperationError(message % str(err))  # pragma: no cover
-        id_field = self._meta['id_field']
-        if id_field not in self._meta.get('shard_key', []):
-            self[id_field] = self._fields[id_field].to_python(object_id)
+    #         if cascade:
+    #             kwargs = {
+    #                 "force_insert": force_insert,
+    #                 "validate": validate,
+    #                 "write_concern": write_concern,
+    #                 "cascade": cascade
+    #             }
+    #             if cascade_kwargs:  # Allow granular control over cascades
+    #                 kwargs.update(cascade_kwargs)
+    #             kwargs['_refs'] = _refs
+    #             yield self.cascade_save(**kwargs)
 
-        self._clear_changed_fields()
-        self._created = False
-        signals.post_save.send(self.__class__, document=self, created=created)
+    #     except pymongo.errors.OperationFailure as err:
+    #         message = 'Could not save document (%s)'
+    #         if re.match('^E1100[01] duplicate key', str(err)):
+    #             # E11000 - duplicate key error index
+    #             # E11001 - duplicate key on update
+    #             message = 'Tried to save duplicate unique keys (%s)'
+    #             raise NotUniqueError(message % str(err))
+    #         raise OperationError(message % str(err))  # pragma: no cover
 
-        return self
+    #     id_field = self._meta['id_field']
+    #     if id_field not in self._meta.get('shard_key', []):
+    #         self[id_field] = self._fields[id_field].to_python(object_id)
+
+    #     self._clear_changed_fields()
+    #     self._created = False
+    #     signals.post_save.send(self.__class__, document=self, created=created)
+
+    #     return self
 
     @gen.coroutine
     def cascade_save(self, *args, **kwargs):
@@ -195,14 +211,13 @@ class Document(BaseDocumentMotor, DocumentBase,
                 ref._changed_fields = []
 
     @classmethod
-    @gen.coroutine
     def drop_collection(cls):
         """Drops the entire collection associated with this
         :class:`~mongoengine.Document` type from the database.
         """
         cls._collection = None
         db = cls._get_db()
-        yield db.drop_collection(cls._get_collection_name())
+        return db.drop_collection(cls._get_collection_name())
 
     @classmethod
     @gen.coroutine
@@ -274,9 +289,19 @@ class Document(BaseDocumentMotor, DocumentBase,
 
 
 class DynamicDocument(Document, DynamicDocumentBase,
-                      metaclass=TopLevelDocumentMetaclass):
+                      metaclass=AsyncDocumentMetaclass):
 
-    my_metaclass = TopLevelDocumentMetaclass
+    meta = {'abstract': True,
+            'max_documents': None,
+            'max_size': None,
+            'ordering': [],
+            'indexes': [],
+            'id_field': None,
+            'index_background': False,
+            'index_drop_dups': False,
+            'index_opts': None,
+            'delete_rules': None,
+            'allow_inheritance': None}
 
     _dynamic = True
 
@@ -284,19 +309,15 @@ class DynamicDocument(Document, DynamicDocumentBase,
         DynamicDocumentBase.__delattr__(self, *args, **kwargs)
 
 
-class EmbeddedDocument(EmbeddedDocumentBase,
-                       metaclass=DocumentMetaclass):
+# class EmbeddedDocument(EmbeddedDocumentBase,
+#                        metaclass=AsyncDocumentMetaclass):
 
-    my_metaclass = TopLevelDocumentMetaclass
-
-    def __init__(self, *args, **kwargs):
-        super(EmbeddedDocument, self).__init__(*args, **kwargs)
-        self._instance = None
-        self._changed_fields = []
+#     def __init__(self, *args, **kwargs):
+#         super(EmbeddedDocument, self).__init__(*args, **kwargs)
+#         self._instance = None
+#         self._changed_fields = []
 
 
-class MapReduceDocument(DynamicDocument, metaclass=MapReduceDocumentMetaclass):
+class MapReduceDocument(DynamicDocument, metaclass=AsyncDocumentMetaclass):
     """This MapReduceDocument is different from the mongoengine's one
     because its intent is to allow you to query over."""
-
-    my_metaclass = MapReduceDocumentMetaclass

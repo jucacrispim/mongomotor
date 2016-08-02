@@ -21,7 +21,7 @@ import functools
 from motor import util
 from motor.core import (AgnosticCollection, AgnosticClient, AgnosticDatabase,
                         AgnosticClientBase, AgnosticReplicaSetClient)
-from motor.metaprogramming import create_class_with_framework
+from motor.metaprogramming import create_class_with_framework, ReadOnlyProperty
 from pymongo.database import Database
 from pymongo.collection import Collection
 from mongomotor.metaprogramming import Sync
@@ -35,6 +35,8 @@ class MongoMotorAgnosticCollection(AgnosticCollection):
     insert = Sync()
     save = Sync()
     update = Sync()
+    create_index = Sync()
+    ensure_index = Sync()
 
     def __init__(self, database, name):
 
@@ -78,6 +80,8 @@ class MongoMotorAgnosticDatabase(AgnosticDatabase):
 
     __motor_class_name__ = 'MongoMotorDatabase'
 
+    dereference = Sync()
+
     def __init__(self, connection, name):
         if not isinstance(connection, AgnosticClientBase):
             raise TypeError("First argument to MongoMotorDatabase must be "
@@ -97,6 +101,8 @@ class MongoMotorAgnosticDatabase(AgnosticDatabase):
 
 class MongoMotorAgnosticClientBase(AgnosticClientBase):
 
+    max_write_batch_size = ReadOnlyProperty()
+    _ensure_connected = Sync()
 
     def __init__(self, *args, **kwargs):
         """Create a new connection to a single MongoDB instance at *host:port*.

@@ -10,7 +10,9 @@ from mongoengine.base.datastructures import (
 )
 
 
-from mongoengine.fields import *
+from mongoengine.fields import *  # flake8: noqa for the sake of the api
+
+from mongomotor.metaprogramming import AsyncGenericMetaclass, Async
 
 
 class ComplexBaseField(fields.ComplexBaseField):
@@ -90,34 +92,9 @@ class ComplexBaseField(fields.ComplexBaseField):
             return value
 
 
-class ReferenceField(fields.ReferenceField):
+class ReferenceField(fields.ReferenceField, metaclass=AsyncGenericMetaclass):
 
-    def __get__(self, instance, owner):
-        """Descriptor to allow lazy dereferencing.
-        """
-        if instance is None:
-            # Document class being used rather than a document object
-            return self
-
-        # Get value from document instance if available
-        value = instance._data.get(self.name)
-        # self._auto_dereference = True
-        self._auto_dereference = instance._fields[self.name]._auto_dereference
-
-        @gen.coroutine
-        def deref(value):
-            # Dereference DBRefs
-            if self._auto_dereference and isinstance(value, DBRef):
-                db = self.document_type._get_db()
-
-                value = yield db.dereference(value)
-                if value is not None:
-                    instance._data[self.name] = self.document_type._from_son(
-                        value)
-
-            return super(fields.ReferenceField, self).__get__(
-                instance, owner)
-        return deref(value)
+    __get__ = Async()
 
 
 class ListField(ComplexBaseField, fields.ListField):

@@ -27,13 +27,14 @@ from mongoengine.queryset import OperationError
 from mongoengine import (Document as DocumentBase,  # flake8: noqa for the
                          EmbeddedDocument,          # sake of the api
                          DynamicDocument as DynamicDocumentBase)
-from mongoengine.base.metaclasses import (TopLevelDocumentMetaclass,
-                                          DocumentMetaclass)
+# from mongoengine.base.metaclasses import (TopLevelDocumentMetaclass,
+#                                           DocumentMetaclass)
 from mongoengine.document import _import_class, includes_cls
-from mongomotor import signals
+# from mongomotor import signals
 from mongomotor.base.metaclasses import MapReduceDocumentMetaclass
 from mongomotor.fields import ReferenceField
 from mongomotor.metaprogramming import AsyncDocumentMetaclass, Async
+from mongomotor.queryset import QuerySet
 
 
 class Document(DocumentBase, metaclass=AsyncDocumentMetaclass):
@@ -56,7 +57,8 @@ class Document(DocumentBase, metaclass=AsyncDocumentMetaclass):
             'index_drop_dups': False,
             'index_opts': None,
             'delete_rules': None,
-            'allow_inheritance': None}
+            'allow_inheritance': None,
+            'queryset_class': QuerySet}
 
     # Methods that will run asynchronally  and return a future
     save = Async()

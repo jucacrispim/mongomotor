@@ -4,7 +4,7 @@ import collections
 from mongoengine.base.metaclasses import TopLevelDocumentMetaclass, MetaDict
 from mongoengine.errors import DoesNotExist, MultipleObjectsReturned
 from mongoengine.fields import DynamicField
-from mongomotor.queryset import QuerySetManager
+from mongoengine.queryset import QuerySetManager
 
 
 class MapReduceDocumentMetaclass(TopLevelDocumentMetaclass):

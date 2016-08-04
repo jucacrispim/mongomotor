@@ -30,8 +30,8 @@ from mongomotor.fields import (StringField, IntField, ListField, DictField,
                                EmbeddedDocumentField, ReferenceField)
 
 
-db = 'mongomotor-test-{}'.format(sys.version_info.major,
-                                 sys.version_info.minor)
+db = 'mongomotor-test-{}{}'.format(sys.version_info.major,
+                                   sys.version_info.minor)
 
 
 class MongoMotorTest(AsyncTestCase):

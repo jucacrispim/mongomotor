@@ -35,6 +35,7 @@ class MongoMotorAgnosticCollection(AgnosticCollection):
     insert = Sync()
     save = Sync()
     update = Sync()
+    find_one = Sync()
     create_index = Sync()
     ensure_index = Sync()
 
@@ -67,13 +68,11 @@ class MongoMotorAgnosticCollection(AgnosticCollection):
 
         return self[name]
 
-
     def __getitem__(self, name):
         collection_class = create_class_with_framework(
             MongoMotorAgnosticCollection, self._framework, self.__module__)
 
         return collection_class(self.database, self.name + '.' + name)
-
 
 
 class MongoMotorAgnosticDatabase(AgnosticDatabase):
@@ -96,7 +95,6 @@ class MongoMotorAgnosticDatabase(AgnosticDatabase):
             MongoMotorAgnosticCollection, self._framework, self.__module__)
 
         return collection_class(self, name)
-
 
 
 class MongoMotorAgnosticClientBase(AgnosticClientBase):
@@ -149,7 +147,6 @@ class MongoMotorAgnosticClientBase(AgnosticClientBase):
 class MongoMotorAgnosticClient(MongoMotorAgnosticClientBase, AgnosticClient):
 
     __motor_class_name__ = 'MongoMotorClient'
-
 
 
 class MongoMotorAgnosticReplicaSetClient(MongoMotorAgnosticClientBase,

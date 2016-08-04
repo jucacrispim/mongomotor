@@ -31,8 +31,8 @@ from mongomotor.fields import (StringField, IntField, ListField, DictField,
 
 from tests import async_test
 
-db = 'mongomotor-test-{}'.format(sys.version_info.major,
-                                 sys.version_info.minor)
+db = 'mongomotor-test-{}{}'.format(sys.version_info.major,
+                                   sys.version_info.minor)
 
 
 class MongoMotorTest(unittest.TestCase):
@@ -134,3 +134,25 @@ class MongoMotorTest(unittest.TestCase):
         doc = self.maindoc()
         yield from doc.save()
         self.assertIsNone((yield from doc.ref))
+
+    @async_test
+    def test_get_reference_after_get(self):
+        """Ensures that a reference field is dereferenced properly after
+        retrieving a object from database."""
+        d1 = self.maindoc()
+        yield from d1.save()
+        doc = yield from self.maindoc.objects.get(id=d1.id)
+        self.assertIsNone((yield from doc.ref))
+
+    @async_test
+    def test_get_real_reference(self):
+        """Ensures that a reference field point to something works."""
+
+        r = self.refdoc(refname='r')
+        yield from r.save()
+        d = self.maindoc(docname='d', ref=r)
+        yield from d.save()
+
+        d = yield from self.maindoc.objects.get(id=d.id)
+
+        self.assertTrue((yield from d.ref).id)

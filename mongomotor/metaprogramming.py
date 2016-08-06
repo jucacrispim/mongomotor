@@ -40,6 +40,7 @@ def asynchronize(method):
 
         def call_method():
             # this call_method runs on a child greenlet.
+
             try:
                 result = method(self, *args, **kwargs)
                 framework.call_soon(

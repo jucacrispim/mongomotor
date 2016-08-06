@@ -99,7 +99,6 @@ class MongoMotorTest(unittest.TestCase):
         """
         embedref = self.embedref(list_field=['uma', 'lista', 'nota', 10])
         ref = self.refdoc(refname='refname', embedlist=[embedref])
-
         yield from ref.save()
 
         # asserting if our reference document was created

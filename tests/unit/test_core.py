@@ -77,6 +77,26 @@ class MongoMotorAgnosticCollectionTest(TestCase):
         other_coll = coll['other']
         self.assertTrue(isinstance(other_coll, type(coll)))
 
+    @patch('mongomotor.core.Database', return_value=None)
+    @patch('mongomotor.core.Collection')
+    def test_find(self, *args, **kwargs):
+        connection = Mock(spec=core.MongoMotorAgnosticClient)
+        delegate = MagicMock()
+        delegate.name = 'blabla'
+        connection.delegate = delegate
+        name = 'blabla'
+        db = create_class_with_framework(core.MongoMotorAgnosticDatabase,
+                                         asyncio_framework,
+                                         self.__module__)(connection, name)
+
+        coll = create_class_with_framework(core.MongoMotorAgnosticCollection,
+                                           asyncio_framework,
+                                           self.__module__)(db, name)
+        cursor = create_class_with_framework(core.MongoMotorAgnosticCursor,
+                                             asyncio_framework,
+                                             self.__module__)
+        self.assertIsInstance(coll.find(), cursor)
+
 
 class MongoMotorAgnosticDatabaseTest(TestCase):
 

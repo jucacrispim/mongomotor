@@ -20,11 +20,24 @@
 import functools
 from motor import util
 from motor.core import (AgnosticCollection, AgnosticClient, AgnosticDatabase,
-                        AgnosticClientBase, AgnosticReplicaSetClient)
+                        AgnosticClientBase, AgnosticReplicaSetClient,
+                        AgnosticCursor)
 from motor.metaprogramming import create_class_with_framework, ReadOnlyProperty
+import pymongo
 from pymongo.database import Database
 from pymongo.collection import Collection
 from mongomotor.metaprogramming import Sync
+
+
+class MongoMotorAgnosticCursor(AgnosticCursor):
+
+    __motor_class_name__ = 'MongoMotorCursor'
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        return next(self.delegate)
 
 
 class MongoMotorAgnosticCollection(AgnosticCollection):
@@ -73,6 +86,28 @@ class MongoMotorAgnosticCollection(AgnosticCollection):
             MongoMotorAgnosticCollection, self._framework, self.__module__)
 
         return collection_class(self.database, self.name + '.' + name)
+
+    def find(self, *args, **kwargs):
+        """Create a :class:`MongoMotorAgnosticCursor`. Same parameters as for
+        PyMongo's :meth:`~pymongo.collection.Collection.find`.
+
+        Note that ``find`` does not take a `callback` parameter, nor does
+        it return a Future, because ``find`` merely creates a
+        :class:`MongoMotorAgnosticCursor` without performing any operations
+        on the server.
+        ``MongoMotorAgnosticCursor`` methods such as
+        :meth:`~MongoMotorAgnosticCursor.to_list` or
+        :meth:`~MongoMotorAgnosticCursor.count` perform actual operations.
+        """
+        if 'callback' in kwargs:
+            raise pymongo.errors.InvalidOperation(
+                "Pass a callback to each, to_list, or count, not to find.")
+
+        cursor = self.delegate.find(*args, **kwargs)
+        cursor_class = create_class_with_framework(
+            MongoMotorAgnosticCursor, self._framework, self.__module__)
+
+        return cursor_class(cursor, self)
 
 
 class MongoMotorAgnosticDatabase(AgnosticDatabase):

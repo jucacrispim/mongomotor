@@ -208,6 +208,31 @@ class MongoMotorTest(unittest.TestCase):
         d = yield from self.maindoc.objects.get(docname='d1')
         self.assertTrue(d.id)
 
+    @async_test
+    def test_query_filter(self):
+        """Ensure that a queryset can be filtered
+        """
+        yield from self._create_data()
+
+        # finding all documents without a reference
+        objs = self.maindoc.objects.filter(ref=None)
+        # make sure we got the proper query
+        count = yield from objs.count()
+        self.assertEqual(count, 1)
+
+        # now finding all documents with reference
+        objs = self.maindoc.objects.filter(ref__ne=None)
+        # iterating over it and checking if the documents are ok.
+        # note the yield on each round of the loop.
+        # When we iterate over querysets in mongomotor we
+        # get instances of tornado.concurrent.Future and then
+        # you need to yield these tornado.concurent.Future instances.
+        for future in objs:
+            obj = yield future
+            self.assertTrue(obj.id)
+
+        self.assertEqual((yield objs.count()), 2)
+
     @asyncio.coroutine
     def _create_data(self):
         # here we create the following data:

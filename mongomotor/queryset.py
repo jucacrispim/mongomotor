@@ -86,3 +86,13 @@ class QuerySet(BaseQuerySet, metaclass=AsyncGenericMetaclass):
         future = cursor.to_list(length)
         future.add_done_callback(_to_list_cb)
         return list_future
+
+    @property
+    def fetch_next(self):
+        return self._cursor.fetch_next
+
+    def next_object(self):
+        raw = self._cursor.next_object()
+        return self._document._from_son(
+            raw, _auto_dereference=self._auto_dereference,
+            only_fields=self.only_fields)

@@ -106,3 +106,26 @@ class QuerySetTest(TestCase):
 
         docs = yield from qs.to_list()
         self.assertEqual(len(docs), 0)
+
+    @async_test
+    def test_iterate_over_queryset(self):
+        """Ensure that we can iterate over the queryset using
+        fetch_next/next_doc.
+        """
+
+        for i in range(5):
+            d = self.test_doc(a=str(i))
+            yield from d.save()
+
+        collection = self.test_doc._get_collection()
+
+        qs = QuerySet(self.test_doc, collection)
+
+        c = 0
+        while (yield from qs.fetch_next):
+            c += 1
+            doc = qs.next_object()
+
+            self.assertIsInstance(doc, self.test_doc)
+
+        self.assertEqual(c, 5)

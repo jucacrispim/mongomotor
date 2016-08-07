@@ -29,7 +29,7 @@ from mongoengine.base.datastructures import (
 
 from mongoengine.fields import *  # flake8: noqa for the sake of the api
 
-from mongomotor.metaprogramming import AsyncGenericMetaclass, Async
+from mongomotor.metaprogramming import asynchronize
 
 
 class ComplexBaseField(fields.ComplexBaseField):
@@ -109,9 +109,14 @@ class ComplexBaseField(fields.ComplexBaseField):
             return value
 
 
-class ReferenceField(fields.ReferenceField, metaclass=AsyncGenericMetaclass):
+class ReferenceField(fields.ReferenceField):
 
-    __get__ = Async()
+    def __get__(self, instance, owner):
+        if instance is None:
+            return self
+
+        super_meth = super().__get__
+        return asynchronize(super_meth)(instance, owner)
 
 
 class ListField(ComplexBaseField, fields.ListField):

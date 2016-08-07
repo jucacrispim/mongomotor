@@ -17,7 +17,10 @@
 # You should have received a copy of the GNU General Public License
 # along with mongomotor. If not, see <http://www.gnu.org/licenses/>.
 
+import sys
 from unittest import TestCase
+from unittest.mock import patch
+import mongoengine
 from mongomotor import Document, connect, disconnect
 from mongomotor.fields import IntField
 from tests import async_test
@@ -27,7 +30,9 @@ class DocumentTest(TestCase):
 
     @classmethod
     def setUpClass(cls):
-        connect()
+        db = 'mongomotor-test-unit-{}{}'.format(sys.version_info.major,
+                                                sys.version_info.minor)
+        connect(db)
 
     @classmethod
     def tearDownClass(cls):
@@ -49,3 +54,12 @@ class DocumentTest(TestCase):
         self.assertFalse(doc.id)
         yield from doc.save()
         self.assertTrue(doc.id)
+
+    @patch('mongoengine.signals.post_delete')
+    def test_delete(self, *args, **kwargs):
+        doc = self.test_doc(i=1)
+        yield from doc.save()
+
+        yield from doc.delete()
+
+        self.assertTrue(mongoengine.signals.post_delete.called)

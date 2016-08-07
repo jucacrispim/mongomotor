@@ -18,10 +18,16 @@
 # along with mongomotor. If not, see <http://www.gnu.org/licenses/>.
 
 from mongoengine.queryset.queryset import QuerySet as BaseQuerySet
-from mongomotor.metaprogramming import get_framework
+from mongomotor.metaprogramming import (get_framework, AsyncGenericMetaclass,
+                                        Async)
 
 
-class QuerySet(BaseQuerySet):
+class QuerySet(BaseQuerySet, metaclass=AsyncGenericMetaclass):
+
+    delete = Async()
+
+    def __repr__(self):
+        return self.__class__.__name__
 
     def get(self, *q_objs, **query):
         """Retrieve the the matching object raising

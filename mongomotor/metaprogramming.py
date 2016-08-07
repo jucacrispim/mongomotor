@@ -50,9 +50,9 @@ def asynchronize(method):
                     loop, functools.partial(future.set_exception, e))
 
         greenlet.greenlet(call_method).switch()
-        # when a I/O operation is done the control will be back to
-        # this greenlet and the future will be returned. When the I/O is done
-        # the control goes back to the child greenlet and the future
+        # when a I/O operation is started the control will be back to
+        # this greenlet and the future will be returned. When the I/O is
+        # completed the control goes back to the child greenlet and the future
         # will be resolved.
         return future
     return async_method
@@ -66,6 +66,9 @@ def get_framework(obj):
 
     elif hasattr(obj, 'document_type'):
         framework = obj.document_type._get_db()._framework
+
+    elif hasattr(obj, '_document'):
+        framework = obj._document._get_db()._framework
 
     else:
         raise ConfusionError('Don\'t know how to get framework for {}'.format(

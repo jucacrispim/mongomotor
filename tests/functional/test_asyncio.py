@@ -155,3 +155,43 @@ class MongoMotorTest(unittest.TestCase):
         d = yield from self.maindoc.objects.get(id=d.id)
 
         self.assertTrue((yield from d.ref).id)
+
+    @async_test
+    def test_get_reference_from_class(self):
+        """Ensures that getting a reference from a class does not returns
+        a future"""
+
+        ref = getattr(self.maindoc, 'ref')
+        self.assertTrue(isinstance(ref, ReferenceField), ref)
+
+    @async_test
+    def test_delete(self):
+        """Ensure that a document can be deleted from the database
+        """
+        to_delete = self.maindoc(docname='delete!')
+
+        yield from to_delete.save()
+
+        # asserting if the document was created
+        self.assertTrue(to_delete.id)
+        delid = to_delete.id
+
+        yield from to_delete.delete()
+
+        # now making sure the document was deleted
+        with self.assertRaises(self.maindoc.DoesNotExist):
+            yield from self.maindoc.objects.get(id=delid)
+
+    @async_test
+    def test_query_count(self):
+        """Ensure that we can count the results of a query using count()
+        """
+        yield from self._create_data()
+
+        # note here that we need to yield to count()
+        count = yield from self.maindoc.objects.count()
+        self.assertEqual(count, 3)
+
+        with self.assertRaises(Exception):
+            # len does not work with mongomotor
+            len(self.maindoc.objects.count())

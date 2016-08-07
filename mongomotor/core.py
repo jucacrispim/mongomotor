@@ -49,6 +49,7 @@ class MongoMotorAgnosticCollection(AgnosticCollection):
     save = Sync()
     update = Sync()
     find_one = Sync()
+    remove = Sync()
     create_index = Sync()
     ensure_index = Sync()
 

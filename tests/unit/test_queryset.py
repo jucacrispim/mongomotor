@@ -17,6 +17,7 @@
 # You should have received a copy of the GNU General Public License
 # along with mongomotor. If not, see <http://www.gnu.org/licenses/>.
 
+import sys
 from unittest import TestCase
 from mongomotor import Document, connect, disconnect
 from mongomotor.fields import StringField
@@ -28,7 +29,9 @@ class QuerySetTest(TestCase):
 
     @classmethod
     def setUpClass(cls):
-        connect()
+        db = 'mongomotor-test-unit-{}{}'.format(sys.version_info.major,
+                                                sys.version_info.minor)
+        connect(db)
 
     @classmethod
     def tearDownClass(cls):
@@ -86,3 +89,17 @@ class QuerySetTest(TestCase):
 
         with self.assertRaises(self.test_doc.MultipleObjectsReturned):
             yield from qs.get(a='a')
+
+    @async_test
+    def test_delete_queryset(self):
+        d = self.test_doc(a='a')
+        yield from d.save()
+
+        collection = self.test_doc._get_collection()
+
+        qs = QuerySet(self.test_doc, collection)
+
+        yield from qs.delete()
+
+        docs = yield from qs.to_list()
+        self.assertEqual(len(docs), 0)

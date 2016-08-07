@@ -55,17 +55,20 @@ class QuerySetTest(TestCase):
 
         collection = self.test_doc._collection
         qs = QuerySet(self.test_doc, collection)
+        qs = qs.filter(a__in=['1', '2'])
         docs = yield from qs.to_list()
-        self.assertEqual(len(docs), 4)
+        self.assertEqual(len(docs), 2)
         self.assertTrue(isinstance(docs[0], self.test_doc))
 
     @async_test
     def test_get(self):
         d = self.test_doc(a=str(1))
         yield from d.save()
-
+        dd = self.test_doc(a=str(2))
+        yield from dd.save()
         collection = self.test_doc._collection
         qs = QuerySet(self.test_doc, collection)
+
         returned = yield from qs.get(id=d.id)
         self.assertEqual(d.id, returned.id)
 
@@ -75,7 +78,7 @@ class QuerySetTest(TestCase):
         qs = QuerySet(self.test_doc, collection)
 
         with self.assertRaises(self.test_doc.DoesNotExist):
-            yield from qs.get(id='some')
+            yield from qs.get(a='bla')
 
     @async_test
     def test_get_with_multiple_docs(self):

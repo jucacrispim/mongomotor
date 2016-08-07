@@ -18,6 +18,7 @@
 # along with mongomotor. If not, see <http://www.gnu.org/licenses/>.
 
 
+import asyncio
 import unittest
 from bson.objectid import ObjectId
 import sys
@@ -189,9 +190,37 @@ class MongoMotorTest(unittest.TestCase):
         yield from self._create_data()
 
         # note here that we need to yield to count()
+
         count = yield from self.maindoc.objects.count()
         self.assertEqual(count, 3)
 
         with self.assertRaises(Exception):
             # len does not work with mongomotor
             len(self.maindoc.objects.count())
+
+    @async_test
+    def test_query_get(self):
+        """Ensure that we can retrieve a document from database with get()
+        """
+        yield from self._create_data()
+
+        # Note here that we have to use yield with get()
+        d = yield from self.maindoc.objects.get(docname='d1')
+        self.assertTrue(d.id)
+
+    @asyncio.coroutine
+    def _create_data(self):
+        # here we create the following data:
+        # 3 instances of MainDocument, naming d0, d1 and d2.
+        # 2 of these instances have references, one has not.
+        r = self.refdoc()
+        yield from r.save()
+        to_list_field = ['string0', 'string1', 'string2']
+        for i in range(3):
+            d = self.maindoc(docname='d%s' % i)
+            d.docint = i
+            d.list_field = to_list_field[:i + 1]
+            if i < 2:
+                d.ref = r
+
+            yield from d.save()

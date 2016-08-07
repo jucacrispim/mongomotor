@@ -47,7 +47,6 @@ class QuerySet(BaseQuerySet, metaclass=AsyncGenericMetaclass):
 
         def _get_cb(future):
             docs = future.result()
-
             if len(docs) < 1:
                 msg = ("%s matching query does not exist."
                        % queryset._document._class_name)
@@ -60,7 +59,7 @@ class QuerySet(BaseQuerySet, metaclass=AsyncGenericMetaclass):
             else:
                 get_future.set_result(docs[0])
 
-        future = self.to_list(length=2)
+        future = queryset.to_list(length=2)
         future.add_done_callback(_get_cb)
         return get_future
 

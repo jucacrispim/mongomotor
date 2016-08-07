@@ -221,12 +221,10 @@ class MongoMotorTest(AsyncTestCase):
         # now finding all documents with reference
         objs = self.maindoc.objects.filter(ref__ne=None)
         # iterating over it and checking if the documents are ok.
-        # note the yield on each round of the loop.
-        # When we iterate over querysets in mongomotor we
-        # get instances of tornado.concurrent.Future and then
-        # you need to yield these tornado.concurent.Future instances.
-        for future in objs:
-            obj = yield future
+        # note that we don't use for loops, but iterate in the
+        # motor style using fetch_next/next_object instead.
+        while (yield objs.fetch_next):
+            obj = objs.next_object()
             self.assertTrue(obj.id)
 
         self.assertEqual((yield objs.count()), 2)

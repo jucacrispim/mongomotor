@@ -17,7 +17,13 @@
 # You should have received a copy of the GNU General Public License
 # along with mongomotor. If not, see <http://www.gnu.org/licenses/>.
 
-from mongoengine.queryset.queryset import QuerySet as BaseQuerySet
+from bson.code import Code
+from bson import SON
+from mongoengine.connection import get_db
+from mongoengine.document import MapReduceDocument
+from mongoengine.queryset.queryset import (QuerySet as BaseQuerySet,
+                                           OperationError)
+from mongomotor.exceptions import ConfusionError
 from mongomotor.metaprogramming import (get_framework, AsyncGenericMetaclass,
                                         Async, asynchronize)
 
@@ -25,6 +31,7 @@ from mongomotor.metaprogramming import (get_framework, AsyncGenericMetaclass,
 class QuerySet(BaseQuerySet, metaclass=AsyncGenericMetaclass):
 
     delete = Async()
+    map_reduce = Async()
 
     def __repr__(self):
         return self.__class__.__name__
@@ -107,6 +114,106 @@ class QuerySet(BaseQuerySet, metaclass=AsyncGenericMetaclass):
         future.add_done_callback(_to_list_cb)
         return list_future
 
+    def map_reduce(self, map_f, reduce_f, output, **mr_kwargs):
+        """Perform a map/reduce query using the current query spec
+        and ordering. While ``map_reduce`` respects ``QuerySet`` chaining,
+        it must be the last call made, as it does not return a maleable
+        ``QuerySet``.
+
+        :param map_f: map function, as :class:`~bson.code.Code` or string
+        :param reduce_f: reduce function, as
+                         :class:`~bson.code.Code` or string
+        :param output: output collection name, if set to 'inline' will try to
+           use :class:`~pymongo.collection.Collection.inline_map_reduce`
+           This can also be a dictionary containing output options.
+
+        :param mr_kwargs: Arguments for mongodb map_reduce
+           see: https://docs.mongodb.com/manual/reference/command/mapReduce/
+           for more information
+
+        Returns a dict with the full response of the server
+
+        .. note::
+
+            This is different from mongoengine's map_reduce. It does not
+            support inline map reduce, for that use
+            :meth:`~mongomotor.queryset.QuerySet.inline_map_reduce`. And
+            It does not return a generator with MapReduceDocument, but
+            returns the server response instead.
+        """
+
+        if output == 'inline':
+            raise OperationError(
+                'For inline output please use inline_map_reduce')
+
+        queryset = self.clone()
+
+        map_f = self._get_code(map_f)
+        reduce_f = self._get_code(reduce_f)
+
+        mr_kwargs.update({'query': queryset._query})
+
+        if mr_kwargs.get('finalize'):
+            mr_kwargs['finalize'] = self._get_code(mr_kwargs['finalize'])
+
+        mr_kwargs['out'] = self._get_output(output)
+        mr_kwargs['full_response'] = True
+
+        return queryset._collection.map_reduce(map_f, reduce_f, **mr_kwargs)
+
+    def inline_map_reduce(self, map_f, reduce_f, **mr_kwargs):
+        """Perform a map/reduce query using the current query spec
+        and ordering. While ``map_reduce`` respects ``QuerySet`` chaining,
+        it must be the last call made, as it does not return a maleable
+        ``QuerySet``.
+
+        :param map_f: map function, as :class:`~bson.code.Code` or string
+        :param reduce_f: reduce function, as
+                         :class:`~bson.code.Code` or string
+
+        :param mr_kwargs: Arguments for mongodb map_reduce
+           see: https://docs.mongodb.com/manual/reference/command/mapReduce/
+           for more information
+
+        .. note::
+
+           This method only works with inline map/reduce. If you want to
+           send the output to a collection use
+           :meth:`~mongomotor.queryset.Queryset.map_reduce`.
+        """
+
+        queryset = self.clone()
+
+        if mr_kwargs.get('out') and mr_kwargs.get('out') != 'inline':
+            msg = 'inline_map_reduce only supports inline output. '
+            msg += 'To send the result to a collection use map_reduce'
+            raise OperationError(msg)
+
+        map_f = self._get_code(map_f)
+        reduce_f = self._get_code(reduce_f)
+
+        mr_kwargs.update({'query': queryset._query})
+
+        if mr_kwargs.get('finalize'):
+            mr_kwargs['finalize'] = self._get_code(mr_kwargs['finalize'])
+
+        mr_future = queryset._collection.inline_map_reduce(
+            map_f, reduce_f, **mr_kwargs)
+
+        framework = get_framework(self)
+        loop = framework.get_event_loop()
+        future = framework.get_future(loop)
+
+        def inline_mr_cb(result_future):
+            result = result_future.result()
+            gen = (MapReduceDocument(queryset._document, queryset._collection,
+                                     doc['_id'], doc['value'])
+                   for doc in result)
+            future.set_result(gen)
+
+        mr_future.add_done_callback(inline_mr_cb)
+        return future
+
     @property
     def fetch_next(self):
         return self._cursor.fetch_next
@@ -116,3 +223,46 @@ class QuerySet(BaseQuerySet, metaclass=AsyncGenericMetaclass):
         return self._document._from_son(
             raw, _auto_dereference=self._auto_dereference,
             only_fields=self.only_fields)
+
+    def _get_code(self, func):
+        f_scope = {}
+        if isinstance(func, Code):
+            f_scope = func.scope
+            func = str(func)
+        func = Code(self._sub_js_fields(func), f_scope)
+        return func
+
+    def _get_output(self, output):
+
+        if isinstance(output, str) or isinstance(output, SON):
+            out = output
+
+        elif isinstance(output, dict):
+            ordered_output = []
+            for part in ('replace', 'merge', 'reduce'):
+                value = output.get(part)
+                if value:
+                    ordered_output.append((part, value))
+                    break
+
+            else:
+                raise OperationError("actionData not specified for output")
+
+            db_alias = output.get('db_alias')
+            remaing_args = ['db', 'sharded', 'nonAtomic']
+
+            if db_alias:
+                ordered_output.append(('db', get_db(db_alias).name))
+                del remaing_args[0]
+
+            for part in remaing_args:
+                value = output.get(part)
+                if value:
+                    ordered_output.append((part, value))
+
+            out = SON(ordered_output)
+
+        else:
+            raise ConfusionError('Bad output type %r'.format(type(output)))
+
+        return out

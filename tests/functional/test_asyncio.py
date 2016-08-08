@@ -246,6 +246,29 @@ class MongoMotorTest(unittest.TestCase):
         self.assertEqual(obj.docint, 2)
 
     @async_test
+    def test_map_reduce(self):
+        d = self.maindoc(list_field=['a', 'b'])
+        yield from d.save()
+        d = self.maindoc(list_field=['a', 'c'])
+        yield from d.save()
+
+        mapf = """
+function(){
+  this.list_field.forEach(function(f){
+    emit(f, 1);
+  });
+}
+"""
+        reducef = """
+function(key, values){
+  return Array.sum(values)
+}
+"""
+        r = yield from self.maindoc.objects.all().map_reduce(
+            mapf, reducef, {'merge': 'testcol'})
+        self.assertEqual(r['result'], 'testcol')
+
+    @async_test
     def test_query_item_frequencies(self):
         """Ensure that item_frequencies method works properly
         """

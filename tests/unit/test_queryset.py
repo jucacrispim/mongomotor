@@ -21,7 +21,8 @@ import sys
 from unittest import TestCase
 from mongomotor import Document, connect, disconnect
 from mongomotor.fields import StringField
-from mongomotor.queryset import QuerySet
+from mongomotor.queryset import (QuerySet, OperationError, Code,
+                                 ConfusionError, SON, MapReduceDocument)
 from tests import async_test
 
 
@@ -177,3 +178,124 @@ class QuerySetTest(TestCase):
         doc = yield from qs[0]
 
         self.assertEqual(doc.a, '4')
+
+    def test_code_with_str(self):
+        code = 'function f(){return false}'
+        collection = self.test_doc._get_collection()
+        qs = QuerySet(self.test_doc, collection)
+        ret = qs._get_code(code)
+
+        self.assertIsInstance(ret, Code)
+
+    def test_code_with_code(self):
+        code = Code('function f(){return false}')
+        collection = self.test_doc._get_collection()
+        qs = QuerySet(self.test_doc, collection)
+        ret = qs._get_code(code)
+
+        self.assertIsInstance(ret, Code)
+        self.assertIsNot(ret, code)
+
+    def test_get_output_without_action_data(self):
+        collection = self.test_doc._get_collection()
+        qs = QuerySet(self.test_doc, collection)
+
+        with self.assertRaises(OperationError):
+            qs._get_output({})
+
+    def test_get_output_with_bad_output_type(self):
+        collection = self.test_doc._get_collection()
+        qs = QuerySet(self.test_doc, collection)
+
+        with self.assertRaises(ConfusionError):
+            qs._get_output([])
+
+    def test_get_output_with_son(self):
+        collection = self.test_doc._get_collection()
+        qs = QuerySet(self.test_doc, collection)
+
+        son = SON({'merge': 'bla'})
+        ret = qs._get_output(son)
+
+        self.assertEqual(ret, son)
+
+    def test_get_output_with_str(self):
+        collection = self.test_doc._get_collection()
+        qs = QuerySet(self.test_doc, collection)
+
+        ret = qs._get_output('outcoll')
+
+        self.assertEqual(ret, 'outcoll')
+
+    def test_get_output_with_dict(self):
+        output = {'merge': 'bla', 'db_alias': 'default'}
+        collection = self.test_doc._get_collection()
+        qs = QuerySet(self.test_doc, collection)
+
+        ret = qs._get_output(output)
+        self.assertIsInstance(ret, SON)
+
+    @async_test
+    def test_map_reduce_with_inline_output(self):
+        # raises an exception when output is inline
+
+        collection = self.test_doc._get_collection()
+        qs = QuerySet(self.test_doc, collection)
+
+        with self.assertRaises(OperationError):
+            yield from qs.map_reduce('mapf', 'reducef', output='inline')
+
+    @async_test
+    def test_get_map_reduce(self):
+        for i in range(5):
+            d = self.test_doc(a=str(i))
+            yield from d.save()
+
+        collection = self.test_doc._get_collection()
+        qs = QuerySet(self.test_doc, collection)
+
+        mapf = """
+function(){
+  emit(this.a, 1);
+}
+"""
+        reducef = """
+function(key, values){
+  return Array.sum(values)
+}
+"""
+        ret = yield from qs.map_reduce(mapf, reducef, {'merge': 'bla'})
+        self.assertEqual(ret['counts']['input'], 5)
+
+    @async_test
+    def test_inline_map_reduce_with_bad_output(self):
+        mr_kwrags = {'out': 'bla'}
+        collection = self.test_doc._get_collection()
+        qs = QuerySet(self.test_doc, collection)
+
+        with self.assertRaises(OperationError):
+            yield from qs.inline_map_reduce('mapf', 'reducef', **mr_kwrags)
+
+    @async_test
+    def test_inline_map_reduce(self):
+        for i in range(5):
+            d = self.test_doc(a=str(i))
+            yield from d.save()
+
+        collection = self.test_doc._get_collection()
+        qs = QuerySet(self.test_doc, collection)
+
+        mapf = """
+function(){
+  emit(this.a, 1);
+}
+"""
+        reducef = """
+function(key, values){
+  return Array.sum(values)
+}
+"""
+        gen = yield from qs.inline_map_reduce(mapf, reducef)
+        ret = list(gen)
+        self.assertEqual(len(ret), 5)
+        self.assertIsInstance(ret[0], MapReduceDocument)

@@ -244,6 +244,29 @@ class MongoMotorTest(AsyncTestCase):
         self.assertEqual(obj.docint, 2)
 
     @gen_test
+    def test_map_reduce(self):
+        d = self.maindoc(list_field=['a', 'b'])
+        yield d.save()
+        d = self.maindoc(list_field=['a', 'c'])
+        yield d.save()
+
+        mapf = """
+function(){
+  this.list_field.forEach(function(f){
+    emit(f, 1);
+  });
+}
+"""
+        reducef = """
+function(key, values){
+  return Array.sum(values)
+}
+"""
+        r = yield self.maindoc.objects.all().map_reduce(mapf, reducef,
+                                                        {'merge': 'testcol'})
+        self.assertEqual(r['result'], 'testcol')
+
+    @gen_test
     def test_query_item_frequencies(self):
         """Ensure that item_frequencies method works properly
         """
@@ -528,28 +551,6 @@ class MongoMotorTest(AsyncTestCase):
 
         self.assertEqual(total, 0)
         self.assertFalse(None)
-
-    @gen_test
-    def test_map_reduce(self):
-        d = self.maindoc(list_field=['a', 'b'])
-        yield d.save()
-        d = self.maindoc(list_field=['a', 'c'])
-        yield d.save()
-
-        mapf = """
-function(){
-  this.list_field.forEach(function(f){
-    emit(f, 1);
-  });
-}
-"""
-        reducef = """
-function(key, values){
-  return Array.sum(values)
-}
-"""
-        r = yield self.maindoc.objects.all().map_reduce(mapf, reducef,
-                                                        {'merge': 'testcol'})
 
     @gen_test
     def test_map_reduce_document(self):

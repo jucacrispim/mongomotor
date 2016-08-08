@@ -20,7 +20,7 @@
 import sys
 from unittest import TestCase
 from mongomotor import Document, connect, disconnect
-from mongomotor.fields import StringField
+from mongomotor.fields import StringField, ListField
 from mongomotor.queryset import (QuerySet, OperationError, Code,
                                  ConfusionError, SON, MapReduceDocument)
 from tests import async_test
@@ -41,6 +41,7 @@ class QuerySetTest(TestCase):
     def setUp(self):
         class TestDoc(Document):
             a = StringField()
+            lf = ListField()
 
         self.test_doc = TestDoc
 
@@ -299,3 +300,29 @@ function(key, values){
         ret = list(gen)
         self.assertEqual(len(ret), 5)
         self.assertIsInstance(ret[0], MapReduceDocument)
+
+    @async_test
+    def test_item_frequencies(self):
+        d = self.test_doc(lf=['a', 'b'])
+        yield from d.save()
+        d = self.test_doc(lf=['a', 'c'])
+        yield from d.save()
+
+        collection = self.test_doc._get_collection()
+        qs = QuerySet(self.test_doc, collection)
+
+        freq = yield from qs.item_frequencies('lf')
+        self.assertEqual(freq['a'], 2)
+
+    @async_test
+    def test_item_frequencies_with_normalize(self):
+        d = self.test_doc(lf=['a', 'b'])
+        yield from d.save()
+        d = self.test_doc(lf=['a', 'c'])
+        yield from d.save()
+
+        collection = self.test_doc._get_collection()
+        qs = QuerySet(self.test_doc, collection)
+
+        freq = yield from qs.item_frequencies('lf', normalize=True)
+        self.assertEqual(freq['a'], 0.5)

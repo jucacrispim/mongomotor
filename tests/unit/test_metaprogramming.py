@@ -109,6 +109,18 @@ class AsynchonizeTest(TestCase):
         with self.assertRaises(metaprogramming.ConfusionError):
             metaprogramming.get_framework(TestClass())
 
+    def test_get_future(self):
+        class TestClass:
+
+            @classmethod
+            def _get_db(cls):
+                db = Mock()
+                db._framework = asyncio_framework
+                return db
+
+        future = metaprogramming.get_future(TestClass())
+        self.assertIsInstance(future, Future)
+
 
 class AsyncTest(TestCase):
 

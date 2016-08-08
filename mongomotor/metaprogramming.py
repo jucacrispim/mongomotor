@@ -77,6 +77,14 @@ def get_framework(obj):
     return framework
 
 
+def get_future(obj):
+    """Returns a future for a given object"""
+    framework = get_framework(obj)
+    loop = framework.get_event_loop()
+    future = framework.get_future(loop)
+    return future
+
+
 class Sync(MotorAttributeFactory):
 
     """A descriptor that wraps a Motor method, such as insert or remove

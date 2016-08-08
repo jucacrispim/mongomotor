@@ -24,7 +24,7 @@ from mongoengine.document import MapReduceDocument
 from mongoengine.queryset.queryset import (QuerySet as BaseQuerySet,
                                            OperationError)
 from mongomotor.exceptions import ConfusionError
-from mongomotor.metaprogramming import (get_framework, AsyncGenericMetaclass,
+from mongomotor.metaprogramming import (get_future, AsyncGenericMetaclass,
                                         Async, asynchronize)
 
 
@@ -60,27 +60,25 @@ class QuerySet(BaseQuerySet, metaclass=AsyncGenericMetaclass):
         queryset = queryset.order_by().limit(2)
         queryset = queryset.filter(*q_objs, **query)
 
-        framework = get_framework(self._document)
-        loop = framework.get_event_loop()
-        get_future = framework.get_future(loop)
+        future = get_future(self)
 
-        def _get_cb(future):
-            docs = future.result()
+        def _get_cb(done_future):
+            docs = done_future.result()
             if len(docs) < 1:
                 msg = ("%s matching query does not exist."
                        % queryset._document._class_name)
-                get_future.set_exception(queryset._document.DoesNotExist(msg))
+                future.set_exception(queryset._document.DoesNotExist(msg))
 
             elif len(docs) > 1:
                 msg = 'More than 1 item returned'
-                get_future.set_exception(
+                future.set_exception(
                     queryset._document.MultipleObjectsReturned(msg))
             else:
-                get_future.set_result(docs[0])
+                future.set_result(docs[0])
 
-        future = queryset.to_list(length=2)
-        future.add_done_callback(_get_cb)
-        return get_future
+        list_future = queryset.to_list(length=2)
+        list_future.add_done_callback(_get_cb)
+        return future
 
     def count(self, with_limit_and_skip=True):
         """Counts the documents in the queryset.
@@ -95,10 +93,7 @@ class QuerySet(BaseQuerySet, metaclass=AsyncGenericMetaclass):
 
         :param length: maximum number of documents to return for this call."""
 
-        cursor = self._cursor
-        framework = get_framework(self._document)
-        loop = framework.get_event_loop()
-        list_future = framework.get_future(loop)
+        list_future = get_future(self)
 
         def _to_list_cb(future):
             # Transforms mongo's raw documents into
@@ -110,6 +105,7 @@ class QuerySet(BaseQuerySet, metaclass=AsyncGenericMetaclass):
 
             list_future.set_result(final_list)
 
+        cursor = self._cursor
         future = cursor.to_list(length)
         future.add_done_callback(_to_list_cb)
         return list_future
@@ -175,6 +171,8 @@ class QuerySet(BaseQuerySet, metaclass=AsyncGenericMetaclass):
            see: https://docs.mongodb.com/manual/reference/command/mapReduce/
            for more information
 
+        Returns a generator of MapReduceDocument with the map/reduce results.
+
         .. note::
 
            This method only works with inline map/reduce. If you want to
@@ -199,10 +197,7 @@ class QuerySet(BaseQuerySet, metaclass=AsyncGenericMetaclass):
 
         mr_future = queryset._collection.inline_map_reduce(
             map_f, reduce_f, **mr_kwargs)
-
-        framework = get_framework(self)
-        loop = framework.get_event_loop()
-        future = framework.get_future(loop)
+        future = get_future(self)
 
         def inline_mr_cb(result_future):
             result = result_future.result()
@@ -212,6 +207,62 @@ class QuerySet(BaseQuerySet, metaclass=AsyncGenericMetaclass):
             future.set_result(gen)
 
         mr_future.add_done_callback(inline_mr_cb)
+        return future
+
+    def item_frequencies(self, field, normalize=False):
+        map_func = """
+            function() {
+                var path = '{{~%(field)s}}'.split('.');
+                var field = this;
+
+                for (p in path) {
+                    if (typeof field != 'undefined')
+                       field = field[path[p]];
+                    else
+                       break;
+                }
+                if (field && field.constructor == Array) {
+                    field.forEach(function(item) {
+                        emit(item, 1);
+                    });
+                } else if (typeof field != 'undefined') {
+                    emit(field, 1);
+                } else {
+                    emit(null, 1);
+                }
+            }
+        """ % dict(field=field)
+        reduce_func = """
+            function(key, values) {
+                var total = 0;
+                var valuesSize = values.length;
+                for (var i=0; i < valuesSize; i++) {
+                    total += parseInt(values[i], 10);
+                }
+                return total;
+            }
+        """
+        mr_future = self.inline_map_reduce(map_func, reduce_func)
+        future = get_future(self)
+
+        def item_frequencies_cb(mr_future):
+            values = mr_future.result()
+            frequencies = {}
+            for f in values:
+                key = f.key
+                if isinstance(key, float):
+                    if int(key) == key:
+                        key = int(key)
+                frequencies[key] = int(f.value)
+
+            if normalize:
+                count = sum(frequencies.values())
+                frequencies = dict([(k, float(v) / count)
+                                    for k, v in list(frequencies.items())])
+
+            future.set_result(frequencies)
+
+        mr_future.add_done_callback(item_frequencies_cb)
         return future
 
     @property

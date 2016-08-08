@@ -19,7 +19,7 @@
 
 from mongoengine.queryset.queryset import QuerySet as BaseQuerySet
 from mongomotor.metaprogramming import (get_framework, AsyncGenericMetaclass,
-                                        Async)
+                                        Async, asynchronize)
 
 
 class QuerySet(BaseQuerySet, metaclass=AsyncGenericMetaclass):
@@ -28,6 +28,18 @@ class QuerySet(BaseQuerySet, metaclass=AsyncGenericMetaclass):
 
     def __repr__(self):
         return self.__class__.__name__
+
+    def __getitem__(self, index):
+        # It we received an slice we will return a queryset
+        # so we will not touch the db now and do not need a future
+        # here
+        if isinstance(index, slice):
+            return super().__getitem__(index)
+
+        else:
+            sync_getitem = BaseQuerySet.__getitem__
+            async_getitem = asynchronize(sync_getitem)
+            return async_getitem(self, index)
 
     def get(self, *q_objs, **query):
         """Retrieve the the matching object raising
@@ -62,6 +74,14 @@ class QuerySet(BaseQuerySet, metaclass=AsyncGenericMetaclass):
         future = queryset.to_list(length=2)
         future.add_done_callback(_get_cb)
         return get_future
+
+    def count(self, with_limit_and_skip=True):
+        """Counts the documents in the queryset.
+
+        :param with_limit_and_skip: Indicates if limit and skip applied to
+          the queryset should be taken into account."""
+
+        return super().count(with_limit_and_skip)
 
     def to_list(self, length=100):
         """Returns a list of the current documents in the queryset.

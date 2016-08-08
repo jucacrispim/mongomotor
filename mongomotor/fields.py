@@ -112,6 +112,8 @@ class ComplexBaseField(fields.ComplexBaseField):
 class ReferenceField(fields.ReferenceField):
 
     def __get__(self, instance, owner):
+        # When we are getting the field from a class not from an
+        # instance we don't need a Future
         if instance is None:
             return self
 

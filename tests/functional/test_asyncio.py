@@ -231,6 +231,29 @@ class MongoMotorTest(unittest.TestCase):
 
         self.assertEqual((yield from objs.count()), 2)
 
+    @async_test
+    def test_query_order_by(self):
+        """Ensure that a queryset can be ordered using order_by()
+        """
+        yield from self._create_data()
+
+        objs = self.maindoc.objects.order_by('docint')
+        obj = yield from objs[0]
+        self.assertEqual(obj.docint, 0)
+
+        objs = self.maindoc.objects.order_by('-docint')
+        obj = yield from objs[0]
+        self.assertEqual(obj.docint, 2)
+
+    @async_test
+    def test_query_item_frequencies(self):
+        """Ensure that item_frequencies method works properly
+        """
+        yield from self._create_data()
+
+        freq = yield from self.maindoc.objects.item_frequencies('list_field')
+        self.assertEqual(freq['string0'], 3)
+
     @asyncio.coroutine
     def _create_data(self):
         # here we create the following data:

@@ -129,3 +129,51 @@ class QuerySetTest(TestCase):
             self.assertIsInstance(doc, self.test_doc)
 
         self.assertEqual(c, 5)
+
+    @async_test
+    def test_count_queryset(self):
+        for i in range(5):
+            d = self.test_doc(a=str(i))
+            yield from d.save()
+
+        collection = self.test_doc._get_collection()
+
+        qs = QuerySet(self.test_doc, collection)
+        qs = qs.filter(a='1')
+        count = yield from qs.count()
+        self.assertEqual(count, 1)
+
+    @async_test
+    def test_getitem_with_slice(self):
+        for i in range(5):
+            d = self.test_doc(a=str(i))
+            yield from d.save()
+
+        collection = self.test_doc._get_collection()
+
+        qs = QuerySet(self.test_doc, collection)
+
+        qs = qs[1:3]
+        count = yield from qs.count()
+        self.assertEqual(count, 2)
+
+        incr = 0
+        while (yield from qs.fetch_next):
+            qs.next_object()
+            incr += 1
+
+        self.assertEqual(incr, 2)
+
+    @async_test
+    def test_getitem_with_int(self):
+        for i in range(5):
+            d = self.test_doc(a=str(i))
+            yield from d.save()
+
+        collection = self.test_doc._get_collection()
+
+        qs = QuerySet(self.test_doc, collection).order_by('-a')
+
+        doc = yield from qs[0]
+
+        self.assertEqual(doc.a, '4')

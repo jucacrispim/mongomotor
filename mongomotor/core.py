@@ -33,11 +33,25 @@ class MongoMotorAgnosticCursor(AgnosticCursor):
 
     __motor_class_name__ = 'MongoMotorCursor'
 
+    # these are used internally. If you try to
+    # iterate using for in a main greenlet you will
+    # see an exception.
+    # To iterate use a queryset and iterate using motor style
+    # with fetch_next/next_object
+
     def __iter__(self):
         return self
 
     def __next__(self):
         return next(self.delegate)
+
+    def __getitem__(self, index):
+        r = self.delegate[index]
+        if isinstance(r, type(self.delegate)):
+            # If the response is a cursor, transform it into a
+            # mongomotor cursor.
+            r = type(self)(r, self.collection)
+        return r
 
 
 class MongoMotorAgnosticCollection(AgnosticCollection):

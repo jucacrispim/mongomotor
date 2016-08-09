@@ -38,4 +38,5 @@ MongoMotorTornadoClient = create_class_with_framework(MongoMotorAgnosticClient,
                                                       'mongomotor.clients')
 
 MongoMotorTornadoReplicaSetClient = create_class_with_framework(
-    MongoMotorAgnosticReplicaSetClient, tornado_framework, 'mongomotor.clients')
+    MongoMotorAgnosticReplicaSetClient, tornado_framework,
+    'mongomotor.clients')

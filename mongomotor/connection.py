@@ -19,8 +19,10 @@
 
 
 from mongoengine.connection import (connect as me_connect,
-                                    DEFAULT_CONNECTION_NAME)
+                                    DEFAULT_CONNECTION_NAME,
+                                    register_connection)
 
+from mongomotor import utils
 from mongomotor.clients import (MongoMotorAsyncIOClient,
                                 MongoMotorAsyncIOReplicaSetClient,
                                 MongoMotorTornadoClient,
@@ -56,5 +58,10 @@ def connect(db=None, async_framework='asyncio',
     with MonkeyPatcher() as patcher:
         patcher.patch_connection(*clients)
         ret = me_connect(db=db, alias=alias, **kwargs)
+
+    # here we register a connection that will use the original pymongo
+    # client and if used will block the process
+    sync_alias = utils.get_sync_alias(alias)
+    register_connection(sync_alias, db, **kwargs)
 
     return ret

@@ -277,6 +277,37 @@ function(key, values){
         freq = yield from self.maindoc.objects.item_frequencies('list_field')
         self.assertEqual(freq['string0'], 3)
 
+    @async_test
+    def test_query_to_list(self):
+        """Ensure that a list can be made from a queryset using to_list()
+        """
+        yield from self._create_data()
+
+        # note here that again we need to yield something.
+        # In this case, we use yield with to_list()
+
+        lista = yield from self.maindoc.objects.to_list()
+        self.assertEqual(len(lista), 3)
+
+    @async_test
+    def test_query_to_list_with_empty_queryset(self):
+        """Ensure that a list can be made from a queryset using to_list() when
+        the queryset is empty
+        """
+
+        yield from self.maindoc.objects.delete()
+        lista = yield from self.maindoc.objects.to_list()
+        self.assertEqual(len(lista), 0)
+
+    @async_test
+    def test_query_to_list_with_in_operator(self):
+        yield from self._create_data()
+        mydict = {'d0': True, 'd1': True}
+        mylist = yield from self.maindoc.objects.filter(
+            docname__in=mydict.keys()).to_list()
+
+        self.assertTrue(len(mylist), 2)
+
     @asyncio.coroutine
     def _create_data(self):
         # here we create the following data:
@@ -285,6 +316,7 @@ function(key, values){
         r = self.refdoc()
         yield from r.save()
         to_list_field = ['string0', 'string1', 'string2']
+        futures = []
         for i in range(3):
             d = self.maindoc(docname='d%s' % i)
             d.docint = i
@@ -292,4 +324,7 @@ function(key, values){
             if i < 2:
                 d.ref = r
 
-            yield from d.save()
+            f = d.save()
+            futures.append(f)
+
+        yield from asyncio.gather(*futures)

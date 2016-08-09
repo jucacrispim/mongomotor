@@ -298,7 +298,7 @@ function(key, values){
         self.assertEqual(len(lista), 0)
 
     @gen_test
-    def test_query_to_set_with_in_operator(self):
+    def test_query_to_list_with_in_operator(self):
         yield self._create_data()
         mydict = {'d0': True, 'd1': True}
         mylist = yield self.maindoc.objects.filter(

@@ -24,17 +24,18 @@ from motor.metaprogramming import MotorAttributeFactory
 from mongomotor.exceptions import ConfusionError
 
 
-def asynchronize(method):
+def asynchronize(method, cls_meth=False):
     """Decorates `method` so it returns a Future.
 
     The method runs on a child greenlet and resolves the Future when the
     greenlet completes.
 
-    :param method: A mongoengine method to be asynchronized."""
+    :param method: A mongoengine method to be asynchronized.
+    :param cls_meth: Indicates if the method being asynchronized is
+       a class method."""
 
-    @functools.wraps(method)
-    def async_method(self, *args, **kwargs):
-        framework = get_framework(self)
+    def async_method(instance_or_class, *args, **kwargs):
+        framework = get_framework(instance_or_class)
         loop = framework.get_event_loop()
         future = framework.get_future(loop)
 
@@ -42,7 +43,7 @@ def asynchronize(method):
             # this call_method runs on a child greenlet.
 
             try:
-                result = method(self, *args, **kwargs)
+                result = method(instance_or_class, *args, **kwargs)
                 framework.call_soon(
                     loop, functools.partial(future.set_result, result))
             except Exception as e:
@@ -55,7 +56,11 @@ def asynchronize(method):
         # completed the control goes back to the child greenlet and the future
         # will be resolved.
         return future
-    return async_method
+
+    if cls_meth:
+        async_method = classmethod(async_method)
+
+    return functools.wraps(method)(async_method)
 
 
 def get_framework(obj):
@@ -85,12 +90,16 @@ def get_future(obj):
     return future
 
 
-class Sync(MotorAttributeFactory):
+class OriginalDelegate(MotorAttributeFactory):
 
     """A descriptor that wraps a Motor method, such as insert or remove
-    and returns the original PyMongo method. This is done because I want
-    to asynchronize the whole mongoengine method, not only the PyMongo
-    method.
+    and returns the original PyMongo method. It still uses motor pool and
+    event classes so it needs to run in a child greenlet.
+
+    This is done  because I want to be able to asynchronize a method that
+    connects to database but I want the method asynchronized returns a
+    future not the pymongo motor asynchronized method. Usually is
+    complementary to :class:`~mongomotor.metaprogramming.Async`.
     """
 
     def create_attribute(self, cls, attr_name):
@@ -100,8 +109,12 @@ class Sync(MotorAttributeFactory):
 class Async(MotorAttributeFactory):
 
     """A descriptor that wraps a mongoengine method, such as save or delete
-    and returns an asynchronous version of the method.
+    and returns an asynchronous version of the method. Usually is
+    complementary to :class:`~mongomotor.metaprogramming.OriginalDelegate`.
     """
+
+    def __init__(self, cls_meth=False):
+        self.cls_meth = cls_meth
 
     def create_attribute(self, cls, attr_name):
         method = None
@@ -109,13 +122,16 @@ class Async(MotorAttributeFactory):
         for base in cls.__bases__:
             try:
                 method = getattr(base, attr_name)
+                # here we use the __func__ stuff because we want to bind
+                # it to an instance or class when we call it
+                method = method.__func__
             except AttributeError:
                 pass
 
         if method is None:
             raise AttributeError(
                 '{} has no attribute {}'.format(cls, attr_name))
-        return asynchronize(method)
+        return asynchronize(method, cls_meth=self.cls_meth)
 
 
 class AsyncWrapperMetaclass(type):

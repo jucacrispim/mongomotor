@@ -26,7 +26,7 @@ from mongomotor import metaprogramming
 from tests import async_test
 
 
-class SyncTest(TestCase):
+class OriginalDelegateTest(TestCase):
 
     def test_create_attribute(self):
         class TestDelegate:
@@ -38,7 +38,7 @@ class SyncTest(TestCase):
             __motor_class_name__ = 'MyDelegateTest'
             __delegate_class__ = TestDelegate
 
-            a = metaprogramming.Sync()
+            a = metaprogramming.OriginalDelegate()
 
         tc = create_class_with_framework(TestClass, asyncio_framework,
                                          self.__module__)
@@ -67,6 +67,30 @@ class AsynchonizeTest(TestCase):
         testobj = TestClass()
         self.assertTrue(isinstance(testobj.sync(), Future))
         yield from testobj.sync()
+        self.assertTrue(test_mock.called)
+
+    @async_test
+    def test_asynchornize_cls(self):
+
+        test_mock = Mock()
+
+        class TestClass:
+
+            @classmethod
+            def _get_db(cls):
+                db = Mock()
+                db._framework = asyncio_framework
+                return db
+
+            @classmethod
+            def sync(cls):
+                test_mock()
+
+        TestClass.sync = metaprogramming.asynchronize(TestClass.sync.__func__,
+                                                      cls_meth=True)
+        self.assertTrue(isinstance(TestClass.sync(), Future))
+
+        yield from TestClass.sync()
         self.assertTrue(test_mock.called)
 
     @async_test
@@ -150,6 +174,34 @@ class AsyncTest(TestCase):
 
         test_instance = test_class()
         yield from test_instance.some_method()
+        self.assertTrue(test_mock.called)
+
+    @async_test
+    def test_create_class_attribute(self):
+
+        test_mock = Mock()
+
+        class BaseTestClass:
+
+            @classmethod
+            def _get_db(cls):
+                db = Mock()
+                db._framework = asyncio_framework
+                return db
+
+            @classmethod
+            def some_method(cls):
+                test_mock()
+
+        class TestClass(BaseTestClass):
+
+            some_method = metaprogramming.Async(cls_meth=True)
+
+        test_class = TestClass
+        test_class.some_method = TestClass.some_method.create_attribute(
+            TestClass, 'some_method')
+
+        yield from TestClass.some_method()
         self.assertTrue(test_mock.called)
 
     @async_test

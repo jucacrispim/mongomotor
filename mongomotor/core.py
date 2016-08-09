@@ -26,7 +26,7 @@ from motor.metaprogramming import create_class_with_framework, ReadOnlyProperty
 import pymongo
 from pymongo.database import Database
 from pymongo.collection import Collection
-from mongomotor.metaprogramming import Sync
+from mongomotor.metaprogramming import OriginalDelegate
 
 
 class MongoMotorAgnosticCursor(AgnosticCursor):
@@ -59,13 +59,13 @@ class MongoMotorAgnosticCollection(AgnosticCollection):
     __motor_class_name__ = 'MongoMotorCollection'
     # Making this guys sync because I will asynchronize
     # at mongoengine level.
-    insert = Sync()
-    save = Sync()
-    update = Sync()
-    find_one = Sync()
-    remove = Sync()
-    create_index = Sync()
-    ensure_index = Sync()
+    insert = OriginalDelegate()
+    save = OriginalDelegate()
+    update = OriginalDelegate()
+    find_one = OriginalDelegate()
+    remove = OriginalDelegate()
+    create_index = OriginalDelegate()
+    ensure_index = OriginalDelegate()
 
     def __init__(self, database, name):
 
@@ -129,7 +129,7 @@ class MongoMotorAgnosticDatabase(AgnosticDatabase):
 
     __motor_class_name__ = 'MongoMotorDatabase'
 
-    dereference = Sync()
+    dereference = OriginalDelegate()
 
     def __init__(self, connection, name):
         if not isinstance(connection, AgnosticClientBase):
@@ -150,7 +150,7 @@ class MongoMotorAgnosticDatabase(AgnosticDatabase):
 class MongoMotorAgnosticClientBase(AgnosticClientBase):
 
     max_write_batch_size = ReadOnlyProperty()
-    _ensure_connected = Sync()
+    _ensure_connected = OriginalDelegate()
 
     def __init__(self, *args, **kwargs):
         """Create a new connection to a single MongoDB instance at *host:port*.

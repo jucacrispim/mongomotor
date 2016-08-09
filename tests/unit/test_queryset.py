@@ -17,6 +17,7 @@
 # You should have received a copy of the GNU General Public License
 # along with mongomotor. If not, see <http://www.gnu.org/licenses/>.
 
+import asyncio
 import sys
 from unittest import TestCase
 from mongomotor import Document, connect, disconnect
@@ -51,10 +52,12 @@ class QuerySetTest(TestCase):
 
     @async_test
     def test_to_list(self):
+        futures = []
         for i in range(4):
             d = self.test_doc(a=str(i))
-            yield from d.save()
+            futures.append(d.save())
 
+        yield from asyncio.gather(*futures)
         collection = self.test_doc._collection
         qs = QuerySet(self.test_doc, collection)
         qs = qs.filter(a__in=['1', '2'])

@@ -20,9 +20,11 @@
 from asyncio.futures import Future
 from unittest import TestCase
 from unittest.mock import Mock
+from mongoengine import connection
 from motor.metaprogramming import create_class_with_framework
 from motor.frameworks import asyncio as asyncio_framework
-from mongomotor import metaprogramming
+from mongomotor import metaprogramming, Document, monkey
+from mongomotor.connection import connect, disconnect
 from tests import async_test
 
 
@@ -144,6 +146,28 @@ class AsynchonizeTest(TestCase):
 
         future = metaprogramming.get_future(TestClass())
         self.assertIsInstance(future, Future)
+
+
+class SynchronizeTest(TestCase):
+
+    def tearDown(self):
+        disconnect()
+
+    def test_synchronize(self):
+        class TestClass(Document):
+
+            @metaprogramming.synchronize
+            def some_method(self):
+                self._get_collection()
+
+        # as we are testing synchronize, we remove all sync connections
+        # so it does not interfere in our test
+        with monkey.MonkeyPatcher() as patcher:
+            patcher.patch_sync_connections()
+            connect()
+            self.assertEqual(len(connection._connections), 1)
+            TestClass().some_method()
+            self.assertEqual(len(connection._connections), 2)
 
 
 class AsyncTest(TestCase):

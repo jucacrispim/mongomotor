@@ -18,6 +18,8 @@
 # along with mongomotor. If not, see <http://www.gnu.org/licenses/>.
 
 from unittest import TestCase
+from mongoengine import connection
+from mongoengine.connection import get_db, connect, disconnect
 from mongomotor import utils
 
 
@@ -28,3 +30,20 @@ class GetSyncAliasTest(TestCase):
         expected = 'some-conn-sync'
         returned = utils.get_sync_alias(alias)
         self.assertEqual(expected, returned)
+
+
+class GetAliasForDbTest(TestCase):
+
+    def tearDown(self):
+        disconnect()
+        super().tearDown()
+
+    def test_get_alias(self):
+        try:
+            alias = 'bla'
+            connect(alias=alias)
+            db = get_db(alias)
+            returned_alias = utils.get_alias_for_db(db)
+            self.assertEqual(returned_alias, alias)
+        finally:
+            del connection._connections['bla']

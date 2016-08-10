@@ -17,9 +17,19 @@
 # You should have received a copy of the GNU General Public License
 # along with mongomotor. If not, see <http://www.gnu.org/licenses/>.
 
+from mongoengine.connection import _dbs
+
 
 def get_sync_alias(alias):
     """Returns an alias to be used for the sync connection
     of alias."""
 
     return '{}-sync'.format(alias)
+
+
+def get_alias_for_db(db):
+    """Return the alias for a given db."""
+
+    for alias, connected_db in _dbs.items():
+        if db == connected_db:
+            return alias

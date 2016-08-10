@@ -17,11 +17,17 @@
 # You should have received a copy of the GNU General Public License
 # along with mongomotor. If not, see <http://www.gnu.org/licenses/>.
 
+from copy import copy
 import functools
 import greenlet
 from mongoengine.base.metaclasses import TopLevelDocumentMetaclass
+from mongoengine.context_managers import switch_db as me_switch_db
 from motor.metaprogramming import MotorAttributeFactory
+from pymongo.database import Database
+from mongomotor import utils
+from mongomotor.connection import DEFAULT_CONNECTION_NAME
 from mongomotor.exceptions import ConfusionError
+from mongomotor.monkey import MonkeyPatcher
 
 
 def asynchronize(method, cls_meth=False):
@@ -63,6 +69,35 @@ def asynchronize(method, cls_meth=False):
     return functools.wraps(method)(async_method)
 
 
+def synchronize(method, cls_meth=False):
+    """Runs method while using the synchronous pymongo driver.
+
+    :param method: A mongoengine method to run using the pymongo driver.
+    :param cls_meth: Indicates if the method is a class method."""
+
+    def wrapper(instance_or_class, *args, **kwargs):
+        db = instance_or_class._get_db()
+        if isinstance(db, Database):
+            # the thing here is that a Sync method may be called by another
+            # Sync method and if that happens we simply execute method
+            r = method(instance_or_class, *args, **kwargs)
+
+        else:
+            # here we change the connection to a sync pymongo connection.
+            alias = utils.get_alias_for_db(db)
+            cls = instance_or_class if cls_meth else type(instance_or_class)
+            alias = utils.get_sync_alias(alias)
+            # we need a copy here or we'll have problems with concurrency.
+            cls = copy(cls)
+            with switch_db(cls, alias):
+                r = method(instance_or_class, *args, **kwargs)
+
+        return r
+    if cls_meth:
+        wrapper = classmethod(wrapper)
+    return functools.wraps(method)(wrapper)
+
+
 def get_framework(obj):
     """Returns a asynchronous framework for a given object."""
 
@@ -88,6 +123,34 @@ def get_future(obj):
     loop = framework.get_event_loop()
     future = framework.get_future(loop)
     return future
+
+
+class switch_db(me_switch_db):
+
+    def __init__(self, cls, db_alias):
+        """ Construct the switch_db context manager
+
+        :param cls: the class to change the registered db
+        :param db_alias: the name of the specific database to use
+        """
+        self.cls = cls
+        self.collection = cls._collection
+        self.db_alias = db_alias
+        self.ori_db_alias = cls._meta.get("db_alias", DEFAULT_CONNECTION_NAME)
+        self.patcher = MonkeyPatcher()
+
+    def __enter__(self):
+        """ changes the db_alias, clears the cached collection and
+        patches _connections"""
+        super().__enter__()
+        self.patcher.patch_async_connections()
+        return self.cls
+
+    def __exit__(self, t, value, traceback):
+        """ Reset the db_alias and collection """
+        self.cls._meta["db_alias"] = self.ori_db_alias
+        self.cls._collection = self.collection
+        self.patcher.__exit__(t, value, traceback)
 
 
 class OriginalDelegate(MotorAttributeFactory):
@@ -116,9 +179,10 @@ class Async(MotorAttributeFactory):
     def __init__(self, cls_meth=False):
         self.cls_meth = cls_meth
 
-    def create_attribute(self, cls, attr_name):
-        method = None
+    def _get_super(self, cls, attr_name):
         # Tries to get the real method from the super classes
+        method = None
+
         for base in cls.__bases__:
             try:
                 method = getattr(base, attr_name)
@@ -131,7 +195,22 @@ class Async(MotorAttributeFactory):
         if method is None:
             raise AttributeError(
                 '{} has no attribute {}'.format(cls, attr_name))
+
+        return method
+
+    def create_attribute(self, cls, attr_name):
+        method = self._get_super(cls, attr_name)
         return asynchronize(method, cls_meth=self.cls_meth)
+
+
+class Sync(Async):
+    """A descriptor that wraps a mongoengine method, ensure_indexes
+    and runs it using the synchronous pymongo driver.
+    """
+
+    def create_attribute(self, cls, attr_name):
+        method = self._get_super(cls, attr_name)
+        return synchronize(method, cls_meth=self.cls_meth)
 
 
 class AsyncWrapperMetaclass(type):

@@ -308,6 +308,15 @@ function(key, values){
 
         self.assertTrue(len(mylist), 2)
 
+    @async_test
+    def test_query_average(self):
+        """Ensure that we can get the average of a field using average()
+        """
+        yield from self._create_data()
+
+        avg = yield from self.maindoc.objects.average('docint')
+        self.assertEqual(avg, 1)
+
     @asyncio.coroutine
     def _create_data(self):
         # here we create the following data:

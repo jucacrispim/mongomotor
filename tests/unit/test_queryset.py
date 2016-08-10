@@ -21,7 +21,7 @@ import asyncio
 import sys
 from unittest import TestCase
 from mongomotor import Document, connect, disconnect
-from mongomotor.fields import StringField, ListField
+from mongomotor.fields import StringField, ListField, IntField
 from mongomotor.queryset import (QuerySet, OperationError, Code,
                                  ConfusionError, SON, MapReduceDocument)
 from tests import async_test
@@ -46,6 +46,7 @@ class QuerySetTest(TestCase):
         class TestDoc(Document):
             a = StringField()
             lf = ListField()
+            docint = IntField()
 
         self.test_doc = TestDoc
 
@@ -332,3 +333,10 @@ function(key, values){
 
         freq = yield from qs.item_frequencies('lf', normalize=True)
         self.assertEqual(freq['a'], 0.5)
+
+    @async_test
+    def test_average(self):
+        futures = [self.test_doc(docint=i).save() for i in range(5)]
+        asyncio.gather(*futures)
+        average = yield from self.test_doc.objects.average('docint')
+        self.assertEqual(average, 2)

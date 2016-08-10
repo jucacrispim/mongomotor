@@ -210,6 +210,25 @@ class QuerySet(BaseQuerySet, metaclass=AsyncGenericMetaclass):
         return future
 
     def item_frequencies(self, field, normalize=False):
+        """Returns a dictionary of all items present in a field across
+        the whole queried set of documents, and their corresponding frequency.
+        This is useful for generating tag clouds, or searching documents.
+
+        .. note::
+
+            Can only do direct simple mappings and cannot map across
+            :class:`~mongoengine.fields.ReferenceField` or
+            :class:`~mongoengine.fields.GenericReferenceField` for more complex
+            counting a manual map reduce call would is required.
+
+        If the field is a :class:`~mongoengine.fields.ListField`,
+        the items within each list will be counted individually.
+
+        :param field: the field to use
+        :param normalize: normalize the results so they add to 1.0
+        :param map_reduce: Use map_reduce over exec_js
+        """
+
         map_func = """
             function() {
                 var path = '{{~%(field)s}}'.split('.');
@@ -263,6 +282,69 @@ class QuerySet(BaseQuerySet, metaclass=AsyncGenericMetaclass):
             future.set_result(frequencies)
 
         mr_future.add_done_callback(item_frequencies_cb)
+        return future
+
+    def average(self, field):
+        """Average over the values of the specified field.
+
+        :param field: the field to average over; use dot-notation to refer to
+            embedded document fields
+        """
+        map_func = """
+            function() {
+                var path = '{{~%(field)s}}'.split('.'),
+                field = this;
+
+                for (p in path) {
+                    if (typeof field != 'undefined')
+                       field = field[path[p]];
+                    else
+                       break;
+                }
+
+                if (field && field.constructor == Array) {
+                    field.forEach(function(item) {
+                        emit(1, {t: item||0, c: 1});
+                    });
+                } else if (typeof field != 'undefined') {
+                    emit(1, {t: field||0, c: 1});
+                }
+            }
+        """ % dict(field=field)
+
+        reduce_func = Code("""
+            function(key, values) {
+                var out = {t: 0, c: 0};
+                for (var i in values) {
+                    var value = values[i];
+                    out.t += value.t;
+                    out.c += value.c;
+                }
+                return out;
+            }
+        """)
+
+        finalize_func = Code("""
+            function(key, value) {
+                return value.t / value.c;
+            }
+        """)
+
+        future = get_future(self)
+        mr_future = self.inline_map_reduce(map_func, reduce_func,
+                                           finalize=finalize_func)
+
+        def average_cb(mr_future):
+            results = mr_future.result()
+            for result in results:
+                average = result.value
+                break
+            else:
+                average = 0
+
+            future.set_result(average)
+
+        mr_future.add_done_callback(average_cb)
         return future
 
     @property

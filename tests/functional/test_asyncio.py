@@ -450,6 +450,27 @@ function(key, values){
         reflist = yield from m.reflist
         self.assertFalse(reflist)
 
+    @async_test
+    def test_query_skip(self):
+        """ Ensure that the skip method works properly. """
+        m0 = self.maindoc(docname='dz')
+        m1 = self.maindoc(docname='dx')
+        yield from m0.save()
+        yield from m1.save()
+
+        d = self.maindoc.objects.order_by('-docname').skip(1)
+        d = yield from d[0]
+        self.assertEqual(d, m1)
+
+    @async_test
+    def test_delete_query_skip_without_documents(self):
+        """Ensures that deleting a empty queryset works."""
+
+        to_delete = self.maindoc.objects.skip(10)
+        yield from to_delete.delete()
+        count = yield from self.maindoc.objects.skip(10).count()
+        self.assertEqual(count, 0)
+
     @asyncio.coroutine
     def _create_data(self):
         # here we created the following data:

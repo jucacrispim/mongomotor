@@ -456,7 +456,7 @@ function(key, values){
         yield m0.save()
         yield m1.save()
 
-        d = yield self.maindoc.objects.order_by('-docname').skip(1)
+        d = self.maindoc.objects.order_by('-docname').skip(1)
         d = yield d[0]
         self.assertEqual(d, m1)
 
@@ -464,9 +464,10 @@ function(key, values){
     def test_delete_query_skip_without_documents(self):
         """Ensures that deleting a empty queryset works."""
 
-        # no exceptions, ok!
-        to_delete = yield self.maindoc.objects.skip(10)
+        to_delete = self.maindoc.objects.skip(10)
         yield to_delete.delete()
+        count = yield self.maindoc.objects.skip(10).count()
+        self.assertEqual(count, 0)
 
     @gen_test
     def test_update_document(self):

@@ -377,6 +377,90 @@ class QuerySet(BaseQuerySet, metaclass=AsyncGenericMetaclass):
         fn_future.add_done_callback(fetch_next_cb)
         return future
 
+    def sum(self, field):
+        """Sum over the values of the specified field.
+
+        :param field: the field to sum over; use dot-notation to refer to
+            embedded document fields
+        """
+        map_func = """
+            function() {
+                var path = '{{~%(field)s}}'.split('.'),
+                field = this;
+
+                for (p in path) {
+                    if (typeof field != 'undefined')
+                       field = field[path[p]];
+                    else
+                       break;
+                }
+
+                if (field && field.constructor == Array) {
+                    field.forEach(function(item) {
+                        emit(1, item||0);
+                    });
+                } else if (typeof field != 'undefined') {
+                    emit(1, field||0);
+                }
+            }
+        """ % dict(field=field)
+
+        reduce_func = Code("""
+            function(key, values) {
+                var sum = 0;
+                for (var i in values) {
+                    sum += values[i];
+                }
+                return sum;
+            }
+        """)
+
+        mr_future = self.inline_map_reduce(map_func, reduce_func)
+        future = get_future(self)
+
+        def sum_cb(mr_future):
+            results = mr_future.result()
+
+            for result in results:
+                r = result.value
+                break
+            else:
+                r = 0
+
+            future.set_result(r)
+
+        mr_future.add_done_callback(sum_cb)
+        return future
+
+    def aggregate_sum(self, field):
+        """Sum over the values of the specified field.
+
+        :param field: the field to sum over; use dot-notation to refer to
+            embedded document fields
+
+        This method is more performant than the regular `sum`, because it uses
+        the aggregation framework instead of map-reduce.
+        """
+        cursor = self._document._get_collection().aggregate([
+            {'$match': self._query},
+            {'$group': {'_id': 'sum', 'total': {'$sum': '$' + field}}}
+        ])
+
+        fn_future = cursor.fetch_next
+        future = get_future(self)
+
+        def sum_cb(fn_future):
+            if fn_future.result():
+                doc = cursor.next_object()
+                r = doc['total']
+            else:
+                r = 0
+
+            future.set_result(r)
+
+        fn_future.add_done_callback(sum_cb)
+        return future
+
     @property
     def fetch_next(self):
         return self._cursor.fetch_next

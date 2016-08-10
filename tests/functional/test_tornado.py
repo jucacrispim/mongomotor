@@ -342,23 +342,6 @@ function(key, values){
         summed = yield self.maindoc.objects.aggregate_sum('docint')
         self.assertEqual(summed, 3)
 
-    @gen.coroutine
-    def _create_data(self):
-        # here we create the following data:
-        # 3 instances of MainDocument, naming d0, d1 and d2.
-        # 2 of these instances have references, one has not.
-        r = self.refdoc()
-        yield r.save()
-        to_list_field = ['string0', 'string1', 'string2']
-        for i in range(3):
-            d = self.maindoc(docname='d%s' % i)
-            d.docint = i
-            d.list_field = to_list_field[:i + 1]
-            if i < 2:
-                d.ref = r
-
-            yield d.save()
-
     @gen_test
     def test_distinct(self):
         """ Ensure distinct method works properly
@@ -622,3 +605,20 @@ function(key, values){
         yield d.save()
         r = yield self.maindoc.objects.exec_js('db.getCollectionNames()')
         self.assertTrue(r)
+
+    @gen.coroutine
+    def _create_data(self):
+        # here we create the following data:
+        # 3 instances of MainDocument, naming d0, d1 and d2.
+        # 2 of these instances have references, one has not.
+        r = self.refdoc()
+        yield r.save()
+        to_list_field = ['string0', 'string1', 'string2']
+        for i in range(3):
+            d = self.maindoc(docname='d%s' % i)
+            d.docint = i
+            d.list_field = to_list_field[:i + 1]
+            if i < 2:
+                d.ref = r
+
+            yield d.save()

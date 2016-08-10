@@ -361,3 +361,19 @@ function(key, values){
         asyncio.gather(*futures)
         soma = yield from self.test_doc.objects.aggregate_sum('docint')
         self.assertEqual(soma, 10)
+
+    @async_test
+    def test_distinct(self):
+        d = self.test_doc(a='a')
+        yield from d.save()
+
+        d = self.test_doc(a='a')
+        yield from d.save()
+
+        d = self.test_doc(a='b')
+        yield from d.save()
+
+        expected = ['a', 'b']
+        returned = yield from self.test_doc.objects.distinct('a')
+
+        self.assertEqual(returned, expected)

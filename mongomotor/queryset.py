@@ -31,6 +31,7 @@ from mongomotor.metaprogramming import (get_future, AsyncGenericMetaclass,
 class QuerySet(BaseQuerySet, metaclass=AsyncGenericMetaclass):
 
     delete = Async()
+    distinct = Async()
     map_reduce = Async()
 
     def __repr__(self):

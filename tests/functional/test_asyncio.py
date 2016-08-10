@@ -344,6 +344,20 @@ function(key, values){
         summed = yield from self.maindoc.objects.aggregate_sum('docint')
         self.assertEqual(summed, 3)
 
+    @async_test
+    def test_distinct(self):
+        """ Ensure distinct method works properly
+        """
+        d1 = self.maindoc(docname='d1')
+        yield from d1.save()
+        d2 = self.maindoc(docname='d2')
+        yield from d2.save()
+
+        expected = ['d1', 'd2']
+
+        returned = yield from self.maindoc.objects.distinct('docname')
+        self.assertEqual(expected, returned)
+
     @asyncio.coroutine
     def _create_data(self):
         # here we create the following data:

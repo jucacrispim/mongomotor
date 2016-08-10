@@ -33,12 +33,22 @@ class MongoMotorAgnosticCursor(AgnosticCursor):
 
     __motor_class_name__ = 'MongoMotorCursor'
 
+    distinct = OriginalDelegate()
+
+    def __init__(self, *args, **kwargs):
+        super(AgnosticCursor, self).__init__(*args, **kwargs)
+
+        # here we get the mangled stuff in the delegate class and
+        # set here
+        attrs = [a for a in dir(self.delegate) if a.startswith('_Cursor__')]
+        for attr in attrs:
+            setattr(self, attr, getattr(self.delegate, attr))
+
     # these are used internally. If you try to
     # iterate using for in a main greenlet you will
     # see an exception.
     # To iterate use a queryset and iterate using motor style
     # with fetch_next/next_object
-
     def __iter__(self):
         return self
 

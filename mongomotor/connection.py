@@ -20,6 +20,7 @@
 
 from mongoengine.connection import (connect as me_connect,
                                     DEFAULT_CONNECTION_NAME,
+                                    disconnect as me_disconnect,
                                     register_connection)
 
 from mongomotor import utils
@@ -56,7 +57,8 @@ def connect(db=None, async_framework='asyncio',
 
     clients = CLIENTS[async_framework]
     with MonkeyPatcher() as patcher:
-        patcher.patch_connection(*clients)
+        patcher.patch_db_clients(*clients)
+        patcher.patch_sync_connections()
         ret = me_connect(db=db, alias=alias, **kwargs)
 
     # here we register a connection that will use the original pymongo
@@ -65,3 +67,11 @@ def connect(db=None, async_framework='asyncio',
     register_connection(sync_alias, db, **kwargs)
 
     return ret
+
+
+def disconnect(alias=DEFAULT_CONNECTION_NAME):
+    me_disconnect(alias=alias)
+
+    # disconneting sync connection
+    sync_alias = utils.get_sync_alias(alias)
+    me_disconnect(alias=sync_alias)

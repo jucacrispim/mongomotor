@@ -17,11 +17,21 @@
 # You should have received a copy of the GNU General Public License
 # along with mongomotor. If not, see <http://www.gnu.org/licenses/>.
 
+from copy import copy
+from mongoengine import connection
+from mongoengine import connection
+from pymongo.mongo_client import MongoClient
+from pymongo.mongo_replica_set_client import MongoReplicaSetClient
+
 
 class MonkeyPatcher:
 
     def __init__(self):
         self.patched = {}
+        # if the original patched object is a dict, indicates if
+        # we should merge the original dict with the dict existing
+        # when leaving the context manager.
+        self._update_original_dict = False
 
     def __enter__(self):
         return self
@@ -29,6 +39,10 @@ class MonkeyPatcher:
     def __exit__(self, exc_type, exc_val, exc_tb):
         for module, patches in self.patched.items():
             for attr, origobj in patches.items():
+                if self._update_original_dict:
+                    current_obj = getattr(module, attr)
+                    if hasattr(current_obj, 'update'):
+                        origobj.update(current_obj)
                 setattr(module, attr, origobj)
 
     def patch_item(self, module, attr, newitem):
@@ -38,13 +52,47 @@ class MonkeyPatcher:
             self.patched.setdefault(module, {}).setdefault(attr, olditem)
         setattr(module, attr, newitem)
 
-    def patch_connection(self, client, replicaset_client):
+    def patch_db_clients(self, client, replicaset_client):
         """Patches the db clients used to connect to mongodb.
 
         :param client: Which client should be used.
         :param replicaset_client: Which client should be used
           for replicasets."""
-        from mongoengine import connection
 
         self.patch_item(connection, 'MongoClient', client)
         self.patch_item(connection, 'MongoReplicaSetClient', replicaset_client)
+
+    def patch_async_connections(self):
+        """Patches mongoengine.connection._connections removing all
+        asynchronous connections from there.
+
+        It is used when switching to a synchronous connection to avoid
+        mongoengine returning a asynchronous connection with the same
+        configuration."""
+
+        connections = copy(connection._connections)
+        for alias, conn in connection._connections.items():
+            conn = connections[alias]
+            if not isinstance(conn, MongoClient) and not isinstance(
+                    conn, MongoReplicaSetClient):
+                del connections[alias]
+
+        # we merge the connections no in next time we use the
+        # sync one we don't need to connect again.
+        self._update_original_dict = True
+        self.patch_item(connection, '_connections', connections)
+
+    def patch_sync_connections(self):
+        """Patches mongoengine.connection._connections removing all
+        synchronous connections from there.
+        """
+
+        connections = copy(connection._connections)
+        for alias, conn in connection._connections.items():
+            conn = connections[alias]
+            if isinstance(conn, MongoClient) or isinstance(
+                    conn, MongoReplicaSetClient):
+                del connections[alias]
+
+        self._update_original_dict = True
+        self.patch_item(connection, '_connections', connections)

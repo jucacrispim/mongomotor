@@ -317,6 +317,15 @@ function(key, values){
         avg = yield from self.maindoc.objects.average('docint')
         self.assertEqual(avg, 1)
 
+    @async_test
+    def test_query_aggregate_average(self):
+        """Ensure we can get the average of a field using aggregate_average()
+        """
+        yield from self._create_data()
+
+        avg = yield from self.maindoc.objects.aggregate_average('docint')
+        self.assertEqual(avg, 1)
+
     @asyncio.coroutine
     def _create_data(self):
         # here we create the following data:

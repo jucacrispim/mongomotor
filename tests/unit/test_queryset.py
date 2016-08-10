@@ -340,3 +340,10 @@ function(key, values){
         asyncio.gather(*futures)
         average = yield from self.test_doc.objects.average('docint')
         self.assertEqual(average, 2)
+
+    @async_test
+    def test_aggregate_average(self):
+        futures = [self.test_doc(docint=i).save() for i in range(5)]
+        asyncio.gather(*futures)
+        average = yield from self.test_doc.objects.aggregate_average('docint')
+        self.assertEqual(average, 2)

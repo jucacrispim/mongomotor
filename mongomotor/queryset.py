@@ -347,6 +347,36 @@ class QuerySet(BaseQuerySet, metaclass=AsyncGenericMetaclass):
         mr_future.add_done_callback(average_cb)
         return future
 
+    def aggregate_average(self, field):
+        """Average over the values of the specified field.
+
+        :param field: the field to average over; use dot-notation to refer to
+            embedded document fields
+
+        This method is more performant than the regular `average`, because it
+        uses the aggregation framework instead of map-reduce.
+        """
+        cursor = self._document._get_collection().aggregate([
+            {'$match': self._query},
+            {'$group': {'_id': 'avg', 'total': {'$avg': '$' + field}}}
+        ])
+
+        fn_future = cursor.fetch_next
+        future = get_future(self)
+
+        def fetch_next_cb(fn_future):
+            result = fn_future.result()
+            if result:
+                doc = cursor.next_object()
+                avg = doc['total']
+            else:
+                avg = 0
+
+            future.set_result(avg)
+
+        fn_future.add_done_callback(fetch_next_cb)
+        return future
+
     @property
     def fetch_next(self):
         return self._cursor.fetch_next

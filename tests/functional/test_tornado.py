@@ -412,8 +412,8 @@ function(key, values){
             self.assertEqual(len(reflist), 1)
 
         mlist = self.maindoc.objects.all()
-        for m in mlist:
-            m = yield m
+        while (yield mlist.fetch_next):
+            m = mlist.next_object()
             reflist = yield getattr(m, 'reflist')
             self.assertEqual(len(reflist), 1)
 

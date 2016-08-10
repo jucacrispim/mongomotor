@@ -21,8 +21,10 @@ import sys
 from unittest import TestCase
 from unittest.mock import Mock
 from motor.frameworks import asyncio as asyncio_framework
-from mongomotor import Document, connect, disconnect
-from mongomotor.fields import ReferenceField
+from mongomotor import Document, connect, disconnect, EmbeddedDocument
+from mongomotor.fields import (ReferenceField, ListField,
+                               EmbeddedDocumentField, StringField)
+from tests import async_test
 
 
 class TestReferenceField(TestCase):
@@ -68,3 +70,66 @@ class TestReferenceField(TestCase):
             ref = ReferenceField(RefClass)
 
         self.assertIsInstance(SomeClass.ref, ReferenceField)
+
+
+class TestComplexField(TestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        db = 'mongomotor-test-unit-{}{}'.format(sys.version_info.major,
+                                                sys.version_info.minor)
+        connect(db)
+
+    @classmethod
+    def tearDownClass(cls):
+        db = 'mongomotor-test-unit-{}{}'.format(sys.version_info.major,
+                                                sys.version_info.minor)
+        disconnect(db)
+
+    def setUp(self):
+
+        class Embed(EmbeddedDocument):
+            field = StringField()
+
+        class ReferenceClass(Document):
+            embed_list = ListField(EmbeddedDocumentField(Embed))
+
+        class TestClass(Document):
+            list_field = ListField()
+            list_reference = ListField(ReferenceField(ReferenceClass))
+
+        self.embed = Embed
+        self.reference_class = ReferenceClass
+        self.test_class = TestClass
+
+    def test_get_list_field_with_class(self):
+        field = self.test_class.list_reference
+        self.assertTrue(isinstance(field, ListField))
+
+    @async_test
+    def test_get_list_field_with_string(self):
+        test_doc = self.test_class(list_field=['a', 'b'])
+        yield from test_doc.save()
+
+        test_doc = yield from self.test_class.objects.get(id=test_doc.id)
+        self.assertEqual(test_doc.list_field, ['a', 'b'])
+
+    @async_test
+    def test_get_list_field_with_embedded(self):
+        embed = self.embed(field='bla')
+        test_doc = self.reference_class(embed_list=[embed])
+        yield from test_doc.save()
+
+        test_doc = yield from self.reference_class.objects.get(id=test_doc.id)
+        self.assertEqual(test_doc.embed_list, [embed])
+
+    @async_test
+    def test_get_list_field_with_reference(self):
+        ref = self.reference_class()
+        yield from ref.save()
+        test_doc = self.test_class(list_reference=[ref])
+        yield from test_doc.save()
+
+        test_doc = yield from self.test_class.objects.get(id=test_doc.id)
+        refs = yield from test_doc.list_reference
+        self.assertTrue(isinstance(refs[0], self.reference_class))

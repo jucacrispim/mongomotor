@@ -28,7 +28,7 @@ from mongoengine import (Document as DocumentBase,
                          DynamicDocument as DynamicDocumentBase)
 from mongoengine.document import _import_class, includes_cls
 from mongomotor.base.metaclasses import MapReduceDocumentMetaclass
-from mongomotor.fields import ReferenceField
+from mongomotor.fields import ReferenceField, ComplexBaseField
 from mongomotor.metaprogramming import AsyncDocumentMetaclass, Async, Sync
 from mongomotor.queryset import QuerySet
 
@@ -65,10 +65,14 @@ class Document(DocumentBase, metaclass=AsyncDocumentMetaclass):
     def __init__(self, *args, **kwargs):
         # we put reference fields in __only_fields because if not
         # we end with futures as default values for references
+
         only_fields = kwargs.get('__only_fields', [])
         for name, field in self._fields.items():
-            if isinstance(field, ReferenceField):
+            if isinstance(field, ReferenceField) or (
+                    isinstance(field, ComplexBaseField) and
+                    isinstance(field.field, ReferenceField)):
                 only_fields.append(name)
+
         kwargs['__only_fields'] = only_fields
         super().__init__(*args, **kwargs)
 

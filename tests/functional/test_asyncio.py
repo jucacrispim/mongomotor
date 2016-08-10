@@ -390,9 +390,69 @@ function(key, values){
 
         self.assertEqual(d2, returned)
 
+    @async_test
+    def test_document_dereference_with_list(self):
+        r = self.refdoc()
+        yield from r.save()
+
+        m = self.maindoc(reflist=[r])
+        yield from m.save()
+
+        m = yield from self.maindoc.objects.all()[0]
+
+        reflist = yield from m.reflist
+        self.assertEqual(len(reflist), 1)
+
+        m = yield from self.maindoc.objects.get(id=m.id)
+
+        reflist = yield from getattr(m, 'reflist')
+        self.assertEqual(len(reflist), 1)
+
+        mlist = yield from self.maindoc.objects.all().to_list()
+        for m in mlist:
+            reflist = yield from getattr(m, 'reflist')
+            self.assertEqual(len(reflist), 1)
+
+        mlist = self.maindoc.objects.all()
+        while (yield from mlist.fetch_next):
+            m = mlist.next_object()
+            reflist = yield from getattr(m, 'reflist')
+            self.assertEqual(len(reflist), 1)
+
+    @async_test
+    def test_complex_base_field_get(self):
+        r = self.refdoc()
+        yield from r.save()
+
+        m = self.maindoc(reflist=[r])
+        yield from m.save()
+
+        # when it is a reference it is a future
+        self.assertEqual(len((yield from m.reflist)), 1)
+
+        m = yield from self.maindoc.objects.get(id=m.id)
+        self.assertEqual(len((yield from m.reflist)), 1)
+
+        # no ref, no future
+        m = self.maindoc(list_field=['a', 'b'])
+        yield from m.save()
+
+        m = yield from self.maindoc.objects.get(id=m.id)
+
+        self.assertEqual(m.list_field, ['a', 'b'])
+
+    @async_test
+    def test_complex_base_field_get_with_empty_object(self):
+        m = self.maindoc(reflist=[])
+        yield from m.save()
+        m = yield from self.maindoc.objects.get(id=m.id)
+        self.assertIsInstance(m.reflist, asyncio.futures.Future)
+        reflist = yield from m.reflist
+        self.assertFalse(reflist)
+
     @asyncio.coroutine
     def _create_data(self):
-        # here we create the following data:
+        # here we created the following data:
         # 3 instances of MainDocument, naming d0, d1 and d2.
         # 2 of these instances have references, one has not.
         r = self.refdoc()

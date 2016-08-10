@@ -393,3 +393,12 @@ function(key, values){
     def test_first_with_empty_queryset(self):
         f = yield from self.test_doc.objects.first()
         self.assertIsNone(f)
+
+    @async_test
+    def test_update_queryset(self):
+        d = self.test_doc(a='a')
+        yield from d.save()
+        yield from self.test_doc.objects.filter(id=d.id).update(a='b')
+
+        d = yield from self.test_doc.objects.get(id=d.id)
+        self.assertEqual(d.a, 'b')

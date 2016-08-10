@@ -471,6 +471,35 @@ function(key, values){
         count = yield from self.maindoc.objects.skip(10).count()
         self.assertEqual(count, 0)
 
+    @async_test
+    def test_update_document(self):
+        """Ensures that updating a document works properly."""
+
+        doc = self.maindoc(docname='d0')
+        yield from doc.save()
+
+        yield from doc.update(set__docname='d1')
+
+        doc = yield from self.maindoc.objects.get(docname='d1')
+
+        self.assertTrue(doc.id)
+
+    @async_test
+    def test_bulk_insert(self):
+        docs = [self.maindoc(docname='d{}'.format(i)) for i in range(3)]
+        ret = yield from self.maindoc.objects.insert(docs)
+        self.assertEqual(len(ret), 3)
+
+    @async_test
+    def test_insert_document_with_operation_error(self):
+        """Ensures that inserting a doc already saved raises."""
+
+        doc = self.maindoc(docname='d0')
+        yield from doc.save()
+
+        with self.assertRaises(OperationError):
+            doc = yield from self.maindoc.objects.insert([doc])
+
     @asyncio.coroutine
     def _create_data(self):
         # here we created the following data:

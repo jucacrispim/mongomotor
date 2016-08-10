@@ -66,3 +66,11 @@ class DocumentTest(TestCase):
         yield from doc.delete()
 
         self.assertTrue(mongoengine.signals.post_delete.called)
+
+    @async_test
+    def test_update(self):
+        d = self.test_doc(i=1)
+        yield from d.save()
+        yield from d.update(i=2)
+        d = yield from self.test_doc.objects.get(id=d.id)
+        self.assertEqual(d.i, 2)

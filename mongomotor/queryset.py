@@ -32,7 +32,9 @@ class QuerySet(BaseQuerySet, metaclass=AsyncGenericMetaclass):
 
     delete = Async()
     distinct = Async()
+    insert = Async()
     map_reduce = Async()
+    update = Async()
 
     def __repr__(self):
         return self.__class__.__name__

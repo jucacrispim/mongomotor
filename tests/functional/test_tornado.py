@@ -483,6 +483,12 @@ function(key, values){
         self.assertTrue(doc.id)
 
     @gen_test
+    def test_bulk_insert(self):
+        docs = [self.maindoc(docname='d{}'.format(i)) for i in range(3)]
+        ret = yield self.maindoc.objects.insert(docs)
+        self.assertEqual(len(ret), 3)
+
+    @gen_test
     def test_insert_document_with_operation_error(self):
         """Ensures that inserting a doc already saved raises."""
 

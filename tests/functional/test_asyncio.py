@@ -376,6 +376,20 @@ function(key, values){
         returned = yield from self.maindoc.objects.order_by('docname').first()
         self.assertFalse(returned)
 
+    @async_test
+    def test_first_with_slice(self):
+        d1 = self.maindoc(docname='d1')
+        yield from d1.save()
+        d2 = self.maindoc(docname='d2')
+        yield from d2.save()
+
+        queryset = self.maindoc.objects.order_by('docname')[1:2]
+        returned = yield from queryset.first()
+        queryset = self.maindoc.objects.order_by('docname').skip(1)
+        returned = yield from queryset.first()
+
+        self.assertEqual(d2, returned)
+
     @asyncio.coroutine
     def _create_data(self):
         # here we create the following data:

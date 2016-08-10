@@ -381,9 +381,9 @@ function(key, values){
         d2 = self.maindoc(docname='d2')
         yield d2.save()
 
-        queryset = yield self.maindoc.objects.order_by('docname')[1:2]
+        queryset = self.maindoc.objects.order_by('docname')[1:2]
         returned = yield queryset.first()
-        queryset = yield self.maindoc.objects.order_by('docname').skip(1)
+        queryset = self.maindoc.objects.order_by('docname').skip(1)
         returned = yield queryset.first()
 
         self.assertEqual(d2, returned)

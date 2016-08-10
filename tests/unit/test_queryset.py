@@ -402,3 +402,9 @@ function(key, values){
 
         d = yield from self.test_doc.objects.get(id=d.id)
         self.assertEqual(d.a, 'b')
+
+    @async_test
+    def test_insert_documents(self):
+        docs = [self.test_doc(a=str(i)) for i in range(3)]
+        ret = yield from self.test_doc.objects.insert(docs)
+        self.assertEqual(len(ret), 3)

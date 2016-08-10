@@ -500,6 +500,26 @@ function(key, values){
         with self.assertRaises(OperationError):
             doc = yield from self.maindoc.objects.insert([doc])
 
+    @async_test
+    def test_aggregate(self):
+        d = self.maindoc(list_field=['a', 'b'])
+        yield from d.save()
+        d = self.maindoc(list_field=['a', 'c'])
+        yield from d.save()
+
+        group = {'$group': {'_id': '$list_field',
+                            'total': {'$sum': 1}}}
+        unwind = {'$unwind': '$list_field'}
+
+        cursor = self.maindoc.objects.aggregate(unwind, group)
+
+        while (yield from cursor.fetch_next):
+            d = cursor.next_object()
+            if d['_id'] == 'a':
+                self.assertEqual(d['total'], 2)
+            else:
+                self.assertEqual(d['total'], 1)
+
     @asyncio.coroutine
     def _create_data(self):
         # here we created the following data:

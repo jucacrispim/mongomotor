@@ -509,13 +509,14 @@ function(key, values){
                             'total': {'$sum': 1}}}
         unwind = {'$unwind': '$list_field'}
 
-        result = yield self.maindoc.objects.aggregate(unwind, group)
+        cursor = self.maindoc.objects.aggregate(unwind, group)
 
-        for r in (yield result.to_list(3)):
-            if r['_id'] == 'a':
-                self.assertEqual(r['total'], 2)
+        while (yield cursor.fetch_next):
+            d = cursor.next_object()
+            if d['_id'] == 'a':
+                self.assertEqual(d['total'], 2)
             else:
-                self.assertEqual(r['total'], 1)
+                self.assertEqual(d['total'], 1)
 
     @gen_test
     def test_modify_upsert(self):

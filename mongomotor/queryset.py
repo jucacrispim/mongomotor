@@ -81,6 +81,26 @@ class QuerySet(BaseQuerySet, metaclass=AsyncGenericMetaclass):
         list_future.add_done_callback(_get_cb)
         return future
 
+    def first(self):
+        """Retrieve the first object matching the query.
+        """
+        queryset = self.clone()
+        first_future = queryset[0]
+        future = get_future(self)
+
+        def first_cb(first_future):
+            try:
+                result = first_future.result()
+                future.set_result(result)
+            except IndexError:
+                result = None
+                future.set_result(result)
+            except Exception as e:
+                future.set_exception(e)
+
+        first_future.add_done_callback(first_cb)
+        return future
+
     def count(self, with_limit_and_skip=True):
         """Counts the documents in the queryset.
 

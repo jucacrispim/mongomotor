@@ -377,3 +377,19 @@ function(key, values){
         returned = yield from self.test_doc.objects.distinct('a')
 
         self.assertEqual(returned, expected)
+
+    @async_test
+    def test_first(self):
+        d = self.test_doc(a='a')
+        yield from d.save()
+
+        d = self.test_doc(a='z')
+        yield from d.save()
+
+        f = yield from self.test_doc.objects.order_by('-a').first()
+        self.assertEqual(f.a, 'z')
+
+    @async_test
+    def test_first_with_empty_queryset(self):
+        f = yield from self.test_doc.objects.first()
+        self.assertIsNone(f)

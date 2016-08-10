@@ -358,6 +358,24 @@ function(key, values){
         returned = yield from self.maindoc.objects.distinct('docname')
         self.assertEqual(expected, returned)
 
+    @async_test
+    def test_first(self):
+        """ Ensure that first() method works properly
+        """
+
+        d1 = self.maindoc(docname='d1')
+        yield from d1.save()
+        d2 = self.maindoc(docname='d2')
+        yield from d2.save()
+
+        returned = yield from self.maindoc.objects.order_by('docname').first()
+        self.assertEqual(d1, returned)
+
+    @async_test
+    def test_first_with_empty_queryset(self):
+        returned = yield from self.maindoc.objects.order_by('docname').first()
+        self.assertFalse(returned)
+
     @asyncio.coroutine
     def _create_data(self):
         # here we create the following data:

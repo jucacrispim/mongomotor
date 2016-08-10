@@ -35,7 +35,9 @@ class TestReferenceField(TestCase):
 
     @classmethod
     def tearDownClass(cls):
-        disconnect()
+        db = 'mongomotor-test-unit-{}{}'.format(sys.version_info.major,
+                                                sys.version_info.minor)
+        disconnect(db)
 
     def test_get(self):
         class RefClass(Document):

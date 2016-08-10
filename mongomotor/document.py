@@ -29,7 +29,7 @@ from mongoengine import (Document as DocumentBase,
 from mongoengine.document import _import_class, includes_cls
 from mongomotor.base.metaclasses import MapReduceDocumentMetaclass
 from mongomotor.fields import ReferenceField
-from mongomotor.metaprogramming import AsyncDocumentMetaclass, Async
+from mongomotor.metaprogramming import AsyncDocumentMetaclass, Async, Sync
 from mongomotor.queryset import QuerySet
 
 
@@ -59,6 +59,8 @@ class Document(DocumentBase, metaclass=AsyncDocumentMetaclass):
     # Methods that will run asynchronally  and return a future
     save = Async()
     delete = Async()
+    ensure_indexes = Sync(cls_meth=True)
+    ensure_index = Sync(cls_meth=True)
 
     def __init__(self, *args, **kwargs):
         # we put reference fields in __only_fields because if not

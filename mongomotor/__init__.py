@@ -1,12 +1,10 @@
 # -*- coding: utf-8 -*-
 
-# from mongomotor.monkey import patch_all
-# patch_all()
+# flake8: noqa for the sake of the api
 from mongoengine.connection import disconnect
 from mongomotor.connection import connect
-# from mongomotor.document import(
-#     Document, EmbeddedDocument, DynamicDocument, MapReduceDocument)
-
-from mongomotor.document import (Document, EmbeddedDocument, MapReducedDocument,
+from mongoengine.document import MapReduceDocument, EmbeddedDocument
+from mongomotor.document import (Document,
                                  DynamicDocument)
+
 VERSION = '0.8.2'

@@ -17,17 +17,13 @@
 # You should have received a copy of the GNU General Public License
 # along with mongomotor. If not, see <http://www.gnu.org/licenses/>.
 
-import pymongo
+
 from pymongo.read_preferences import ReadPreference
-from bson.dbref import DBRef
 import tornado
 from tornado import gen
-from mongoengine.queryset import OperationError
 from mongoengine import (Document as DocumentBase,
-                         EmbeddedDocument,
-                         DynamicDocument as DynamicDocumentBase)
-from mongoengine.document import _import_class, includes_cls
-from mongomotor.base.metaclasses import MapReduceDocumentMetaclass
+                         DynamicDocument as DynamicDocumentBase,
+                         signals)
 from mongomotor.fields import ReferenceField, ComplexBaseField
 from mongomotor.metaprogramming import AsyncDocumentMetaclass, Async, Sync
 from mongomotor.queryset import QuerySet
@@ -87,32 +83,6 @@ class Document(DocumentBase, metaclass=AsyncDocumentMetaclass):
         cls._collection = None
         db = cls._get_db()
         return db.drop_collection(cls._get_collection_name())
-
-    # @classmethod
-    # @gen.coroutine
-    # def compare_indexes(cls):
-    #     """ Compares the indexes defined in MongoEngine with the ones existing
-    #     in the database. Returns any missing/extra indexes.
-    #     """
-    #     required = cls.list_indexes()
-    #     existing = [
-    #         info['key'] for info in
-    #         list((yield cls._get_collection().index_information()).values())]
-
-    #     missing = [index for index in required if index not in existing]
-    #     extra = [index for index in existing if index not in required]
-
-    #     # if { _cls: 1 } is missing, make sure it's *really* necessary
-    #     if [('_cls', 1)] in missing:
-    #         cls_obsolete = False
-    #         for index in existing:
-    #             if includes_cls(index) and index not in extra:
-    #                 cls_obsolete = True
-    #                 break
-    #         if cls_obsolete:
-    #             missing.remove([('_cls', 1)])
-
-    #     return {'missing': missing, 'extra': extra}
 
     @gen.coroutine
     def reload(self, max_depth=1):

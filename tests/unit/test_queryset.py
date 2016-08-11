@@ -408,3 +408,18 @@ function(key, values){
         docs = [self.test_doc(a=str(i)) for i in range(3)]
         ret = yield from self.test_doc.objects.insert(docs)
         self.assertEqual(len(ret), 3)
+
+    @async_test
+    def test_modify_document(self):
+        d = self.test_doc(a='a')
+        yield from d.save()
+
+        yield from self.test_doc.objects.filter(id=d.id).modify(a='aa')
+        d = yield from self.test_doc.objects.get(id=d.id)
+        self.assertEqual(d.a, 'aa')
+
+    @async_test
+    def test_modify_upsert_document(self):
+        yield from self.test_doc.objects.modify(upsert=True, a='zz')
+        d = yield from self.test_doc.objects.get(a='zz')
+        self.assertTrue(d.id)

@@ -59,6 +59,7 @@ class Document(DocumentBase, metaclass=AsyncDocumentMetaclass):
     # Methods that will run asynchronally  and return a future
     save = Async()
     delete = Async()
+    modify = Async()
     update = Async()
     ensure_indexes = Sync(cls_meth=True)
     ensure_index = Sync(cls_meth=True)

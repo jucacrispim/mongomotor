@@ -74,3 +74,11 @@ class DocumentTest(TestCase):
         yield from d.update(i=2)
         d = yield from self.test_doc.objects.get(id=d.id)
         self.assertEqual(d.i, 2)
+
+    @async_test
+    def test_modify(self):
+        d = self.test_doc(i=1)
+        yield from d.save()
+        yield from d.modify(i=2)
+        d = yield from self.test_doc.objects.get(id=d.id)
+        self.assertEqual(d.i, 2)

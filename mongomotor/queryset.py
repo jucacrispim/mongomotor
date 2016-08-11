@@ -34,6 +34,7 @@ class QuerySet(BaseQuerySet, metaclass=AsyncGenericMetaclass):
     distinct = Async()
     insert = Async()
     map_reduce = Async()
+    modify = Async()
     update = Async()
 
     def __repr__(self):

@@ -67,14 +67,17 @@ class MongoMotorAgnosticCursor(AgnosticCursor):
 class MongoMotorAgnosticCollection(AgnosticCollection):
 
     __motor_class_name__ = 'MongoMotorCollection'
-    # Making this guys sync because I will asynchronize
-    # at mongoengine level.
+
+    # Using the original delegate method (but with motor pool and event)
+    # so I don't get a future as the return value and don't need to work
+    # with mongoengine code.
     insert = OriginalDelegate()
     save = OriginalDelegate()
     update = OriginalDelegate()
     find_one = OriginalDelegate()
     find_and_modify = OriginalDelegate()
     remove = OriginalDelegate()
+    index_information = OriginalDelegate()
 
     def __init__(self, database, name):
 
@@ -98,7 +101,7 @@ class MongoMotorAgnosticCollection(AgnosticCollection):
             except AttributeError:
                 raise AttributeError(
                     "%s has no attribute %r. To access the %s"
-                    " collection, use database['%s']." % (
+                    " collection, use collection['%s']." % (
                         self.__class__.__name__, name, name,
                         name))
             return ret
@@ -148,6 +151,21 @@ class MongoMotorAgnosticDatabase(AgnosticDatabase):
         self.connection = connection
         delegate = Database(connection.delegate, name)
         super(AgnosticDatabase, self).__init__(delegate)
+
+    def __getattr__(self, name):
+        if name.startswith('_'):
+            # samething. try get from delegate first
+            try:
+                ret = getattr(self.delegate, name)
+            except AttributeError:
+                raise AttributeError(
+                    "%s has no attribute %r. To access the %s"
+                    " collection, use database['%s']." % (
+                        self.__class__.__name__, name, name,
+                        name))
+            return ret
+
+        return self[name]
 
     def __getitem__(self, name):
         collection_class = create_class_with_framework(

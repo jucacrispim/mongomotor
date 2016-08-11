@@ -520,6 +520,31 @@ function(key, values){
             else:
                 self.assertEqual(d['total'], 1)
 
+    @async_test
+    def test_modify_upsert(self):
+        """Ensures that queryset modify works upserting."""
+
+        r = yield from self.maindoc.objects.modify(upsert=True, new=True,
+                                                   docname='doc')
+        self.assertTrue(r.id)
+
+    @async_test
+    def test_modify(self):
+        """Ensures that queryset modify works."""
+        d = self.maindoc(docname='dn')
+        yield from d.save()
+        r = yield from self.maindoc.objects.modify(new=True,  id=d.id,
+                                                   docname='dnn')
+        self.assertEqual(r.docname, 'dnn')
+
+    @async_test
+    def test_modify_unknown_object(self):
+        r = yield from self.maindoc.objects.modify(id=ObjectId(), docname='dn')
+        total = yield from self.maindoc.objects.all().count()
+
+        self.assertEqual(total, 0)
+        self.assertFalse(None)
+
     @asyncio.coroutine
     def _create_data(self):
         # here we created the following data:

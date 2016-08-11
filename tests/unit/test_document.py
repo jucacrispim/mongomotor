@@ -45,11 +45,26 @@ class DocumentTest(TestCase):
         class TestDoc(Document):
             i = IntField()
 
+        class IndexedTest(Document):
+            meta = {'auto_create_index': False,
+                    'indexes': [{'fields': ['some_index']}]}
+
+            some_index = IntField(index=True)
+
+        class AutoIndexedTest(Document):
+            meta = {'indexes': [{'fields': ['some_index']}]}
+
+            some_index = IntField(index=True)
+
         self.test_doc = TestDoc
+        self.indexed_test = IndexedTest
+        self.auto_indexed_test = AutoIndexedTest
 
     @async_test
     def tearDown(self):
         yield from self.test_doc.drop_collection()
+        yield from self.indexed_test.drop_collection()
+        yield from self.auto_indexed_test.drop_collection()
 
     @async_test
     def test_save(self):
@@ -82,3 +97,20 @@ class DocumentTest(TestCase):
         yield from d.modify(i=2)
         d = yield from self.test_doc.objects.get(id=d.id)
         self.assertEqual(d.i, 2)
+
+    @async_test
+    def test_compare_indexes(self):
+
+        inst = self.indexed_test(some_index=1)
+        yield from inst.save()
+        missing = (yield from self.indexed_test.compare_indexes())['missing']
+        self.assertEqual(missing[0][0][0], 'some_index')
+
+    @async_test
+    def test_ensure_indexes(self):
+
+        inst = self.auto_indexed_test(some_index=1)
+        yield from inst.save()
+        missing = (yield from self.auto_indexed_test.compare_indexes())[
+            'missing']
+        self.assertFalse(missing)

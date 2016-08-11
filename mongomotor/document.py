@@ -61,6 +61,7 @@ class Document(DocumentBase, metaclass=AsyncDocumentMetaclass):
     delete = Async()
     modify = Async()
     update = Async()
+    compare_indexes = Async(cls_meth=True)
     ensure_indexes = Sync(cls_meth=True)
     ensure_index = Sync(cls_meth=True)
 
@@ -78,34 +79,6 @@ class Document(DocumentBase, metaclass=AsyncDocumentMetaclass):
         kwargs['__only_fields'] = only_fields
         super().__init__(*args, **kwargs)
 
-    @gen.coroutine
-    def cascade_save(self, *args, **kwargs):
-        """Recursively saves any references /
-           generic references on an objects"""
-        _refs = kwargs.get('_refs', []) or []
-
-        ReferenceField = _import_class('ReferenceField')
-        GenericReferenceField = _import_class('GenericReferenceField')
-
-        for name, cls in list(self._fields.items()):
-            if not isinstance(cls, (ReferenceField,
-                                    GenericReferenceField)):
-                continue
-
-            ref = self._data.get(name)
-            if not ref or isinstance(ref, DBRef):
-                continue  # pragma: no cover
-
-            if not getattr(ref, '_changed_fields', True):
-                continue  # pragma: no cover
-
-            ref_id = "%s,%s" % (ref.__class__.__name__, str(ref._data))
-            if ref and ref_id not in _refs:
-                _refs.append(ref_id)
-                kwargs["_refs"] = _refs
-                yield ref.save(**kwargs)
-                ref._changed_fields = []
-
     @classmethod
     def drop_collection(cls):
         """Drops the entire collection associated with this
@@ -115,31 +88,31 @@ class Document(DocumentBase, metaclass=AsyncDocumentMetaclass):
         db = cls._get_db()
         return db.drop_collection(cls._get_collection_name())
 
-    @classmethod
-    @gen.coroutine
-    def compare_indexes(cls):
-        """ Compares the indexes defined in MongoEngine with the ones existing
-        in the database. Returns any missing/extra indexes.
-        """
-        required = cls.list_indexes()
-        existing = [
-            info['key'] for info in
-            list((yield cls._get_collection().index_information()).values())]
+    # @classmethod
+    # @gen.coroutine
+    # def compare_indexes(cls):
+    #     """ Compares the indexes defined in MongoEngine with the ones existing
+    #     in the database. Returns any missing/extra indexes.
+    #     """
+    #     required = cls.list_indexes()
+    #     existing = [
+    #         info['key'] for info in
+    #         list((yield cls._get_collection().index_information()).values())]
 
-        missing = [index for index in required if index not in existing]
-        extra = [index for index in existing if index not in required]
+    #     missing = [index for index in required if index not in existing]
+    #     extra = [index for index in existing if index not in required]
 
-        # if { _cls: 1 } is missing, make sure it's *really* necessary
-        if [('_cls', 1)] in missing:
-            cls_obsolete = False
-            for index in existing:
-                if includes_cls(index) and index not in extra:
-                    cls_obsolete = True
-                    break
-            if cls_obsolete:
-                missing.remove([('_cls', 1)])
+    #     # if { _cls: 1 } is missing, make sure it's *really* necessary
+    #     if [('_cls', 1)] in missing:
+    #         cls_obsolete = False
+    #         for index in existing:
+    #             if includes_cls(index) and index not in extra:
+    #                 cls_obsolete = True
+    #                 break
+    #         if cls_obsolete:
+    #             missing.remove([('_cls', 1)])
 
-        return {'missing': missing, 'extra': extra}
+    #     return {'missing': missing, 'extra': extra}
 
     @gen.coroutine
     def reload(self, max_depth=1):
@@ -205,6 +178,6 @@ class DynamicDocument(Document, DynamicDocumentBase,
         DynamicDocumentBase.__delattr__(self, *args, **kwargs)
 
 
-class MapReduceDocument(DynamicDocument, metaclass=AsyncDocumentMetaclass):
+class MapReducedDocument(DynamicDocument, metaclass=AsyncDocumentMetaclass):
     """This MapReduceDocument is different from the mongoengine's one
     because its intent is to allow you to query over."""

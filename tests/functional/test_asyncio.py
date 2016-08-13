@@ -22,11 +22,9 @@ import asyncio
 import unittest
 from bson.objectid import ObjectId
 import sys
-from tornado import gen
-from tornado.testing import AsyncTestCase, gen_test
 from mongoengine.errors import OperationError
 from mongomotor import connect, disconnect
-from mongomotor import Document, EmbeddedDocument, MapReduceDocument
+from mongomotor import Document, EmbeddedDocument
 from mongomotor.fields import (StringField, IntField, ListField, DictField,
                                EmbeddedDocumentField, ReferenceField)
 
@@ -99,8 +97,8 @@ class MongoMotorTest(unittest.TestCase):
         """Ensure that a new document can be added into the database
         """
         embedref = self.embedref(list_field=['uma', 'lista', 'nota', 10])
-        ref = self.refdoc(refname='refname', embedlist=[embedref])
-        yield from ref.save()
+        ref = yield from self.refdoc.objects.create(
+            refname='refname', embedlist=[embedref])
 
         # asserting if our reference document was created
         self.assertTrue(ref.id)
@@ -134,6 +132,22 @@ class MongoMotorTest(unittest.TestCase):
         doc = self.maindoc()
         yield from doc.save()
         self.assertIsNone((yield from doc.ref))
+
+    @async_test
+    def test_update_queryset(self):
+        docs = [self.maindoc(docint=1) for i in range(3)]
+        yield from self.maindoc.objects.insert(docs)
+        yield from self.maindoc.objects(docint=1).update(docint=2)
+        count = yield from self.maindoc.objects(docint=2).count()
+        self.assertEqual(count, 3)
+
+    @async_test
+    def test_update_one_queryset(self):
+        docs = [self.maindoc(docint=1) for i in range(3)]
+        yield from self.maindoc.objects.insert(docs)
+        yield from self.maindoc.objects(docint=1).update_one(docint=2)
+        count = yield from self.maindoc.objects(docint=2).count()
+        self.assertEqual(count, 1)
 
     @async_test
     def test_get_reference_after_get(self):
@@ -544,6 +558,13 @@ function(key, values){
 
         self.assertEqual(total, 0)
         self.assertFalse(None)
+
+    @async_test
+    def test_exec_js(self):
+        d = self.maindoc(list_field=['a', 'b'])
+        yield from d.save()
+        r = yield from self.maindoc.objects.exec_js('db.getCollectionNames()')
+        self.assertTrue(r)
 
     @asyncio.coroutine
     def _create_data(self):

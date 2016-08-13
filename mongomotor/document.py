@@ -148,6 +148,6 @@ class DynamicDocument(Document, DynamicDocumentBase,
         DynamicDocumentBase.__delattr__(self, *args, **kwargs)
 
 
-class MapReducedDocument(DynamicDocument, metaclass=AsyncDocumentMetaclass):
-    """This MapReduceDocument is different from the mongoengine's one
-    because its intent is to allow you to query over."""
+# class MapReducedDocument(DynamicDocument, metaclass=AsyncDocumentMetaclass):
+#     """This MapReduceDocument is different from the mongoengine's one
+#     because its intent is to allow you to query over."""

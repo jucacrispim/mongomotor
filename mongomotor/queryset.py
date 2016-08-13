@@ -34,6 +34,7 @@ class QuerySet(BaseQuerySet, metaclass=AsyncGenericMetaclass):
 
     delete = Async()
     distinct = Async()
+    explain = Async()
     in_bulk = Async()
     map_reduce = Async()
     modify = Async()
@@ -127,15 +128,60 @@ class QuerySet(BaseQuerySet, metaclass=AsyncGenericMetaclass):
             def cb(future):
                 try:
                     result = future.result()
-                    patcher.patch_item(self, 'in_bulk', async_in_bulk,
-                                       undo=False)
                     insert_future.set_result(result)
                 except Exception as e:
                     insert_future.set_exception(e)
+                finally:
+                    patcher.patch_item(self, 'in_bulk', async_in_bulk,
+                                       undo=False)
 
             future.add_done_callback(cb)
 
         return insert_future
+
+    def upsert_one(self, write_concern=None, **update):
+        """Overwrite or add the first document matched by the query.
+
+        :param write_concern: Extra keyword arguments are passed down which
+            will be used as options for the resultant
+            ``getLastError`` command.  For example,
+            ``save(..., write_concern={w: 2, fsync: True}, ...)`` will
+            wait until at least two servers have recorded the write and
+            will force an fsync on the primary server.
+        :param update: Django-style update keyword arguments
+
+        :returns the new or overwritten document
+
+        """
+
+        update_future = self.update(multi=False, upsert=True,
+                                    write_concern=write_concern,
+                                    full_result=True, **update)
+
+        upsert_future = get_future(self)
+
+        def update_cb(update_future):
+            try:
+                result = update_future.result()
+                if result['updatedExisting']:
+                    document_future = self.first()
+                else:
+                    document_future = self._document.objects.with_id(
+                        result['upserted'])
+
+                def doc_cb(document_future):
+                    try:
+                        result = document_future.result()
+                        upsert_future.set_result(result)
+                    except Exception as e:
+                        upsert_future.set_exception(e)
+
+                document_future.add_done_callback(doc_cb)
+            except Exception as e:
+                upsert_future.set_exception(e)
+
+        update_future.add_done_callback(update_cb)
+        return upsert_future
 
     def to_list(self, length=100):
         """Returns a list of the current documents in the queryset.

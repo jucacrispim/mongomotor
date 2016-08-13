@@ -25,7 +25,7 @@ from tornado import gen
 from tornado.testing import AsyncTestCase, gen_test
 from mongoengine.errors import OperationError
 from mongomotor import connect, disconnect
-from mongomotor import Document, EmbeddedDocument, MapReduceDocument
+from mongomotor import Document, EmbeddedDocument
 from mongomotor.fields import (StringField, IntField, ListField, DictField,
                                EmbeddedDocumentField, ReferenceField)
 
@@ -100,8 +100,8 @@ class MongoMotorTest(AsyncTestCase):
         """Ensure that a new document can be added into the database
         """
         embedref = self.embedref(list_field=['uma', 'lista', 'nota', 10])
-        ref = self.refdoc(refname='refname', embedlist=[embedref])
-        yield ref.save()
+        ref = yield self.refdoc.objects.create(
+            refname='refname', embedlist=[embedref])
 
         # asserting if our reference document was created
         self.assertTrue(ref.id)
@@ -133,6 +133,22 @@ class MongoMotorTest(AsyncTestCase):
         doc = self.maindoc()
         yield doc.save()
         self.assertIsNone((yield doc.ref))
+
+    @gen_test
+    def test_update_queryset(self):
+        docs = [self.maindoc(docint=1) for i in range(3)]
+        yield self.maindoc.objects.insert(docs)
+        yield self.maindoc.objects(docint=1).update(docint=2)
+        count = yield self.maindoc.objects(docint=2).count()
+        self.assertEqual(count, 3)
+
+    @gen_test
+    def test_update_one_queryset(self):
+        docs = [self.maindoc(docint=1) for i in range(3)]
+        yield self.maindoc.objects.insert(docs)
+        yield self.maindoc.objects(docint=1).update_one(docint=2)
+        count = yield self.maindoc.objects(docint=2).count()
+        self.assertEqual(count, 1)
 
     @gen_test
     def test_get_reference_after_get(self):
@@ -537,75 +553,11 @@ function(key, values){
 
     @gen_test
     def test_modify_unknown_object(self):
-        r = yield self.maindoc.objects.modify(id=ObjectId(), docname='dn')
+        yield self.maindoc.objects.modify(id=ObjectId(), docname='dn')
         total = yield self.maindoc.objects.all().count()
 
         self.assertEqual(total, 0)
         self.assertFalse(None)
-
-    @gen_test
-    def test_map_reduce_document(self):
-
-        class Reduced(MapReduceDocument):
-            pass
-
-        d = self.maindoc(list_field=['a', 'b'])
-        yield d.save()
-        d = self.maindoc(list_field=['a', 'c'])
-        yield d.save()
-
-        mapf = """
-function(){
-  this.list_field.forEach(function(f){
-    emit({'n': f, 'v': 1}, 1);
-  });
-}
-"""
-        reducef = """
-function(key, values){
-  return Array.sum(values)
-}
-"""
-        col = Reduced._get_collection_name()
-        r = yield self.maindoc.objects.all().map_reduce(mapf, reducef,
-                                                        {'merge': col})
-
-        reduced = yield Reduced.objects.get(id__n='a')
-
-        self.assertEqual(reduced.value, 2)
-
-    @gen_test
-    def test_map_reduce_document_without_out_docs(self):
-
-        class Reduced(MapReduceDocument):
-            pass
-
-        d = self.maindoc(list_field=['a', 'b'])
-        yield d.save()
-        d = self.maindoc(list_field=['a', 'c'])
-        yield d.save()
-
-        mapf = """
-function(){
-  this.list_field.forEach(function(f){
-    emit({'n': f, 'v': 1}, 1);
-  });
-}
-"""
-        reducef = """
-function(key, values){
-  return Array.sum(values)
-}
-"""
-        col = Reduced._get_collection_name()
-        r = yield self.maindoc.objects.all().map_reduce(mapf, reducef,
-                                                        {'merge': col},
-                                                        get_out_docs=False)
-
-        reduced = yield Reduced.objects.get(id__n='a')
-
-        self.assertEqual(reduced.value, 2)
-        self.assertFalse(r)
 
     @gen_test
     def test_exec_js(self):
@@ -613,6 +565,70 @@ function(key, values){
         yield d.save()
         r = yield self.maindoc.objects.exec_js('db.getCollectionNames()')
         self.assertTrue(r)
+
+   #  @gen_test
+#     def test_map_reduce_document(self):
+
+#         class Reduced(MapReduceDocument):
+#             pass
+
+#         d = self.maindoc(list_field=['a', 'b'])
+#         yield d.save()
+#         d = self.maindoc(list_field=['a', 'c'])
+#         yield d.save()
+
+#         mapf = """
+# function(){
+#   this.list_field.forEach(function(f){
+#     emit({'n': f, 'v': 1}, 1);
+# ;xo  });
+# }
+# """
+#         reducef = """
+# function(key, values){
+#   return Array.sum(values)
+# }
+# """
+#         col = Reduced._get_collection_name()
+#         r = yield self.maindoc.objects.all().map_reduce(mapf, reducef,
+#                                                         {'merge': col})
+
+#         reduced = yield Reduced.objects.get(id__n='a')
+
+#         self.assertEqual(reduced.value, 2)
+
+#     @gen_test
+#     def test_map_reduce_document_without_out_docs(self):
+
+#         class Reduced(MapReduceDocument):
+#             pass
+
+#         d = self.maindoc(list_field=['a', 'b'])
+#         yield d.save()
+#         d = self.maindoc(list_field=['a', 'c'])
+#         yield d.save()
+
+#         mapf = """
+# function(){
+#   this.list_field.forEach(function(f){
+#     emit({'n': f, 'v': 1}, 1);
+#   });
+# }
+# """
+#         reducef = """
+# function(key, values){
+#   return Array.sum(values)
+# }
+# """
+#         col = Reduced._get_collection_name()
+#         r = yield self.maindoc.objects.all().map_reduce(mapf, reducef,
+#                                                         {'merge': col},
+#                                                         get_out_docs=False)
+
+#         reduced = yield Reduced.objects.get(id__n='a')
+
+#         self.assertEqual(reduced.value, 2)
+#         self.assertFalse(r)
 
     @gen.coroutine
     def _create_data(self):

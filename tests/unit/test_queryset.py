@@ -434,3 +434,31 @@ function(key, values){
 
         ret = yield from self.test_doc.objects.in_bulk([d.id for d in docs])
         self.assertEqual(len(ret), 5)
+
+    @async_test
+    def test_upsert_one_update(self):
+        docs = [self.test_doc(a='aa') for i in range(3)]
+        docs = yield from self.test_doc.objects.insert(docs)
+        first = docs[0]
+        other = yield from self.test_doc.objects.upsert_one(a='zz')
+        self.assertEqual(other.a, 'zz')
+        self.assertEqual(first.id, other.id)
+
+    @async_test
+    def test_upsert_one_insert(self):
+        docs = [self.test_doc(a='aa') for i in range(3)]
+        docs = yield from self.test_doc.objects.insert(docs)
+        first = docs[0]
+        other = yield from self.test_doc.objects(a='xx').upsert_one(a='zz')
+        self.assertEqual(other.a, 'zz')
+        self.assertNotEqual(first.id, other.id)
+
+    @async_test
+    def test_create(self):
+        doc = yield from self.test_doc.objects.create(a='123')
+        self.assertTrue(doc.id)
+
+    @async_test
+    def test_explain(self):
+        plan = yield from self.test_doc.objects.explain()
+        self.assertFalse(isinstance(plan, asyncio.futures.Future))

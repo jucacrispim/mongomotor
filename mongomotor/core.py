@@ -34,6 +34,7 @@ class MongoMotorAgnosticCursor(AgnosticCursor):
     __motor_class_name__ = 'MongoMotorCursor'
 
     distinct = OriginalDelegate()
+    explain = OriginalDelegate()
 
     def __init__(self, *args, **kwargs):
         super(AgnosticCursor, self).__init__(*args, **kwargs)

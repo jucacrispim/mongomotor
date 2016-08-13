@@ -19,20 +19,22 @@
 
 from bson.code import Code
 from bson import SON
+import functools
 from mongoengine.connection import get_db
 from mongoengine.document import MapReduceDocument
-from mongoengine.queryset.queryset import (QuerySet as BaseQuerySet,
-                                           OperationError)
+from mongoengine.queryset.queryset import QuerySet as BaseQuerySet
+from mongoengine.errors import OperationError
 from mongomotor.exceptions import ConfusionError
 from mongomotor.metaprogramming import (get_future, AsyncGenericMetaclass,
                                         Async, asynchronize)
+from mongomotor.monkey import MonkeyPatcher
 
 
 class QuerySet(BaseQuerySet, metaclass=AsyncGenericMetaclass):
 
     delete = Async()
     distinct = Async()
-    insert = Async()
+    in_bulk = Async()
     map_reduce = Async()
     modify = Async()
     update = Async()
@@ -111,6 +113,29 @@ class QuerySet(BaseQuerySet, metaclass=AsyncGenericMetaclass):
           the queryset should be taken into account."""
 
         return super().count(with_limit_and_skip)
+
+    def insert(self, *args, **kwargs):
+        super_insert = BaseQuerySet.insert
+        async_in_bulk = self.in_bulk
+        sync_in_bulk = functools.partial(self.in_bulk.__wrapped__, self)
+        insert_future = get_future(self)
+
+        with MonkeyPatcher() as patcher:
+            patcher.patch_item(self, 'in_bulk', sync_in_bulk, undo=False)
+            future = asynchronize(super_insert)(self, *args, **kwargs)
+
+            def cb(future):
+                try:
+                    result = future.result()
+                    patcher.patch_item(self, 'in_bulk', async_in_bulk,
+                                       undo=False)
+                    insert_future.set_result(result)
+                except Exception as e:
+                    insert_future.set_exception(e)
+
+            future.add_done_callback(cb)
+
+        return insert_future
 
     def to_list(self, length=100):
         """Returns a list of the current documents in the queryset.

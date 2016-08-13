@@ -423,3 +423,14 @@ function(key, values){
         yield from self.test_doc.objects.modify(upsert=True, a='zz')
         d = yield from self.test_doc.objects.get(a='zz')
         self.assertTrue(d.id)
+
+    @async_test
+    def test_in_bulk(self):
+        docs = []
+        for i in range(5):
+            d = self.test_doc(a=str(i))
+            yield from d.save()
+            docs.append(d)
+
+        ret = yield from self.test_doc.objects.in_bulk([d.id for d in docs])
+        self.assertEqual(len(ret), 5)

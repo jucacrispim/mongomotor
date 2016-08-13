@@ -37,20 +37,24 @@ class MonkeyPatcher:
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        for module, patches in self.patched.items():
+        for obj, patches in self.patched.items():
             for attr, origobj in patches.items():
                 if self._update_original_dict:
-                    current_obj = getattr(module, attr)
+                    current_obj = getattr(obj, attr)
                     if hasattr(current_obj, 'update'):
                         origobj.update(current_obj)
-                setattr(module, attr, origobj)
+                setattr(obj, attr, origobj)
 
-    def patch_item(self, module, attr, newitem):
+    def patch_item(self, obj, attr, newitem, undo=True):
+        """Sets ``attr`` in ``obj`` with ``newitem``.
+        If not ``undo`` the item will continue patched
+        after leaving the context manager"""
+
         NONE = object()
-        olditem = getattr(module, attr, NONE)
-        if olditem is not NONE:
-            self.patched.setdefault(module, {}).setdefault(attr, olditem)
-        setattr(module, attr, newitem)
+        olditem = getattr(obj, attr, NONE)
+        if undo and olditem is not NONE:
+            self.patched.setdefault(obj, {}).setdefault(attr, olditem)
+        setattr(obj, attr, newitem)
 
     def patch_db_clients(self, client, replicaset_client):
         """Patches the db clients used to connect to mongodb.

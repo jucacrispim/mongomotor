@@ -539,7 +539,7 @@ function(key, values){
 
     @async_test
     def test_modify_unknown_object(self):
-        r = yield from self.maindoc.objects.modify(id=ObjectId(), docname='dn')
+        yield from self.maindoc.objects.modify(id=ObjectId(), docname='dn')
         total = yield from self.maindoc.objects.all().count()
 
         self.assertEqual(total, 0)

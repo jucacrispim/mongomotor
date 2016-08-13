@@ -73,3 +73,12 @@ class MonkeyPatcherTest(TestCase):
             self.assertEqual(len(me_connection._connections), 1)
 
         self.assertEqual(len(me_connection._connections), 2)
+
+    def test_patch_item_without_undo(self):
+        something = Mock()
+        something.attr = 'Bla'
+
+        with monkey.MonkeyPatcher() as patcher:
+            patcher.patch_item(something, 'attr', 'ble', undo=False)
+
+        self.assertEqual(something.attr, 'ble')

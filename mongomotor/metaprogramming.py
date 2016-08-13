@@ -99,7 +99,7 @@ def synchronize(method, cls_meth=False):
 
 
 def get_framework(obj):
-    """Returns a asynchronous framework for a given object."""
+    """Returns an asynchronous framework for a given object."""
 
     if hasattr(obj, '_get_db'):
         framework = obj._get_db()._framework
@@ -178,6 +178,7 @@ class Async(MotorAttributeFactory):
 
     def __init__(self, cls_meth=False):
         self.cls_meth = cls_meth
+        self.original_method = None
 
     def _get_super(self, cls, attr_name):
         # Tries to get the real method from the super classes
@@ -199,8 +200,10 @@ class Async(MotorAttributeFactory):
         return method
 
     def create_attribute(self, cls, attr_name):
-        method = self._get_super(cls, attr_name)
-        return asynchronize(method, cls_meth=self.cls_meth)
+        self.original_method = self._get_super(cls, attr_name)
+        self.async_method = asynchronize(self.original_method,
+                                         cls_meth=self.cls_meth)
+        return self.async_method
 
 
 class Sync(Async):

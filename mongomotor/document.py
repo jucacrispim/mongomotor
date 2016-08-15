@@ -89,6 +89,7 @@ class Document(DocumentBase, metaclass=AsyncDocumentMetaclass):
             'index_opts': None,
             'delete_rules': None,
             'allow_inheritance': None,
+            'auto_create_index': False,
             'queryset_class': QuerySet}
 
     # Methods that will run asynchronally  and return a future

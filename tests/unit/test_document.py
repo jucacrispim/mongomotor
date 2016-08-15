@@ -110,6 +110,7 @@ class DocumentTest(TestCase):
     def test_ensure_indexes(self):
 
         inst = self.auto_indexed_test(some_index=1)
+        self.auto_indexed_test.ensure_indexes()
         yield from inst.save()
         missing = (yield from self.auto_indexed_test.compare_indexes())[
             'missing']

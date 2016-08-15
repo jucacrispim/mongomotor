@@ -63,10 +63,13 @@ def asynchronize(method, cls_meth=False):
         # will be resolved.
         return future
 
+    # for mm_extensions.py (docs)
+    async_method.is_async_method = True
+    async_method = functools.wraps(method)(async_method)
     if cls_meth:
         async_method = classmethod(async_method)
 
-    return functools.wraps(method)(async_method)
+    return async_method
 
 
 def synchronize(method, cls_meth=False):
@@ -93,9 +96,10 @@ def synchronize(method, cls_meth=False):
                 r = method(instance_or_class, *args, **kwargs)
 
         return r
+    wrapper = functools.wraps(method)(wrapper)
     if cls_meth:
         wrapper = classmethod(wrapper)
-    return functools.wraps(method)(wrapper)
+    return wrapper
 
 
 def get_framework(obj):

@@ -1,4 +1,4 @@
-Using MongoMotor with asyncio
+Using MongoMotor with tornado
 =============================
 
 In this introductory tutorial lets create a simple music catalog. In this
@@ -17,16 +17,13 @@ need is to call the function with a single parameter, the database name.
 
     from mongomotor import connect
 
-    connect('music-catalog')
+    connect('music-catalog', async_framework='tornado')
 
 
 .. note::
 
-    :func:`~mongomotor.connect` accepts a ``async_framework`` named parameter
-    that indicates which asynchronous framework we should use, either
-    ``asyncio`` or ``tornado``. It defaults to ``asyncio``. The other arguments
-    to :func:`~mongomotor.connect` are passed to mongoengine's connect()
-    function. See the
+    The arguments to :func:`~mongomotor.connect` (except async_framework)
+    are passed to mongoengine's connect() function. See the
     `Connecting guide <http://docs.mongoengine.org/guide/connecting.html>`_
     at mongoengine docs.
 
@@ -141,58 +138,34 @@ Inserting data
 
 First let's create some artists by creating an instance of *SingleMusician*
 or *MusicalGroup* and then use the :meth:`~mongomotor.document.Document.save`
-in a ``yield from`` statement.
+in a ``yield`` statement.
 
 .. note::
 
    All mongomotor database operations are done in coroutines and need a
-   event loop running to succed. In these examples we will run only the
-   database methods inside a coroutine and consume this coroutine
-   with run_until_complete. In real life usually things are
-   different we usually call run_until_complete only once.
-   For more information see:
-   `asyncio loop <https://docs.python.org/3/library/asyncio-eventloop.html>`_.
+   event loop running to succed. In these examples we will the tornado
+   event loop. For more information see:
+   `tornado loop <http://www.tornadoweb.org/en/stable/ioloop.html>`_.
 
 
 .. code-block:: python
 
-   >>> import asyncio
-   >>> loop = asyncio.get_event_loop()
+   >>> import tornado
+   >>> from tornado import gen
+   >>> loop = tornado.ioloop.IOLoop.instance()
    >>> artist = SingleMusician(name='Tim Maia', real_name='Sebastião Maia')
    >>> group = MusicalGroup()
    >>> group.name = 'j.m.k.e.'
    >>> group.people = ['Villu', 'Reimo', 'Andres', 'Livia', 'Promille']
    >>>
-   >>> async def insert_artist():
-   ...     await artist.save()
-   ...     await group.save()
-   ...     print(artist.id)
-   ...     print(group.id)
-   ...
-   >>> loop.run_until_complete(insert_artist())
-   57ac52e27c1c8440398a347e
-   57ac56767c1c8440398a347f
-
-If you are using Python 3.4 you must to use the ``asyncio.coroutine`` decorator
-and ``yield from`` instead of ``await``.
-
-.. code-block:: python
-
-   >>> import asyncio
-   >>> loop = asyncio.get_event_loop()
-   >>> artist = SingleMusician(name='Tim Maia', real_name='Sebastião Maia')
-   >>> group = MusicalGroup()
-   >>> group.name = 'j.m.k.e.'
-   >>> group.people = ['Villu', 'Reimo', 'Andres', 'Livia', 'Promille']
-   >>>
-   >>> @asycio.coroutine
+   >>> @gen.coroutine
    ... def insert_artist():
-   ...     yield from artist.save()
-   ...     yield from group.save()
+   ...     yield artist.save()
+   ...     yield group.save()
    ...     print(artist.id)
    ...     print(group.id)
    ...
-   >>> loop.run_until_complete(insert_artist())
+   >>> loop.run_sync(insert_artist())
    57ac52e27c1c8440398a347e
    57ac56767c1c8440398a347f
 
@@ -211,11 +184,12 @@ the albums.
    >>> album2.tracks = [Music(title=t, number=i) for i, t in enumerate(titles)]
    >>> # Now we will save the documents to the db. We don't use save() for
    >>> # embedded documents.
-   >>> async def insert_albums():
-   ...     await album1.save()
-   ...     await from album2.save()
+   >>> @gen.coroutine
+   >>> def insert_albums():
+   ...     yield album1.save()
+   ...     yield from album2.save()
    ...
-   >>> loop.run_until_complete(insert_albums())
+   >>> loop.run_sync(insert_albums())
 
 
 Retrieving data
@@ -231,54 +205,39 @@ The simplest way of retrieving data is quering for a specific document using
 
 .. code-block:: python
 
-   >>> async def get_artist():
+   >>> @gen.coroutine
+   ... def get_artist():
    ...     artist = await Artist.objects.get(name='Tim Maia')
    ...     print(artist.id, artist.real_name)
    ...
-   >>> loop.run_until_complete(get_artist())
+   >>> loop.run_sync(get_artist())
 
 .. note::
 
    If a query does not return any documents or returns more than one document,
    the method ``get()`` will raise an exception.
 
-We can query for more than one document we may use
-:meth:`~mongomotor.queryset.QuerySet.filter`. This method returns a queryset.
-To iterate over a queryset we use ``async for``.
 
-.. code-block:: python
-
-   >>> async def list_artists():
-   ...     async for artist in Artist.objects:
-   ...         print(artist.name)
-   ...         async for album in Album.objects.filter(artists=artist):
-   ...             print(' - {}'.format(album.title))
-   ...             for track in album.tracks:
-   ...                 print('  - {}'.format(track.title))
-   ...
-   >>> loop.run_until_complete(list_artists())
-
-
-In Python 3.4 you must use a ``while`` loop and call
-:meth:`~mongomotor.queryset.QuerySet.fetch_next` in a ``yield from``
+To iterave over a queryset we use a ``while`` loop and call
+:meth:`~mongomotor.queryset.QuerySet.fetch_next` in a ``yield``
 statement and then use :meth:`~mongomotor.queryset.QuerySet.next_object`.
 
 .. code-block:: python
 
-   >>> @asyncio.coroutine
+   >>> @gen.coroutine
    ... def list_artists():
    ...     artists = Artist.objects:
-   ...     while (yield from artists.fetch_next):
+   ...     while (yield artists.fetch_next):
    ...         artist = artists.next_object()
    ...         albums = Album.objects.filter(artists=artist)
    ...         print(artist.name)
-   ...         while (yield from albums.fetch_next):
+   ...         while (yield albums.fetch_next):
    ...             album = albums.next_object()
    ...             print(' - {}'.format(album.title))
    ...             for track in album.tracks:
    ...                 print('  - {}'.format(track.title))
    ...
-   >>> loop.run_until_complete(list_artists())
+   >>> loop.run_sync(list_artists())
 
 
 

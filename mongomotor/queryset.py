@@ -24,6 +24,7 @@ from mongoengine.connection import get_db
 from mongoengine.document import MapReduceDocument
 from mongoengine.queryset.queryset import QuerySet as BaseQuerySet
 from mongoengine.errors import OperationError
+from motor.core import coroutine_annotation
 from mongomotor.exceptions import ConfusionError
 from mongomotor.metaprogramming import (get_future, AsyncGenericMetaclass,
                                         Async, asynchronize)
@@ -55,6 +56,7 @@ class QuerySet(BaseQuerySet, metaclass=AsyncGenericMetaclass):
             async_getitem = asynchronize(sync_getitem)
             return async_getitem(self, index)
 
+    @coroutine_annotation
     def get(self, *q_objs, **query):
         """Retrieve the the matching object raising
         :class:`~mongoengine.queryset.MultipleObjectsReturned` or
@@ -87,6 +89,7 @@ class QuerySet(BaseQuerySet, metaclass=AsyncGenericMetaclass):
         list_future.add_done_callback(_get_cb)
         return future
 
+    @coroutine_annotation
     def first(self):
         """Retrieve the first object matching the query.
         """
@@ -107,6 +110,7 @@ class QuerySet(BaseQuerySet, metaclass=AsyncGenericMetaclass):
         first_future.add_done_callback(first_cb)
         return future
 
+    @coroutine_annotation
     def count(self, with_limit_and_skip=True):
         """Counts the documents in the queryset.
 
@@ -115,15 +119,40 @@ class QuerySet(BaseQuerySet, metaclass=AsyncGenericMetaclass):
 
         return super().count(with_limit_and_skip)
 
-    def insert(self, *args, **kwargs):
+    @coroutine_annotation
+    def insert(self, doc_or_docs, load_bulk=True, write_concern=None):
+        """bulk insert documents
+
+        :param doc_or_docs: a document or list of documents to be inserted
+        :param load_bulk (optional): If True returns the list of document
+            instances
+        :param write_concern: Extra keyword arguments are passed down to
+                :meth:`~pymongo.collection.Collection.insert`
+                which will be used as options for the resultant
+                ``getLastError`` command.  For example,
+                ``insert(..., {w: 2, fsync: True})`` will wait until at least
+                two servers have recorded the write and will force an fsync on
+                each server being written to.
+
+        By default returns document instances, set ``load_bulk`` to False to
+        return just ``ObjectIds``
+        """
+
         super_insert = BaseQuerySet.insert
         async_in_bulk = self.in_bulk
+        # this sync method is not really sync, it uses motor sockes and
+        # greenlets events, but looks like sync, so...
         sync_in_bulk = functools.partial(self.in_bulk.__wrapped__, self)
         insert_future = get_future(self)
 
         with MonkeyPatcher() as patcher:
+            # here we change the method with the async api for the method
+            # with a sync api so I don't need to rewrite the mongoengine
+            # method.
             patcher.patch_item(self, 'in_bulk', sync_in_bulk, undo=False)
-            future = asynchronize(super_insert)(self, *args, **kwargs)
+            future = asynchronize(super_insert)(self, doc_or_docs,
+                                                load_bulk=load_bulk,
+                                                write_concern=write_concern)
 
             def cb(future):
                 try:
@@ -139,6 +168,7 @@ class QuerySet(BaseQuerySet, metaclass=AsyncGenericMetaclass):
 
         return insert_future
 
+    @coroutine_annotation
     def upsert_one(self, write_concern=None, **update):
         """Overwrite or add the first document matched by the query.
 
@@ -183,6 +213,7 @@ class QuerySet(BaseQuerySet, metaclass=AsyncGenericMetaclass):
         update_future.add_done_callback(update_cb)
         return upsert_future
 
+    @coroutine_annotation
     def to_list(self, length=100):
         """Returns a list of the current documents in the queryset.
 
@@ -205,6 +236,7 @@ class QuerySet(BaseQuerySet, metaclass=AsyncGenericMetaclass):
         future.add_done_callback(_to_list_cb)
         return list_future
 
+    @coroutine_annotation
     def map_reduce(self, map_f, reduce_f, output, **mr_kwargs):
         """Perform a map/reduce query using the current query spec
         and ordering. While ``map_reduce`` respects ``QuerySet`` chaining,
@@ -252,6 +284,7 @@ class QuerySet(BaseQuerySet, metaclass=AsyncGenericMetaclass):
 
         return queryset._collection.map_reduce(map_f, reduce_f, **mr_kwargs)
 
+    @coroutine_annotation
     def inline_map_reduce(self, map_f, reduce_f, **mr_kwargs):
         """Perform a map/reduce query using the current query spec
         and ordering. While ``map_reduce`` respects ``QuerySet`` chaining,
@@ -304,6 +337,7 @@ class QuerySet(BaseQuerySet, metaclass=AsyncGenericMetaclass):
         mr_future.add_done_callback(inline_mr_cb)
         return future
 
+    @coroutine_annotation
     def item_frequencies(self, field, normalize=False):
         """Returns a dictionary of all items present in a field across
         the whole queried set of documents, and their corresponding frequency.
@@ -379,6 +413,7 @@ class QuerySet(BaseQuerySet, metaclass=AsyncGenericMetaclass):
         mr_future.add_done_callback(item_frequencies_cb)
         return future
 
+    @coroutine_annotation
     def average(self, field):
         """Average over the values of the specified field.
 
@@ -442,6 +477,7 @@ class QuerySet(BaseQuerySet, metaclass=AsyncGenericMetaclass):
         mr_future.add_done_callback(average_cb)
         return future
 
+    @coroutine_annotation
     def aggregate_average(self, field):
         """Average over the values of the specified field.
 
@@ -472,6 +508,7 @@ class QuerySet(BaseQuerySet, metaclass=AsyncGenericMetaclass):
         fn_future.add_done_callback(fetch_next_cb)
         return future
 
+    @coroutine_annotation
     def sum(self, field):
         """Sum over the values of the specified field.
 
@@ -527,6 +564,7 @@ class QuerySet(BaseQuerySet, metaclass=AsyncGenericMetaclass):
         mr_future.add_done_callback(sum_cb)
         return future
 
+    @coroutine_annotation
     def aggregate_sum(self, field):
         """Sum over the values of the specified field.
 
@@ -557,6 +595,7 @@ class QuerySet(BaseQuerySet, metaclass=AsyncGenericMetaclass):
         return future
 
     @property
+    @coroutine_annotation
     def fetch_next(self):
         return self._cursor.fetch_next
 

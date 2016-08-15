@@ -70,6 +70,9 @@ def connect(db=None, async_framework='asyncio',
 
 
 def disconnect(alias=DEFAULT_CONNECTION_NAME):
+    """Disconnects from the database indentified by ``alias``.
+    """
+
     me_disconnect(alias=alias)
 
     # disconneting sync connection

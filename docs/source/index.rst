@@ -12,7 +12,7 @@ MongoMotor: An asynchronous object-document mapper for Python and MongoDB
 MongoMotor is a simple-to-use, declarative-style, document-object mapper
 that puts together the nice `MongoEngine <http://mongoengine.org/>`_ API
 and the clever `Motor <http://motor.readthedocs.org/en/stable/>`_ asynchronous
-approuch to create a awesome for solution for asynchronous access to MongoDB
+approuch to create a awesome library for asynchronous access to MongoDB
 using python 3.4+.
 
 Installation
@@ -41,7 +41,17 @@ tutorial that interests you.
    :maxdepth: 1
 
    tutorial_asyncio
+   tutorial_tornado
 
+
+Guides
+======
+
+.. toctree::
+   :maxdepth: 1
+
+   guide/defining-documents
+   guide/querying
 
 
 API Documentation

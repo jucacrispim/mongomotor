@@ -114,3 +114,12 @@ class DocumentTest(TestCase):
         missing = (yield from self.auto_indexed_test.compare_indexes())[
             'missing']
         self.assertFalse(missing)
+
+    @async_test
+    def test_reload_document(self):
+        d = self.test_doc(i=1)
+        yield from d.save()
+
+        yield from self.test_doc.objects(id=d.id).update(i=2)
+        yield from d.reload()
+        self.assertEqual(d.i, 2)

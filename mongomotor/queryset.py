@@ -40,9 +40,13 @@ class QuerySet(BaseQuerySet, metaclass=AsyncGenericMetaclass):
     map_reduce = Async()
     modify = Async()
     update = Async()
+    update_one = Async()
 
     def __repr__(self):
         return self.__class__.__name__
+
+    def __len__(self):
+        raise TypeError('len() is not supported. Use count()')
 
     def __getitem__(self, index):
         # It we received an slice we will return a queryset

@@ -152,6 +152,10 @@ class QuerySetTest(TestCase):
         count = yield from qs.count()
         self.assertEqual(count, 1)
 
+    def test_queryset_len(self):
+        with self.assertRaises(TypeError):
+            len(self.test_doc.objects)
+
     @async_test
     def test_getitem_with_slice(self):
         for i in range(5):
@@ -402,6 +406,16 @@ function(key, values){
 
         d = yield from self.test_doc.objects.get(id=d.id)
         self.assertEqual(d.a, 'b')
+
+    @async_test
+    def test_update_one(self):
+        d = self.test_doc(a='a')
+        yield from d.save()
+        d = self.test_doc(a='a')
+        yield from d.save()
+        yield from self.test_doc.objects.filter(a='a').update_one(a='b')
+
+        self.assertEqual((yield from self.test_doc.objects(a='b').count()), 1)
 
     @async_test
     def test_insert_documents(self):

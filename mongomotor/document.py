@@ -103,18 +103,23 @@ class Document(DocumentBase, metaclass=AsyncDocumentMetaclass):
     ensure_index = Sync(cls_meth=True)
 
     def __init__(self, *args, **kwargs):
-        # we put reference fields in __only_fields because if not
-        # we end with futures as default values for references
-
-        only_fields = kwargs.get('__only_fields', [])
+        # The thing here that if we try to dereference
+        # references now we end with a future as the attribute so
+        # we don't dereference here.
+        fields = []
         for name, field in self._fields.items():
             if isinstance(field, ReferenceField) or (
                     isinstance(field, ComplexBaseField) and
                     isinstance(field.field, ReferenceField)):
-                only_fields.append(name)
+                fields.append((field, field._auto_dereference))
+                field._auto_dereference = False
 
-        kwargs['__only_fields'] = only_fields
         super().__init__(*args, **kwargs)
+        # and here we back things to normal
+        for field, deref in fields:
+            field._auto_dereference = deref
+
+
 
     @classmethod
     def drop_collection(cls):

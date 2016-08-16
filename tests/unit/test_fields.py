@@ -133,3 +133,15 @@ class TestComplexField(TestCase):
         test_doc = yield from self.test_class.objects.get(id=test_doc.id)
         refs = yield from test_doc.list_reference
         self.assertTrue(isinstance(refs[0], self.reference_class))
+
+    @async_test
+    def test_get_list_field_with_empyt_references(self):
+        """Ensures that a empty list of references returns a empyt list,
+        not None."""
+        test_doc = self.test_class()
+        yield from test_doc.save()
+
+        test_doc = yield from self.test_class.objects.get(id=test_doc.id)
+        refs = yield from test_doc.list_reference
+        self.assertIsInstance(refs, list)
+        self.assertFalse(refs)

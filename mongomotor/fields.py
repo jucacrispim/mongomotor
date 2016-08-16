@@ -40,8 +40,11 @@ class ReferenceField(fields.ReferenceField):
         if instance is None:
             return self
 
-        super_meth = super().__get__
-        return asynchronize(super_meth)(instance, owner)
+        meth = super().__get__
+        if self._auto_dereference:
+            meth = asynchronize(meth)
+
+        return meth(instance, owner)
 
 
 class ComplexBaseField(fields.ComplexBaseField):
@@ -53,7 +56,7 @@ class ComplexBaseField(fields.ComplexBaseField):
 
         super_meth = super().__get__
 
-        if isinstance(self.field, ReferenceField):
+        if isinstance(self.field, ReferenceField) and self._auto_dereference:
             r = asynchronize(super_meth)(instance, owner)
         else:
             r = super_meth(instance, owner)

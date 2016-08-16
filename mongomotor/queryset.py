@@ -20,6 +20,8 @@
 from bson.code import Code
 from bson import SON
 import functools
+import sys
+import textwrap
 from mongoengine.connection import get_db
 from mongoengine.document import MapReduceDocument
 from mongoengine.queryset.queryset import QuerySet as BaseQuerySet
@@ -29,6 +31,8 @@ from mongomotor.exceptions import ConfusionError
 from mongomotor.metaprogramming import (get_future, AsyncGenericMetaclass,
                                         Async, asynchronize)
 from mongomotor.monkey import MonkeyPatcher
+
+PY35 = sys.version_info[:2] >= (3, 5)
 
 
 class QuerySet(BaseQuerySet, metaclass=AsyncGenericMetaclass):
@@ -59,6 +63,19 @@ class QuerySet(BaseQuerySet, metaclass=AsyncGenericMetaclass):
             sync_getitem = BaseQuerySet.__getitem__
             async_getitem = asynchronize(sync_getitem)
             return async_getitem(self, index)
+
+    if PY35:
+        exec(textwrap.dedent("""
+        async def __aiter__(self):
+            return self
+
+        async def __anext__(self):
+            async for doc in self._cursor:
+                mm_doc = self._document._from_son(doc)
+                return mm_doc
+            else:
+                raise StopAsyncIteration()
+        """), globals(), locals())
 
     @coroutine_annotation
     def get(self, *q_objs, **query):

@@ -23,8 +23,13 @@ from unittest import TestCase
 from mongomotor import Document, connect, disconnect
 from mongomotor.fields import StringField, ListField, IntField
 from mongomotor.queryset import (QuerySet, OperationError, Code,
-                                 ConfusionError, SON, MapReduceDocument)
+                                 ConfusionError, SON, MapReduceDocument,
+                                 PY35)
 from tests import async_test
+
+
+if PY35:
+    from .py35_test_queryset import PY35QuerySetTest
 
 
 class QuerySetTest(TestCase):
@@ -37,10 +42,7 @@ class QuerySetTest(TestCase):
 
     @classmethod
     def tearDownClass(cls):
-        db = 'mongomotor-test-unit-{}{}'.format(sys.version_info.major,
-                                                sys.version_info.minor)
-
-        disconnect(db)
+        disconnect()
 
     def setUp(self):
         class TestDoc(Document):

@@ -39,7 +39,7 @@ class DocumentTest(TestCase):
         db = 'mongomotor-test-unit-{}{}'.format(sys.version_info.major,
                                                 sys.version_info.minor)
 
-        disconnect(db)
+        disconnect()
 
     def setUp(self):
         class TestDoc(Document):

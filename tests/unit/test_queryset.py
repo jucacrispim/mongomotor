@@ -415,8 +415,10 @@ function(key, values){
         yield from d.save()
         d = self.test_doc(a='a')
         yield from d.save()
-        yield from self.test_doc.objects.filter(a='a').update_one(a='b')
+        n_updated = yield from self.test_doc.objects.filter(
+            a='a').update_one(a='b')
 
+        self.assertEqual(n_updated, 1)
         self.assertEqual((yield from self.test_doc.objects(a='b').count()), 1)
 
     @async_test

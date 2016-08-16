@@ -36,9 +36,6 @@ class PY35QuerySetTest(TestCase):
 
     @classmethod
     def tearDownClass(cls):
-        db = 'mongomotor-test-unit-{}{}'.format(sys.version_info.major,
-                                                sys.version_info.minor)
-
         disconnect()
 
     def setUp(self):

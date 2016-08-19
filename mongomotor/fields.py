@@ -58,6 +58,8 @@ class ComplexBaseField(fields.ComplexBaseField):
         if instance is None:
             return self
 
+        # TODO: Handle case where embedded documents in a listfield have
+        # reference. See test_fields.py
         super_meth = super().__get__
         if isinstance(self.field, ReferenceField) and self._auto_dereference:
             r = asynchronize(super_meth)(instance, owner)

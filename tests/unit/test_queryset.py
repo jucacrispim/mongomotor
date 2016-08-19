@@ -19,6 +19,7 @@
 
 import asyncio
 import sys
+import textwrap
 from unittest import TestCase
 from mongomotor import Document, connect, disconnect
 from mongomotor.fields import StringField, ListField, IntField
@@ -26,10 +27,6 @@ from mongomotor.queryset import (QuerySet, OperationError, Code,
                                  ConfusionError, SON, MapReduceDocument,
                                  PY35)
 from tests import async_test
-
-
-if PY35:
-    from .py35_test_queryset import PY35QuerySetTest
 
 
 class QuerySetTest(TestCase):
@@ -480,3 +477,40 @@ function(key, values){
     def test_explain(self):
         plan = yield from self.test_doc.objects.explain()
         self.assertFalse(isinstance(plan, asyncio.futures.Future))
+
+
+if PY35:
+    exec(textwrap.dedent(
+        """
+    class PY35QuerySetTest(TestCase):
+
+        @classmethod
+        def setUpClass(cls):
+            db = 'mongomotor-test-unit-{}{}'.format(sys.version_info.major,
+                                                    sys.version_info.minor)
+            connect(db)
+
+        @classmethod
+        def tearDownClass(cls):
+            disconnect()
+
+        def setUp(self):
+            class TestDoc(Document):
+                a = StringField()
+
+            self.test_doc = TestDoc
+
+        @async_test
+        def tearDown(self):
+            yield from self.test_doc.drop_collection()
+
+        @async_test
+        async def test_async_iterate_queryset(self):
+            docs = [self.test_doc(str(i)) for i in range(4)]
+            await self.test_doc.objects.insert(docs)
+
+            async for doc in self.test_doc.objects:
+                self.assertTrue(isinstance(doc, self.test_doc))
+                self.assertTrue(doc.id)
+
+    """))

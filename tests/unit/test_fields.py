@@ -37,8 +37,6 @@ class TestReferenceField(TestCase):
 
     @classmethod
     def tearDownClass(cls):
-        db = 'mongomotor-test-unit-{}{}'.format(sys.version_info.major,
-                                                sys.version_info.minor)
         disconnect()
 
     def test_get(self):
@@ -71,6 +69,30 @@ class TestReferenceField(TestCase):
 
         self.assertIsInstance(SomeClass.ref, ReferenceField)
 
+    @async_test
+    def test_reference_field_in_a_embedded_field(self):
+        try:
+            class RefClass(Document):
+                pass
+
+            class Embed(EmbeddedDocument):
+                ref = ReferenceField(RefClass)
+
+            class TestDocument(Document):
+                embed = EmbeddedDocumentField(Embed)
+
+            r = RefClass()
+            yield from r.save()
+            embed = Embed(ref=r)
+            d = TestDocument(embed=embed)
+            yield from d.save()
+
+            d = yield from TestDocument.objects.get(id=d.id)
+            self.assertTrue((yield from d.embed.ref).id)
+        finally:
+            yield from RefClass.drop_collection()
+            yield from TestDocument.drop_collection()
+
 
 class TestComplexField(TestCase):
 
@@ -82,11 +104,18 @@ class TestComplexField(TestCase):
 
     @classmethod
     def tearDownClass(cls):
-        db = 'mongomotor-test-unit-{}{}'.format(sys.version_info.major,
-                                                sys.version_info.minor)
-        disconnect(db)
+        disconnect()
 
     def setUp(self):
+
+        class ReferedByEmbed(Document):
+            pass
+
+        class EmbedRef(EmbeddedDocument):
+            ref = ReferenceField(ReferedByEmbed)
+
+        class TestEmbedRef(Document):
+            embedlist = ListField(EmbeddedDocumentField(EmbedRef))
 
         class Embed(EmbeddedDocument):
             field = StringField()
@@ -101,6 +130,16 @@ class TestComplexField(TestCase):
         self.embed = Embed
         self.reference_class = ReferenceClass
         self.test_class = TestClass
+        self.embed_ref = EmbedRef
+        self.ref_by_embed = ReferedByEmbed
+        self.test_embed_ref = TestEmbedRef
+
+    @async_test
+    def tearDown(self):
+        yield from self.reference_class.drop_collection()
+        yield from self.test_class.drop_collection()
+        yield from self.ref_by_embed.drop_collection()
+        yield from self.test_embed_ref.drop_collection()
 
     def test_get_list_field_with_class(self):
         field = self.test_class.list_reference
@@ -145,3 +184,19 @@ class TestComplexField(TestCase):
         refs = yield from test_doc.list_reference
         self.assertIsInstance(refs, list)
         self.assertFalse(refs)
+
+    # TODO: Need to correct this case. When we have a list field
+    # that is a list of embedded documents and in the embedded document
+    # there's references it fails miserably.
+    # @async_test
+    # def test_embedded_list_with_references(self):
+    #     """Ensures that we can retrieve a list of embedded documents
+    #     that has references."""
+
+    #     ref = self.ref_by_embed()
+    #     yield from ref.save()
+    #     embed = self.embed_ref(ref=ref)
+    #     doc = self.test_embed_ref(embedlist=[embed])
+    #     yield from doc.save()
+    #     doc = yield from self.test_embed_ref.objects.get(id=doc.id)
+    #     self.assertTrue((yield from doc.embedlist)[0].id)

@@ -28,7 +28,7 @@ from mongoengine.base.datastructures import (
 
 
 from mongoengine.fields import *  # flake8: noqa for the sake of the api
-
+from mongomotor import EmbeddedDocument
 from mongomotor.metaprogramming import asynchronize
 
 
@@ -42,6 +42,10 @@ class ReferenceField(fields.ReferenceField):
 
         meth = super().__get__
         if self._auto_dereference:
+            if isinstance(instance, EmbeddedDocument):
+                # It's used when there's a reference in a EmbeddedDocument.
+                # We use it to get the async framework to be used.
+                instance._get_db = self.document_type._get_db
             meth = asynchronize(meth)
 
         return meth(instance, owner)
@@ -55,7 +59,6 @@ class ComplexBaseField(fields.ComplexBaseField):
             return self
 
         super_meth = super().__get__
-
         if isinstance(self.field, ReferenceField) and self._auto_dereference:
             r = asynchronize(super_meth)(instance, owner)
         else:
@@ -68,5 +71,5 @@ class ListField(ComplexBaseField, fields.ListField):
     pass
 
 
-# class DictField(ComplexBaseField, fields.DictField):
-#     pass
+class DictField(ComplexBaseField, fields.DictField):
+    pass

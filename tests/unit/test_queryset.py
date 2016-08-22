@@ -513,4 +513,7 @@ if PY35:
                 self.assertTrue(isinstance(doc, self.test_doc))
                 self.assertTrue(doc.id)
 
+            count = await self.test_doc.objects.count()
+            self.assertEqual(count, 4)
+
     """))

@@ -53,7 +53,7 @@ class QuerySet(BaseQuerySet, metaclass=AsyncGenericMetaclass):
 
     def __getitem__(self, index):
         # It we received an slice we will return a queryset
-        # so we will not touch the db now and do not need a future
+        # and as we will not touch the db now wd do not need a future
         # here
         if isinstance(index, slice):
             return super().__getitem__(index)
@@ -70,7 +70,9 @@ class QuerySet(BaseQuerySet, metaclass=AsyncGenericMetaclass):
 
         async def __anext__(self):
             async for doc in self._cursor:
-                mm_doc = self._document._from_son(doc)
+                mm_doc = self._document._from_son(
+                    doc, only_fields=self.only_fields,
+                    _auto_dereference=self._auto_dereference)
                 return mm_doc
             else:
                 raise StopAsyncIteration()
@@ -160,7 +162,7 @@ class QuerySet(BaseQuerySet, metaclass=AsyncGenericMetaclass):
 
         super_insert = BaseQuerySet.insert
         async_in_bulk = self.in_bulk
-        # this sync method is not really sync, it uses motor sockes and
+        # this sync method is not really sync, it uses motor sockets and
         # greenlets events, but looks like sync, so...
         sync_in_bulk = functools.partial(self.in_bulk.__wrapped__, self)
         insert_future = get_future(self)

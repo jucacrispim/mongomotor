@@ -23,7 +23,8 @@ from unittest.mock import Mock
 from motor.frameworks import asyncio as asyncio_framework
 from mongomotor import Document, connect, disconnect, EmbeddedDocument
 from mongomotor.fields import (ReferenceField, ListField,
-                               EmbeddedDocumentField, StringField)
+                               EmbeddedDocumentField, StringField, DictField,
+                               BaseList, BaseDict)
 from tests import async_test
 
 
@@ -125,6 +126,7 @@ class TestComplexField(TestCase):
 
         class TestClass(Document):
             list_field = ListField()
+            dict_field = DictField()
             list_reference = ListField(ReferenceField(ReferenceClass))
 
         self.embed = Embed
@@ -185,18 +187,25 @@ class TestComplexField(TestCase):
         self.assertIsInstance(refs, list)
         self.assertFalse(refs)
 
-    # TODO: Need to correct this case. When we have a list field
-    # that is a list of embedded documents and in the embedded document
-    # there's references it fails miserably.
-    # @async_test
-    # def test_embedded_list_with_references(self):
-    #     """Ensures that we can retrieve a list of embedded documents
-    #     that has references."""
+    @async_test
+    def test_convert_value_with_list(self):
+        doc = self.test_class(list_field=[1, 2])
+        self.assertIsInstance(doc.list_field, BaseList)
 
-    #     ref = self.ref_by_embed()
-    #     yield from ref.save()
-    #     embed = self.embed_ref(ref=ref)
-    #     doc = self.test_embed_ref(embedlist=[embed])
-    #     yield from doc.save()
-    #     doc = yield from self.test_embed_ref.objects.get(id=doc.id)
-    #     self.assertTrue((yield from doc.embedlist)[0].id)
+    @async_test
+    def test_convert_value_with_dict(self):
+        doc = self.test_class(dict_field={'a': 1, 'b': 2})
+        self.assertIsInstance(doc.dict_field, BaseDict)
+
+    @async_test
+    def test_embedded_list_with_references(self):
+        """Ensures that we can retrieve a list of embedded documents
+        that has references."""
+
+        ref = self.ref_by_embed()
+        yield from ref.save()
+        embed = self.embed_ref(ref=ref)
+        doc = self.test_embed_ref(embedlist=[embed])
+        yield from doc.save()
+        doc = yield from self.test_embed_ref.objects.get(id=doc.id)
+        self.assertTrue((yield from doc.embedlist[0].ref).id)

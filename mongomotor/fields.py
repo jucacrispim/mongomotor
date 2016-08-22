@@ -23,9 +23,7 @@ from tornado.concurrent import Future
 from mongoengine.common import _import_class
 from mongoengine import fields
 from mongoengine.base.datastructures import (
-    BaseDict, BaseList, EmbeddedDocumentList
-)
-
+    BaseDict, BaseList, EmbeddedDocumentList)
 
 from mongoengine.fields import *  # flake8: noqa for the sake of the api
 from mongomotor import EmbeddedDocument
@@ -58,8 +56,17 @@ class ComplexBaseField(fields.ComplexBaseField):
         if instance is None:
             return self
 
-        # TODO: Handle case where embedded documents in a listfield have
-        # reference. See test_fields.py
+        # The thing here is that I don't want to dereference lists
+        # references in embedded documents now. It has the advantage of
+        # keeping the same API for embedded documents and references
+        # (ie returning a future for references and not a future for
+        # embedded documentts) and the disadvantage of not being able to
+        # retrieve all references in bulk.
+        value = super(fields.ComplexBaseField, self).__get__(instance, owner)
+        if isinstance(value, (list, dict, tuple, BaseList, BaseDict)):
+            value = self._convert_value(instance, value)
+            # It is not in fact dereferenced, we are cheating.
+            value._dereferenced = True
         super_meth = super().__get__
         if isinstance(self.field, ReferenceField) and self._auto_dereference:
             r = asynchronize(super_meth)(instance, owner)
@@ -67,6 +74,20 @@ class ComplexBaseField(fields.ComplexBaseField):
             r = super_meth(instance, owner)
 
         return r
+
+    def _convert_value(self, instance, value):
+        if isinstance(value, (list, tuple)):
+            if (issubclass(type(self), fields.EmbeddedDocumentListField) and
+                    not isinstance(value, fields.EmbeddedDocumentList)):
+                value = EmbeddedDocumentList(value, instance, self.name)
+            elif not isinstance(value, BaseList):
+                value = BaseList(value, instance, self.name)
+            instance._data[self.name] = value
+        elif isinstance(value, dict) and not isinstance(value, BaseDict):
+            value = BaseDict(value, instance, self.name)
+            instance._data[self.name] = value
+
+        return value
 
 
 class ListField(ComplexBaseField, fields.ListField):

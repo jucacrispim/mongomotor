@@ -21,8 +21,9 @@ import asyncio
 import sys
 import textwrap
 from unittest import TestCase
+import mongoengine
 from mongomotor import Document, connect, disconnect
-from mongomotor.fields import StringField, ListField, IntField
+from mongomotor.fields import StringField, ListField, IntField, ReferenceField
 from mongomotor.queryset import (QuerySet, OperationError, Code,
                                  ConfusionError, SON, MapReduceDocument,
                                  PY35)
@@ -97,7 +98,6 @@ class QuerySetTest(TestCase):
 
         collection = self.test_doc._get_collection()
         qs = QuerySet(self.test_doc, collection)
-
         with self.assertRaises(self.test_doc.MultipleObjectsReturned):
             yield from qs.get(a='a')
 
@@ -114,6 +114,72 @@ class QuerySetTest(TestCase):
 
         docs = yield from qs.to_list()
         self.assertEqual(len(docs), 0)
+
+    @async_test
+    def test_delete_with_rule_cascade(self):
+        try:
+            class SomeRef(Document):
+                pass
+
+            class SomeDoc(Document):
+                ref = ReferenceField(
+                    SomeRef, reverse_delete_rule=mongoengine.CASCADE)
+
+            r = SomeRef()
+            yield from r.save()
+            d = SomeDoc(ref=r)
+            yield from d.save()
+            yield from r.delete()
+            yield from asyncio.sleep(0.01)
+            with self.assertRaises(SomeDoc.DoesNotExist):
+                yield from SomeDoc.objects.get(id=d.id)
+        finally:
+            yield from SomeRef.drop_collection()
+            yield from SomeDoc.drop_collection()
+
+    @async_test
+    def test_delete_with_rule_nullify(self):
+        try:
+            class SomeRef(Document):
+                pass
+
+            class SomeDoc(Document):
+                ref = ReferenceField(
+                    SomeRef, reverse_delete_rule=mongoengine.NULLIFY)
+
+            r = SomeRef()
+            yield from r.save()
+            d = SomeDoc(ref=r)
+            yield from d.save()
+            yield from r.delete()
+            yield from asyncio.sleep(0.01)
+            d = yield from SomeDoc.objects.get(id=d.id)
+            self.assertIsNone((yield from d.ref))
+        finally:
+            yield from SomeRef.drop_collection()
+            yield from SomeDoc.drop_collection()
+
+    @async_test
+    def test_delete_with_rule_pull(self):
+        try:
+            class SomeRef(Document):
+                pass
+
+            class SomeDoc(Document):
+                ref = ListField(ReferenceField(
+                    SomeRef, reverse_delete_rule=mongoengine.PULL))
+
+            r = SomeRef()
+            yield from r.save()
+            d = SomeDoc(ref=[r])
+            yield from d.save()
+            yield from r.delete()
+            yield from asyncio.sleep(0.01)
+            d = yield from SomeDoc.objects.get(id=d.id)
+            self.assertEqual(len((yield from d.ref)), 0)
+        finally:
+            yield from SomeRef.drop_collection()
+            yield from SomeDoc.drop_collection()
 
     @async_test
     def test_iterate_over_queryset(self):
@@ -339,15 +405,15 @@ function(key, values){
 
     @async_test
     def test_average(self):
-        futures = [self.test_doc(docint=i).save() for i in range(5)]
-        asyncio.gather(*futures)
+        docs = [self.test_doc(docint=i) for i in range(5)]
+        yield from self.test_doc.objects.insert(docs)
         average = yield from self.test_doc.objects.average('docint')
         self.assertEqual(average, 2)
 
     @async_test
     def test_aggregate_average(self):
-        futures = [self.test_doc(docint=i).save() for i in range(5)]
-        yield from asyncio.gather(*futures)
+        docs = [self.test_doc(docint=i) for i in range(5)]
+        yield from self.test_doc.objects.insert(docs)
         average = yield from self.test_doc.objects.aggregate_average('docint')
         self.assertEqual(average, 2)
 
@@ -360,8 +426,8 @@ function(key, values){
 
     @async_test
     def test_aggregate_sum(self):
-        futures = [self.test_doc(docint=i).save() for i in range(5)]
-        asyncio.gather(*futures)
+        docs = [self.test_doc(docint=i) for i in range(5)]
+        yield from self.test_doc.objects.insert(docs)
         soma = yield from self.test_doc.objects.aggregate_sum('docint')
         self.assertEqual(soma, 10)
 

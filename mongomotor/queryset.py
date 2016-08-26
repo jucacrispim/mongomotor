@@ -22,6 +22,7 @@ from bson import SON
 import functools
 import sys
 import textwrap
+from mongoengine import signals, DENY, CASCADE, NULLIFY, PULL
 from mongoengine.connection import get_db
 from mongoengine.document import MapReduceDocument
 from mongoengine.queryset.queryset import QuerySet as BaseQuerySet
@@ -37,7 +38,6 @@ PY35 = sys.version_info[:2] >= (3, 5)
 
 class QuerySet(BaseQuerySet, metaclass=AsyncGenericMetaclass):
 
-    delete = Async()
     distinct = Async()
     explain = Async()
     in_bulk = Async()
@@ -189,6 +189,73 @@ class QuerySet(BaseQuerySet, metaclass=AsyncGenericMetaclass):
             future.add_done_callback(cb)
 
         return insert_future
+
+    @coroutine_annotation
+    def delete(self, write_concern=None, _from_doc_delete=False,
+               cascade_refs=None):
+        """Deletes the documents matched by the query.
+
+        :param write_concern: Extra keyword arguments are passed down which
+            will be used as options for the resultant
+            ``getLastError`` command.  For example,
+            ``save(..., write_concern={w: 2, fsync: True}, ...)`` will
+            wait until at least two servers have recorded the write and
+            will force an fsync on the primary server.
+        :param _from_doc_delete: True when called from document delete
+          therefore signals will have been triggered so don't loop.
+
+        :returns number of deleted documents
+        """
+
+        queryset = self.clone()
+        doc = queryset._document
+
+        if write_concern is None:
+            write_concern = {}
+
+        # Handle deletes where skips or limits have been applied or
+        # there is an untriggered delete signal
+        has_delete_signal = signals.signals_available and (
+            signals.pre_delete.has_receivers_for(self._document) or
+            signals.post_delete.has_receivers_for(self._document))
+
+        call_document_delete = (queryset._skip or queryset._limit or
+                                has_delete_signal) and not _from_doc_delete
+
+        if call_document_delete:
+            async_method = asynchronize(self._document_delete)
+            return async_method(queryset, write_concern)
+
+        dr_future = self._check_delete_rules(doc, queryset, cascade_refs,
+                                             write_concern)
+
+        ret_future = get_future(self)
+
+        def dr_cb(dr_future):
+            """callback for _check_delete_rules future"""
+            try:
+                dr_future.result()
+
+                remove_future = queryset._collection.remove(
+                    queryset._query, **write_concern)
+
+                def r_cb(remove_future):
+                    """Callback for _collection.remove"""
+
+                    try:
+                        result = remove_future.result()
+                        if result:
+                            ret_future.set_result(result.get('n'))
+                    except Exception as e:
+                        ret_future.set_exception(e)
+
+                remove_future.add_done_callback(r_cb)
+
+            except Exception as e:
+                ret_future.set_exception(e)
+
+        dr_future.add_done_callback(dr_cb)
+        return ret_future
 
     @coroutine_annotation
     def upsert_one(self, write_concern=None, **update):
@@ -669,3 +736,94 @@ class QuerySet(BaseQuerySet, metaclass=AsyncGenericMetaclass):
             raise ConfusionError('Bad output type %r'.format(type(output)))
 
         return out
+
+    def _check_delete_rules(self, doc, queryset, cascade_refs, write_concern):
+        """Checks the delete rules for documents being deleted in a queryset.
+        Raises an exception if any document has a DENY rule."""
+
+        delete_rules = doc._meta.get('delete_rules') or {}
+        # Check for DENY rules before actually deleting/nullifying any other
+        # references
+        for rule_entry in delete_rules:
+            document_cls, field_name = rule_entry
+            if document_cls._meta.get('abstract'):
+                continue
+            rule = doc._meta['delete_rules'][rule_entry]
+            if rule == DENY and document_cls.objects(
+                    **{field_name + '__in': self}).count() > 0:
+                msg = ("Could not delete document (%s.%s refers to it)"
+                       % (document_cls.__name__, field_name))
+                raise OperationError(msg)
+
+        ret_future = get_future(self)
+
+        # We need to set result for the future if there's no rules otherwise
+        # the callbacks will never be called.
+        if not delete_rules:
+            ret_future.set_result(None)
+
+        for rule_entry in delete_rules:
+            document_cls, field_name = rule_entry
+            if document_cls._meta.get('abstract'):
+                continue
+            rule = doc._meta['delete_rules'][rule_entry]
+            if rule == CASCADE:
+                cascade_refs = set() if cascade_refs is None else cascade_refs
+                for ref in queryset:
+                    cascade_refs.add(ref.id)
+                ref_q = document_cls.objects(**{field_name + '__in': self,
+                                                'id__nin': cascade_refs})
+
+                ref_q_count_future = ref_q.count()
+
+                def count_cb(count_future):
+                    try:
+                        count = count_future.result()
+                        if count > 0:
+                            del_future = ref_q.delete(
+                                write_concern=write_concern,
+                                cascade_refs=cascade_refs)
+
+                            def del_cb(del_future):
+                                try:
+                                    r = del_future.result()
+                                    ret_future.set_result(r)
+                                except Exception as e:
+                                    ret_future.set_exception(e)
+
+                            del_future.add_done_callback(del_cb)
+                    except Exception as e:
+                        ret_future.set_exception(e)
+
+                ref_q_count_future.add_done_callback(count_cb)
+
+            elif rule in (NULLIFY, PULL):
+                if rule == NULLIFY:
+                    updatekw = {'unset__%s' % field_name: 1}
+                else:
+                    updatekw = {'pull_all__%s' % field_name: self}
+
+                update_future = document_cls.objects(
+                    **{field_name + '__in': self}).update(
+                        write_concern=write_concern, **updatekw)
+
+                def update_cb(update_future):
+                    try:
+                        result = update_future.result()
+                        ret_future.set_result(result)
+                    except Exception as e:
+                        ret_future.set_exception(e)
+
+                update_future.add_done_callback(update_cb)
+
+        return ret_future
+
+    def _document_delete(self, queryset, write_concern):
+        """Delete the documents in queryset by calling the document's delete
+        method."""
+
+        cnt = 0
+        for doc in queryset:
+            doc.delete(**write_concern)
+            cnt += 1
+        return cnt

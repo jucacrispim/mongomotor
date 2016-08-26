@@ -77,7 +77,6 @@ class MongoMotorAgnosticCollection(AgnosticCollection):
     update = OriginalDelegate()
     find_one = OriginalDelegate()
     find_and_modify = OriginalDelegate()
-    remove = OriginalDelegate()
     index_information = OriginalDelegate()
 
     def __init__(self, database, name):

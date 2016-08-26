@@ -22,7 +22,7 @@ from unittest import TestCase
 from unittest.mock import patch
 import mongoengine
 from mongomotor import Document, connect, disconnect
-from mongomotor.fields import IntField
+from mongomotor.fields import IntField, ListField, ReferenceField
 from tests import async_test
 
 
@@ -36,14 +36,15 @@ class DocumentTest(TestCase):
 
     @classmethod
     def tearDownClass(cls):
-        db = 'mongomotor-test-unit-{}{}'.format(sys.version_info.major,
-                                                sys.version_info.minor)
-
         disconnect()
 
     def setUp(self):
+        class TestRef(Document):
+            pass
+
         class TestDoc(Document):
             i = IntField()
+            refs_list = ListField(ReferenceField(TestRef))
 
         class IndexedTest(Document):
             meta = {'auto_create_index': False,
@@ -56,12 +57,14 @@ class DocumentTest(TestCase):
 
             some_index = IntField(index=True)
 
+        self.ref_doc = TestRef
         self.test_doc = TestDoc
         self.indexed_test = IndexedTest
         self.auto_indexed_test = AutoIndexedTest
 
     @async_test
     def tearDown(self):
+        yield from self.ref_doc.drop_collection()
         yield from self.test_doc.drop_collection()
         yield from self.indexed_test.drop_collection()
         yield from self.auto_indexed_test.drop_collection()
@@ -99,6 +102,19 @@ class DocumentTest(TestCase):
         self.assertEqual(d.i, 2)
 
     @async_test
+    def test_modify_without_pk(self):
+        d = self.test_doc(i=1)
+        with self.assertRaises(mongoengine.errors.InvalidDocumentError):
+            yield from d.modify(i=2)
+
+    @async_test
+    def test_modify_with_bad_pk(self):
+        d = self.test_doc(i=1)
+        yield from d.save()
+        with self.assertRaises(mongoengine.errors.InvalidQueryError):
+            yield from d.modify(i=2, _id="123")
+
+    @async_test
     def test_compare_indexes(self):
 
         inst = self.indexed_test(some_index=1)
@@ -118,9 +134,13 @@ class DocumentTest(TestCase):
 
     @async_test
     def test_reload_document(self):
-        d = self.test_doc(i=1)
+        ref = self.ref_doc()
+        yield from ref.save()
+        d = self.test_doc(i=1, refs_list=[ref])
         yield from d.save()
 
         yield from self.test_doc.objects(id=d.id).update(i=2)
-        yield from d.reload()
+        yield from d.reload('i')
         self.assertEqual(d.i, 2)
+        refs = yield from d.refs_list
+        self.assertEqual(len(refs), 1)

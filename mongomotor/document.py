@@ -20,8 +20,10 @@
 
 from mongoengine import (Document as DocumentBase,
                          DynamicDocument as DynamicDocumentBase)
+from mongoengine.errors import InvalidDocumentError, InvalidQueryError
 from mongomotor.fields import ReferenceField, ComplexBaseField
-from mongomotor.metaprogramming import AsyncDocumentMetaclass, Async, Sync
+from mongomotor.metaprogramming import (AsyncDocumentMetaclass, Async, Sync,
+                                        get_future)
 from mongomotor.queryset import QuerySet
 
 
@@ -119,7 +121,58 @@ class Document(DocumentBase, metaclass=AsyncDocumentMetaclass):
         for field, deref in fields:
             field._auto_dereference = deref
 
+    def modify(self, query={}, **update):
+        """Perform an atomic update of the document in the database and reload
+        the document object using updated version.
 
+        Returns True if the document has been updated or False if the document
+        in the database doesn't match the query.
+
+        .. note:: All unsaved changes that have been made to the document are
+            rejected if the method returns True.
+
+        :param query: the update will be performed only if the document in the
+            database matches the query
+        :param update: Django-style update keyword arguments
+        """
+
+        if self.pk is None:
+            raise InvalidDocumentError(
+                "The document does not have a primary key.")
+
+        id_field = self._meta["id_field"]
+        query = query.copy() if isinstance(
+            query, dict) else query.to_query(self)
+
+        if id_field not in query:
+            query[id_field] = self.pk
+        elif query[id_field] != self.pk:
+            msg = "Invalid document modify query: "
+            msg += "it must modify only this document."
+            raise InvalidQueryError(msg)
+
+        updated_future = self._qs(**query).modify(new=True, **update)
+        ret_future = get_future(self)
+
+        def updated_cb(updated_future):
+            try:
+                updated = updated_future.result()
+                if updated is None:
+                    ret_future.set_result(False)
+                    return
+
+                for field in self._fields_ordered:
+                    setattr(self, field, self._reload(field, updated[field]))
+
+                self._changed_fields = updated._changed_fields
+                self._created = False
+                ret_future.set_result(True)
+                return
+            except Exception as e:
+                ret_future.set_exception(e)
+
+        updated_future.add_done_callback(updated_cb)
+        return ret_future
 
     @classmethod
     def drop_collection(cls):
@@ -129,6 +182,15 @@ class Document(DocumentBase, metaclass=AsyncDocumentMetaclass):
         cls._collection = None
         db = cls._get_db()
         return db.drop_collection(cls._get_collection_name())
+
+    @property
+    def _qs(self):
+        """
+        Returns the queryset to use for updating / reloading / deletions
+        """
+        if not hasattr(self, '__objects'):
+            self.__objects = QuerySet(self, self._get_collection())
+        return self.__objects
 
 
 class DynamicDocument(Document, DynamicDocumentBase,

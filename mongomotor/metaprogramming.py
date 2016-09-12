@@ -53,6 +53,11 @@ def asynchronize(method, cls_meth=False):
                 framework.call_soon(
                     loop, functools.partial(future.set_result, result))
             except Exception as e:
+                # we can't have StopIteration raised into Future, so
+                # we raise StopAsyncIteration
+                if isinstance(e, StopIteration):
+                    e = StopAsyncIteration(str(e))
+
                 framework.call_soon(
                     loop, functools.partial(future.set_exception, e))
 

@@ -96,6 +96,25 @@ class AsynchonizeTest(TestCase):
         self.assertTrue(test_mock.called)
 
     @async_test
+    def test_asynchronize_with_stop_iteration(self):
+
+        class TestClass:
+
+            @classmethod
+            def _get_db(cls):
+                db = Mock()
+                db._framework = asyncio_framework
+                return db
+
+            @metaprogramming.asynchronize
+            def sync(self):
+                raise StopIteration
+
+        testobj = TestClass()
+        with self.assertRaises(StopAsyncIteration):
+            yield from testobj.sync()
+
+    @async_test
     def test_asynchornize_with_exception(self):
 
         class TestClass:

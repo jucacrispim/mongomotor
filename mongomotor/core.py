@@ -18,6 +18,8 @@
 # along with mongomotor. If not, see <http://www.gnu.org/licenses/>.
 
 import functools
+import sys
+import textwrap
 from motor import util
 from motor.core import (AgnosticCollection, AgnosticClient, AgnosticDatabase,
                         AgnosticClientBase, AgnosticReplicaSetClient,
@@ -27,6 +29,8 @@ import pymongo
 from pymongo.database import Database
 from pymongo.collection import Collection
 from mongomotor.metaprogramming import OriginalDelegate
+
+PY35 = sys.version_info[:2] >= (3, 5)
 
 
 class MongoMotorAgnosticCursor(AgnosticCursor):
@@ -63,6 +67,20 @@ class MongoMotorAgnosticCursor(AgnosticCursor):
             # mongomotor cursor.
             r = type(self)(r, self.collection)
         return r
+
+    if PY35:
+        exec(textwrap.dedent("""
+        from mongomotor.decorators import aiter_compat
+        @aiter_compat
+        def __aiter__(self):
+            return self
+
+        async def __anext__(self):
+            # An optimization: skip the "await" if possible.
+            if self._buffer_size() or await self.fetch_next:
+                return self.next_object()
+            raise StopAsyncIteration()
+        """), globals(), locals())
 
 
 class MongoMotorAgnosticCollection(AgnosticCollection):

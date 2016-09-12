@@ -65,7 +65,9 @@ class QuerySet(BaseQuerySet, metaclass=AsyncGenericMetaclass):
 
     if PY35:
         exec(textwrap.dedent("""
-        async def __aiter__(self):
+        from mongomotor.decorators import aiter_compat
+        @aiter_compat
+        def __aiter__(self):
             return self
 
         async def __anext__(self):

@@ -57,10 +57,14 @@ class DocumentTest(TestCase):
 
             some_index = IntField(index=True)
 
+        class UniqueGuy(Document):
+            attr = IntField(unique=True)
+
         self.ref_doc = TestRef
         self.test_doc = TestDoc
         self.indexed_test = IndexedTest
         self.auto_indexed_test = AutoIndexedTest
+        self.unique = UniqueGuy
 
     @async_test
     def tearDown(self):
@@ -68,6 +72,7 @@ class DocumentTest(TestCase):
         yield from self.test_doc.drop_collection()
         yield from self.indexed_test.drop_collection()
         yield from self.auto_indexed_test.drop_collection()
+        yield from self.unique.drop_collection()
 
     @async_test
     def test_save(self):
@@ -75,6 +80,15 @@ class DocumentTest(TestCase):
         self.assertFalse(doc.id)
         yield from doc.save()
         self.assertTrue(doc.id)
+
+    @async_test
+    def test_save_unique(self):
+        doc = self.unique(attr=1)
+        self.unique.ensure_indexes()
+        yield from doc.save()
+        other = self.unique(attr=1)
+        with self.assertRaises(mongoengine.errors.NotUniqueError):
+            yield from other.save()
 
     @patch('mongoengine.signals.post_delete')
     def test_delete(self, *args, **kwargs):

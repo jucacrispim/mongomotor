@@ -539,10 +539,10 @@ function(key, values){
         doc = yield from self.test_doc.objects.create(a='123')
         self.assertTrue(doc.id)
 
-    @async_test
-    def test_explain(self):
-        plan = yield from self.test_doc.objects.explain()
-        self.assertFalse(isinstance(plan, asyncio.futures.Future))
+    # @async_test
+    # def test_explain(self):
+    #     plan = yield from self.test_doc.objects.explain()
+    #     self.assertFalse(isinstance(plan, asyncio.futures.Future))
 
 
 if PY35:

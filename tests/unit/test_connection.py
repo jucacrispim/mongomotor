@@ -40,4 +40,5 @@ class ConnectionTest(TestCase):
     def test_registered_connections(self):
         # ensures that a sync connection was registered
         connect()
-        self.assertEqual(len(_connection_settings), 2)
+        self.assertEqual(len(_connection_settings), 2,
+                         _connection_settings.keys())

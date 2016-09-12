@@ -47,3 +47,4 @@ class GetAliasForDbTest(TestCase):
             self.assertEqual(returned_alias, alias)
         finally:
             del connection._connections['bla']
+            del connection._connection_settings['bla']

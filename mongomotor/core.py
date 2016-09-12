@@ -18,7 +18,6 @@
 # along with mongomotor. If not, see <http://www.gnu.org/licenses/>.
 
 import functools
-import sys
 import textwrap
 from motor import util
 from motor.core import (AgnosticCollection, AgnosticClient, AgnosticDatabase,
@@ -28,9 +27,8 @@ from motor.metaprogramming import create_class_with_framework, ReadOnlyProperty
 import pymongo
 from pymongo.database import Database
 from pymongo.collection import Collection
+from mongomotor import PY35
 from mongomotor.metaprogramming import OriginalDelegate
-
-PY35 = sys.version_info[:2] >= (3, 5)
 
 
 class MongoMotorAgnosticCursor(AgnosticCursor):

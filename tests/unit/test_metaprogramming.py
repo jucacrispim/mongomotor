@@ -18,12 +18,13 @@
 # along with mongomotor. If not, see <http://www.gnu.org/licenses/>.
 
 from asyncio.futures import Future
+import textwrap
 from unittest import TestCase
 from unittest.mock import Mock
 from mongoengine import connection
 from motor.metaprogramming import create_class_with_framework
 from motor.frameworks import asyncio as asyncio_framework
-from mongomotor import metaprogramming, Document, monkey
+from mongomotor import metaprogramming, Document, monkey, PY35
 from mongomotor.connection import connect, disconnect
 from tests import async_test
 
@@ -94,6 +95,29 @@ class AsynchonizeTest(TestCase):
 
         yield from TestClass.sync()
         self.assertTrue(test_mock.called)
+
+    if PY35:
+        exec(textwrap.dedent("""
+        @async_test
+        def test_asynchronize_with_stop_iteration(self):
+
+            class TestClass:
+
+                @classmethod
+                def _get_db(cls):
+                    db = Mock()
+                    db._framework = asyncio_framework
+                    return db
+
+                @metaprogramming.asynchronize
+                def sync(self):
+                    raise StopIteration
+
+            testobj = TestClass()
+            with self.assertRaises(StopAsyncIteration):
+                yield from testobj.sync()
+
+            """))
 
     @async_test
     def test_asynchronize_with_stop_iteration(self):

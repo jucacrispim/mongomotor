@@ -20,7 +20,6 @@
 from bson.code import Code
 from bson import SON
 import functools
-import sys
 import textwrap
 from mongoengine import signals, DENY, CASCADE, NULLIFY, PULL
 from mongoengine.connection import get_db
@@ -28,12 +27,11 @@ from mongoengine.document import MapReduceDocument
 from mongoengine.queryset.queryset import QuerySet as BaseQuerySet
 from mongoengine.errors import OperationError
 from motor.core import coroutine_annotation
+from mongomotor import PY35
 from mongomotor.exceptions import ConfusionError
 from mongomotor.metaprogramming import (get_future, AsyncGenericMetaclass,
                                         Async, asynchronize)
 from mongomotor.monkey import MonkeyPatcher
-
-PY35 = sys.version_info[:2] >= (3, 5)
 
 
 class QuerySet(BaseQuerySet, metaclass=AsyncGenericMetaclass):

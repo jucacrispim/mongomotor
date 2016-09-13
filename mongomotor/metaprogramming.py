@@ -119,6 +119,12 @@ def get_framework(obj):
     elif hasattr(obj, '_document'):
         framework = obj._document._get_db()._framework
 
+    elif hasattr(obj, 'owner_document'):
+        framework = obj.owner_document._get_db()._framework
+
+    elif hasattr(obj, 'instance'):
+        framework = obj.instance._get_db()._framework
+
     else:
         raise ConfusionError('Don\'t know how to get framework for {}'.format(
             str(obj)))

@@ -24,10 +24,12 @@ from mongoengine.common import _import_class
 from mongoengine import fields
 from mongoengine.base.datastructures import (
     BaseDict, BaseList, EmbeddedDocumentList)
-
+from mongoengine.connection import get_db
 from mongoengine.fields import *  # flake8: noqa for the sake of the api
-from mongomotor import EmbeddedDocument
-from mongomotor.metaprogramming import asynchronize
+from motor.metaprogramming import create_class_with_framework
+from mongomotor import EmbeddedDocument, gridfs
+from mongomotor.metaprogramming import (asynchronize, Async, get_framework,
+                                        AsyncGenericMetaclass)
 
 
 class ReferenceField(fields.ReferenceField):
@@ -96,3 +98,26 @@ class ListField(ComplexBaseField, fields.ListField):
 
 class DictField(ComplexBaseField, fields.DictField):
     pass
+
+
+class GridFSProxy(fields.GridFSProxy, metaclass=AsyncGenericMetaclass):
+
+    put = Async()
+    read = Async()
+
+    @property
+    def fs(self):
+        if not self._fs:
+            db = get_db(self.db_alias)
+            grid_class = create_class_with_framework(
+                gridfs.MongoMotorAgnosticGridFS, db._framework,
+                'mongomotor.gridfs')
+
+            self._fs = grid_class(db, self.collection_name)
+
+        return self._fs
+
+
+class FileField(fields.FileField):
+
+    proxy_class = GridFSProxy

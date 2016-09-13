@@ -151,6 +151,38 @@ class AsynchonizeTest(TestCase):
         self.assertEqual(metaprogramming.get_framework(TestClass()),
                          asyncio_framework)
 
+    def test_get_framework_with_owner_document(self):
+
+        class OwnerDoc:
+
+            @classmethod
+            def _get_db(cls):
+                db = Mock()
+                db._framework = asyncio_framework
+                return db
+
+        class TestClass:
+            owner_document = OwnerDoc
+
+        self.assertEqual(metaprogramming.get_framework(TestClass()),
+                         asyncio_framework)
+
+    def test_get_framework_with_instance(self):
+
+        class Instance:
+
+            @classmethod
+            def _get_db(cls):
+                db = Mock()
+                db._framework = asyncio_framework
+                return db
+
+        class TestClass:
+            instance = Instance()
+
+        self.assertEqual(metaprogramming.get_framework(TestClass()),
+                         asyncio_framework)
+
     def test_get_framework_with_error(self):
 
         class TestClass:

@@ -21,10 +21,12 @@ import sys
 from unittest import TestCase
 from unittest.mock import Mock
 from motor.frameworks import asyncio as asyncio_framework
+from motor.metaprogramming import create_class_with_framework
 from mongomotor import Document, connect, disconnect, EmbeddedDocument
 from mongomotor.fields import (ReferenceField, ListField,
                                EmbeddedDocumentField, StringField, DictField,
-                               BaseList, BaseDict)
+                               BaseList, BaseDict, GridFSProxy, FileField)
+from mongomotor.gridfs import MongoMotorAgnosticGridFS
 from tests import async_test
 
 
@@ -209,3 +211,51 @@ class TestComplexField(TestCase):
         yield from doc.save()
         doc = yield from self.test_embed_ref.objects.get(id=doc.id)
         self.assertTrue((yield from doc.embedlist[0].ref).id)
+
+
+class GridFSProxyTest(TestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        db = 'mongomotor-test-unit-{}{}'.format(sys.version_info.major,
+                                                sys.version_info.minor)
+        connect(db)
+
+    @classmethod
+    def tearDownClass(cls):
+        disconnect()
+
+    def test_fs(self):
+        proxy = GridFSProxy()
+        grid_class = create_class_with_framework(
+            MongoMotorAgnosticGridFS, asyncio_framework,
+            'mongomotor.gridfs')
+        self.assertIsInstance(proxy.fs, grid_class)
+
+
+class FileFieldTest(TestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        db = 'mongomotor-test-unit-{}{}'.format(sys.version_info.major,
+                                                sys.version_info.minor)
+        connect(db)
+
+    @classmethod
+    def tearDownClass(cls):
+        disconnect()
+
+    def setUp(self):
+
+        class TestDoc(Document):
+            ff = FileField()
+
+        self.test_doc = TestDoc
+
+    @async_test
+    def test_file_field_put(self):
+        doc = self.test_doc()
+        fcontents = b'some file contents'
+        yield from doc.ff.put(fcontents)
+        contents = yield from doc.ff.read()
+        self.assertEqual(contents, fcontents)

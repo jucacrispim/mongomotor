@@ -19,16 +19,20 @@
 
 
 import asyncio
-import unittest
 from bson.objectid import ObjectId
+import os
 import sys
+import unittest
 from mongoengine.errors import OperationError
 from mongomotor import connect, disconnect
 from mongomotor import Document, EmbeddedDocument
 from mongomotor.fields import (StringField, IntField, ListField, DictField,
-                               EmbeddedDocumentField, ReferenceField)
+                               EmbeddedDocumentField, ReferenceField,
+                               FileField)
 
 from tests import async_test
+from tests.functional import DATA_DIR
+
 
 db = 'mongomotor-test-{}{}'.format(sys.version_info.major,
                                    sys.version_info.minor)
@@ -586,3 +590,35 @@ function(key, values){
             futures.append(f)
 
         yield from asyncio.gather(*futures)
+
+
+class GridFSTest(unittest.TestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        connect(db, async_framework='asyncio')
+
+    @classmethod
+    def tearDownClass(cls):
+        disconnect()
+
+    def setUp(self):
+        super().setUp()
+
+        class TestDoc(Document):
+            filefield = FileField()
+
+        self.test_doc = TestDoc
+
+    @async_test
+    def tearDown(self):
+        yield from self.test_doc.drop_collection()
+
+    @async_test
+    def test_put_file(self):
+        filepath = os.path.join(DATA_DIR, 'file.txt')
+        doc = self.test_doc()
+        fd = open(filepath, 'rb')
+        id = yield from doc.filefield.put(fd)
+        self.assertTrue(id)

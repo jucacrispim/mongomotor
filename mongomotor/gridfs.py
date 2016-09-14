@@ -27,7 +27,9 @@ class MongoMotorAgnosticGridFS(AgnosticGridFS):
 
     __motor_class_name__ = 'MongoMotorGridFS'
 
+    delete = OriginalDelegate()
     get = OriginalDelegate()
+    new_file = OriginalDelegate()
     put = OriginalDelegate()
 
     def __init__(self, database, collection="fs"):
@@ -59,3 +61,7 @@ class MongoMotorAgnosticGridFS(AgnosticGridFS):
             _connect=False)
 
         self._GridFS__collection = self.delegate._GridFS__collection
+        self._GridFS__ensure_index_files_id = \
+            self.delegate._GridFS__ensure_index_files_id
+        self._GridFS__files = self.delegate._GridFS__files
+        self._GridFS__chunks = self.delegate._GridFS__chunks

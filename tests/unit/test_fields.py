@@ -25,7 +25,8 @@ from motor.metaprogramming import create_class_with_framework
 from mongomotor import Document, connect, disconnect, EmbeddedDocument
 from mongomotor.fields import (ReferenceField, ListField,
                                EmbeddedDocumentField, StringField, DictField,
-                               BaseList, BaseDict, GridFSProxy, FileField)
+                               BaseList, BaseDict, GridFSProxy, FileField,
+                               GridFSError)
 from mongomotor.gridfs import MongoMotorAgnosticGridFS
 from tests import async_test
 
@@ -274,3 +275,43 @@ class FileFieldTest(TestCase):
         doc = yield from self.test_doc.objects.get(id=doc.id)
         contents = yield from doc.ff.read()
         self.assertEqual(contents, fcontents)
+
+    @async_test
+    def test_new_file(self):
+        doc = self.test_doc()
+        yield from doc.ff.new_file()
+        self.assertTrue(doc.ff.grid_id)
+
+    @async_test
+    def test_field_write_with_already_existent_file(self):
+        doc = self.test_doc()
+        yield from doc.ff.put(b'a file')
+
+        with self.assertRaises(GridFSError):
+            yield from doc.ff.write('something')
+
+    @async_test
+    def test_field_write(self):
+        doc = self.test_doc()
+        yield from doc.ff.write(b'a file')
+        yield from doc.ff.write(b'\nthe test')
+        yield from doc.ff.close()
+        content = yield from doc.ff.read()
+        self.assertEqual(len(content.split(b'\n')), 2)
+
+    @async_test
+    def test_field_delete(self):
+        doc = self.test_doc()
+        fcontents = b'some file contents'
+        yield from doc.ff.put(fcontents)
+        self.assertTrue(doc.ff.grid_id)
+        yield from doc.ff.delete()
+        self.assertIsNone(doc.ff.grid_id)
+
+    @async_test
+    def test_field_replace(self):
+        doc = self.test_doc()
+        fcontents = b'some file contents'
+        yield from doc.ff.put(fcontents)
+        yield from doc.ff.replace(b'other content')
+        self.assertEqual((yield from doc.ff.read()), b'other content')

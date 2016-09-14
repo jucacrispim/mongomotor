@@ -17,19 +17,17 @@
 # You should have received a copy of the GNU General Public License
 # along with mongomotor. If not, see <http://www.gnu.org/licenses/>.
 
-from bson import DBRef
-from tornado import gen
-from tornado.concurrent import Future
-from mongoengine.common import _import_class
 from mongoengine import fields
 from mongoengine.base.datastructures import (
     BaseDict, BaseList, EmbeddedDocumentList)
 from mongoengine.connection import get_db
-from mongoengine.fields import *  # flake8: noqa for the sake of the api
+
 from motor.metaprogramming import create_class_with_framework
 from mongomotor import EmbeddedDocument, gridfs
-from mongomotor.metaprogramming import (asynchronize, Async, get_framework,
+from mongomotor.metaprogramming import (asynchronize, Async, get_future,
                                         AsyncGenericMetaclass)
+
+from mongoengine.fields import *  # noqa: f403 for the sake of the api
 
 
 class ReferenceField(fields.ReferenceField):
@@ -102,8 +100,12 @@ class DictField(ComplexBaseField, fields.DictField):
 
 class GridFSProxy(fields.GridFSProxy, metaclass=AsyncGenericMetaclass):
 
+    delete = Async()
+    new_file = Async()
     put = Async()
     read = Async()
+    replace = Async()
+    close = Async()
 
     @property
     def fs(self):
@@ -116,6 +118,37 @@ class GridFSProxy(fields.GridFSProxy, metaclass=AsyncGenericMetaclass):
             self._fs = grid_class(db, self.collection_name)
 
         return self._fs
+
+    def write(self, string):
+        if self.grid_id:
+            if not self.newfile:
+                raise GridFSError('This document already has a file. Either '
+                                  'delete it or call replace to overwrite it')
+
+        def new_file_cb(new_file_future):
+            self.newfile.write(string)
+
+        new_future = self.new_file()
+        new_future.add_done_callback(new_file_cb)
+        return new_future
+
+    def replace(self, file_obj, **kwargs):
+        del_future = self.delete()
+
+        ret_future = get_future(self)
+
+        def del_cb(del_future):
+            put_future = self.put(file_obj, **kwargs)
+
+            def put_cb(put_future):
+                result = put_future.result()
+                ret_future.set_result(result)
+
+            put_future.add_done_callback(put_cb)
+
+        del_future.add_done_callback(del_cb)
+
+        return ret_future
 
 
 class FileField(fields.FileField):

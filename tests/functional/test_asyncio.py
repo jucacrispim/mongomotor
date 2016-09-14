@@ -614,6 +614,8 @@ class GridFSTest(unittest.TestCase):
     @async_test
     def tearDown(self):
         yield from self.test_doc.drop_collection()
+        yield from self.test_doc._get_db().fs.files.remove()
+        yield from self.test_doc._get_db().fs.chunks.remove()
 
     @async_test
     def test_put_file(self):

@@ -609,6 +609,8 @@ class GridFSTest(AsyncTestCase):
     @gen_test
     def tearDown(self):
         yield self.test_doc.drop_collection()
+        yield self.test_doc._get_db().fs.files.remove()
+        yield self.test_doc._get_db().fs.chunks.remove()
 
     def get_new_ioloop(self):
         return tornado.ioloop.IOLoop.instance()

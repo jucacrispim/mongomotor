@@ -52,6 +52,7 @@ Guides
 
    guide/defining-documents
    guide/querying
+   guide/gridfs
 
 
 API Documentation
@@ -80,6 +81,11 @@ Feel free to create a fork of the project, open issues, do merge requests...
 
 Changelog
 =========
+
+v0.9
+++++
+ * Completly re-wrote. Now it supports asyncio and tornado, just as motor does.
+ * Now it supports GridFS
 
 v0.8.2
 ++++++

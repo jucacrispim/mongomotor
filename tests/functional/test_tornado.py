@@ -19,6 +19,7 @@
 
 
 from bson.objectid import ObjectId
+import os
 import sys
 import tornado
 from tornado import gen
@@ -27,7 +28,9 @@ from mongoengine.errors import OperationError
 from mongomotor import connect, disconnect
 from mongomotor import Document, EmbeddedDocument
 from mongomotor.fields import (StringField, IntField, ListField, DictField,
-                               EmbeddedDocumentField, ReferenceField)
+                               EmbeddedDocumentField, ReferenceField,
+                               FileField)
+from tests.functional import DATA_DIR
 
 
 db = 'mongomotor-test-{}{}'.format(sys.version_info.major,
@@ -566,70 +569,6 @@ function(key, values){
         r = yield self.maindoc.objects.exec_js('db.getCollectionNames()')
         self.assertTrue(r)
 
-   #  @gen_test
-#     def test_map_reduce_document(self):
-
-#         class Reduced(MapReduceDocument):
-#             pass
-
-#         d = self.maindoc(list_field=['a', 'b'])
-#         yield d.save()
-#         d = self.maindoc(list_field=['a', 'c'])
-#         yield d.save()
-
-#         mapf = """
-# function(){
-#   this.list_field.forEach(function(f){
-#     emit({'n': f, 'v': 1}, 1);
-# ;xo  });
-# }
-# """
-#         reducef = """
-# function(key, values){
-#   return Array.sum(values)
-# }
-# """
-#         col = Reduced._get_collection_name()
-#         r = yield self.maindoc.objects.all().map_reduce(mapf, reducef,
-#                                                         {'merge': col})
-
-#         reduced = yield Reduced.objects.get(id__n='a')
-
-#         self.assertEqual(reduced.value, 2)
-
-#     @gen_test
-#     def test_map_reduce_document_without_out_docs(self):
-
-#         class Reduced(MapReduceDocument):
-#             pass
-
-#         d = self.maindoc(list_field=['a', 'b'])
-#         yield d.save()
-#         d = self.maindoc(list_field=['a', 'c'])
-#         yield d.save()
-
-#         mapf = """
-# function(){
-#   this.list_field.forEach(function(f){
-#     emit({'n': f, 'v': 1}, 1);
-#   });
-# }
-# """
-#         reducef = """
-# function(key, values){
-#   return Array.sum(values)
-# }
-# """
-#         col = Reduced._get_collection_name()
-#         r = yield self.maindoc.objects.all().map_reduce(mapf, reducef,
-#                                                         {'merge': col},
-#                                                         get_out_docs=False)
-
-#         reduced = yield Reduced.objects.get(id__n='a')
-
-#         self.assertEqual(reduced.value, 2)
-#         self.assertFalse(r)
-
     @gen.coroutine
     def _create_data(self):
         # here we create the following data:
@@ -646,3 +585,43 @@ function(key, values){
                 d.ref = r
 
             yield d.save()
+
+
+class GridFSTest(AsyncTestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        connect(db, async_framework='tornado')
+
+    @classmethod
+    def tearDownClass(cls):
+        disconnect()
+
+    def setUp(self):
+        super().setUp()
+
+        class TestDoc(Document):
+            filefield = FileField()
+
+        self.test_doc = TestDoc
+
+    @gen_test
+    def tearDown(self):
+        yield self.test_doc.drop_collection()
+
+    def get_new_ioloop(self):
+        return tornado.ioloop.IOLoop.instance()
+
+    @gen_test
+    def test_put_file(self):
+        filepath = os.path.join(DATA_DIR, 'file.txt')
+        doc = self.test_doc()
+        fd = open(filepath, 'rb')
+        fcontents = fd.read()
+        fd.close()
+
+        yield doc.filefield.put(fcontents)
+        yield doc.save()
+        doc = yield self.test_doc.objects.get(id=doc.id)
+        self.assertEqual((yield doc.filefield.read()), fcontents)

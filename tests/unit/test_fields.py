@@ -247,15 +247,30 @@ class FileFieldTest(TestCase):
 
     def setUp(self):
 
-        class TestDoc(Document):
+        class TestFileDoc(Document):
             ff = FileField()
 
-        self.test_doc = TestDoc
+        self.test_doc = TestFileDoc
+
+    @async_test
+    def tearDown(self):
+        yield from self.test_doc.drop_collection()
+        yield from self.test_doc._get_db().fs.files.remove()
+        yield from self.test_doc._get_db().fs.chunks.remove()
 
     @async_test
     def test_file_field_put(self):
         doc = self.test_doc()
         fcontents = b'some file contents'
         yield from doc.ff.put(fcontents)
+        self.assertTrue(doc.ff.grid_id)
+
+    @async_test
+    def test_file_field_read(self):
+        doc = self.test_doc()
+        fcontents = b'some file contents'
+        yield from doc.ff.put(fcontents)
+        yield from doc.save()
+        doc = yield from self.test_doc.objects.get(id=doc.id)
         contents = yield from doc.ff.read()
         self.assertEqual(contents, fcontents)

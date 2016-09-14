@@ -623,7 +623,8 @@ class GridFSTest(AsyncTestCase):
         fcontents = fd.read()
         fd.close()
 
-        yield doc.filefield.put(fcontents)
+        yield doc.filefield.put(fcontents, mime_type='plain/text')
         yield doc.save()
         doc = yield self.test_doc.objects.get(id=doc.id)
         self.assertEqual((yield doc.filefield.read()), fcontents)
+        self.assertEqual(doc.filefield.mime_type, 'plain/text')

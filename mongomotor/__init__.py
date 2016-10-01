@@ -10,7 +10,7 @@ from mongoengine.document import MapReduceDocument, EmbeddedDocument
 from mongomotor.document import (Document,
                                  DynamicDocument)
 
-VERSION = '0.9b6'
+VERSION = '0.9'
 
 __all__ = ['connect', 'disconnect', 'Document', 'DynamicDocument',
            'EmbeddedDocument', 'MapReduceDocument']

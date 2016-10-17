@@ -6,11 +6,12 @@ import sys
 PY35 = sys.version_info[:2] >= (3, 5)
 
 from mongomotor.connection import connect, disconnect
-from mongoengine.document import MapReduceDocument, EmbeddedDocument
+from mongoengine.document import (MapReduceDocument, EmbeddedDocument,
+                                  DynamicEmbeddedDocument)
 from mongomotor.document import (Document,
                                  DynamicDocument)
 
-VERSION = '0.9'
+VERSION = '0.9.1'
 
 __all__ = ['connect', 'disconnect', 'Document', 'DynamicDocument',
-           'EmbeddedDocument', 'MapReduceDocument']
+           'EmbeddedDocument', 'DynamicEmbeddedDocument', 'MapReduceDocument']

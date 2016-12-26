@@ -28,6 +28,7 @@ from mongoengine.queryset.queryset import QuerySet as BaseQuerySet
 from mongoengine.errors import OperationError
 from motor.core import coroutine_annotation
 from mongomotor import PY35
+from mongomotor.dereference import MongoMotorDeReference
 from mongomotor.exceptions import ConfusionError
 from mongomotor.metaprogramming import (get_future, AsyncGenericMetaclass,
                                         Async, asynchronize)
@@ -43,15 +44,15 @@ class QuerySet(BaseQuerySet, metaclass=AsyncGenericMetaclass):
     modify = Async()
     update = Async()
 
-    def __repr__(self):
+    def __repr__(self):  # pragma no cover
         return self.__class__.__name__
 
     def __len__(self):
         raise TypeError('len() is not supported. Use count()')
 
     def __getitem__(self, index):
-        # It we received an slice we will return a queryset
-        # and as we will not touch the db now wd do not need a future
+        # If we received an slice we will return a queryset
+        # and as we will not touch the db now we do not need a future
         # here
         if isinstance(index, slice):
             return super().__getitem__(index)
@@ -108,7 +109,7 @@ class QuerySet(BaseQuerySet, metaclass=AsyncGenericMetaclass):
                 future.set_result(docs[0])
 
         list_future = queryset.to_list(length=2)
-        list_future.add_done_callback(_get_cb)
+        list_future.add_done_callback(_get_cb)  # pragma no cover
         return future
 
     @coroutine_annotation

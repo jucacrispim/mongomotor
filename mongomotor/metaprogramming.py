@@ -175,9 +175,10 @@ class OriginalDelegate(MotorAttributeFactory):
     event classes so it needs to run in a child greenlet.
 
     This is done  because I want to be able to asynchronize a method that
-    connects to database but I want the method asynchronized returns a
-    future not the pymongo motor asynchronized method. Usually is
-    complementary to :class:`~mongomotor.metaprogramming.Async`.
+    connects to database but I want to do that in the mongoengine methods,
+    the driver methods should work in a `sync` style, in order to not break
+    the mongoengine code, but in a child greenlet to handle the I/O stuff.
+    Usually is complementary to :class:`~mongomotor.metaprogramming.Async`.
     """
 
     def create_attribute(self, cls, attr_name):

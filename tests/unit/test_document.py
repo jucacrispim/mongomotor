@@ -154,7 +154,20 @@ class DocumentTest(TestCase):
         yield from d.save()
 
         yield from self.test_doc.objects(id=d.id).update(i=2)
-        yield from d.reload('i')
+        yield from d.reload()
         self.assertEqual(d.i, 2)
+        # refs = yield from d.refs_list
+        # self.assertEqual(len(refs), 1)
+
+    @async_test
+    def test_reload_document_references(self):
+        ref = self.ref_doc()
+        yield from ref.save()
+        d = self.test_doc(i=1, refs_list=[])
+        yield from d.save()
+
+        yield from self.test_doc.objects(id=d.id).update(refs_list=[ref])
+        yield from d.reload()
+
         refs = yield from d.refs_list
         self.assertEqual(len(refs), 1)

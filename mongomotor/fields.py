@@ -17,6 +17,7 @@
 # You should have received a copy of the GNU General Public License
 # along with mongomotor. If not, see <http://www.gnu.org/licenses/>.
 
+import greenlet
 from mongoengine import fields
 from mongoengine.base.datastructures import (
     BaseDict, BaseList, EmbeddedDocumentList)
@@ -68,7 +69,10 @@ class ComplexBaseField(fields.ComplexBaseField):
             # It is not in fact dereferenced, we are cheating.
             value._dereferenced = True
         super_meth = super().__get__
-        if isinstance(self.field, ReferenceField) and self._auto_dereference:
+        if isinstance(self.field, ReferenceField) and self._auto_dereference \
+           and greenlet.getcurrent().parent is None:
+            # we only need to asynchronize this if we we are not in a
+            # child greenlet
             r = asynchronize(super_meth)(instance, owner)
         else:
             r = super_meth(instance, owner)

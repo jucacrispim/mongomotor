@@ -18,10 +18,10 @@
 # along with mongomotor. If not, see <http://www.gnu.org/licenses/>.
 
 from copy import copy
-from mongoengine import connection
-from mongoengine import connection
+from mongoengine import connection, dereference
 from pymongo.mongo_client import MongoClient
 from pymongo.mongo_replica_set_client import MongoReplicaSetClient
+from mongomotor.dereference import MongoMotorDeReference
 
 
 class MonkeyPatcher:
@@ -100,3 +100,7 @@ class MonkeyPatcher:
 
         self._update_original_dict = True
         self.patch_item(connection, '_connections', connections)
+
+    def patch_dereference(self):
+        self.patch_item(dereference, 'DeReference', MongoMotorDeReference,
+                        undo=False)

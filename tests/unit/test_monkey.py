@@ -82,3 +82,10 @@ class MonkeyPatcherTest(TestCase):
             patcher.patch_item(something, 'attr', 'ble', undo=False)
 
         self.assertEqual(something.attr, 'ble')
+
+    def test_patch_dereference(self):
+        with monkey.MonkeyPatcher() as patcher:
+            patcher.patch_dereference()
+
+        from mongoengine.dereference import DeReference
+        self.assertIs(DeReference, monkey.MongoMotorDeReference)

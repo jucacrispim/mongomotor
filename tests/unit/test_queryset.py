@@ -23,6 +23,7 @@ import textwrap
 from unittest import TestCase
 import mongoengine
 from mongomotor import Document, connect, disconnect
+from mongomotor.dereference import MongoMotorDeReference
 from mongomotor.fields import StringField, ListField, IntField, ReferenceField
 from mongomotor.queryset import (QuerySet, OperationError, Code,
                                  ConfusionError, SON, MapReduceDocument,
@@ -68,6 +69,11 @@ class QuerySetTest(TestCase):
         docs = yield from qs.to_list()
         self.assertEqual(len(docs), 2)
         self.assertTrue(isinstance(docs[0], self.test_doc))
+
+    def test_dereference(self):
+        collection = self.test_doc._collection
+        qs = QuerySet(self.test_doc, collection)
+        self.assertEqual(type(qs._dereference), MongoMotorDeReference)
 
     @async_test
     def test_get(self):

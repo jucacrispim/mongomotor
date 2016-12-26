@@ -136,7 +136,7 @@ class QuerySetTest(TestCase):
             d = SomeDoc(ref=r)
             yield from d.save()
             yield from r.delete()
-            yield from asyncio.sleep(0.01)
+            yield from asyncio.sleep(0.05)
             with self.assertRaises(SomeDoc.DoesNotExist):
                 yield from SomeDoc.objects.get(id=d.id)
         finally:

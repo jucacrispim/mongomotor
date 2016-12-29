@@ -20,23 +20,13 @@
 from motor.frameworks import asyncio as asyncio_framework
 from motor.frameworks import tornado as tornado_framework
 from motor.metaprogramming import create_class_with_framework
-from mongomotor.core import (MongoMotorAgnosticClient,
-                             MongoMotorAgnosticReplicaSetClient)
+from mongomotor.core import (MongoMotorAgnosticClient)
 
 
 MongoMotorAsyncIOClient = create_class_with_framework(MongoMotorAgnosticClient,
                                                       asyncio_framework,
                                                       'mongomotor.clients')
 
-MongoMotorAsyncIOReplicaSetClient = create_class_with_framework(
-    MongoMotorAgnosticReplicaSetClient,
-    asyncio_framework,
-    'mongomotor.clients')
-
 MongoMotorTornadoClient = create_class_with_framework(MongoMotorAgnosticClient,
                                                       tornado_framework,
                                                       'mongomotor.clients')
-
-MongoMotorTornadoReplicaSetClient = create_class_with_framework(
-    MongoMotorAgnosticReplicaSetClient, tornado_framework,
-    'mongomotor.clients')

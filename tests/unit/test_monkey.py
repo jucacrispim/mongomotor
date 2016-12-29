@@ -32,13 +32,12 @@ class MonkeyPatcherTest(TestCase):
 
     def test_patch_db_clients(self):
         client = Mock()
-        replicaset_client = Mock()
         with monkey.MonkeyPatcher() as patcher:
-            patcher.patch_db_clients(client, replicaset_client)
+            patcher.patch_db_clients(client)
             self.assertEqual(client, me_connection.MongoClient)
 
-        self.assertNotEqual(replicaset_client,
-                            me_connection.MongoReplicaSetClient)
+        self.assertNotEqual(client, me_connection.MongoClient)
+
 
     def test_patch_async_connections(self):
         # here we create one mongomotor connection

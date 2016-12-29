@@ -111,6 +111,16 @@ class GridFSProxy(fields.GridFSProxy, metaclass=AsyncGenericMetaclass):
     replace = Async()
     close = Async()
 
+    def __getattr__(self, name):
+        attrs = ('_fs', 'grid_id', 'key', 'instance', 'db_alias',
+                 'collection_name', 'newfile', 'gridout', 'fs')
+        if name in attrs:
+            return self.__getattribute__(name)
+        obj = self.get()
+        if hasattr(obj, name):
+            return getattr(obj, name)
+        raise AttributeError
+
     @property
     def fs(self):
         if not self._fs:

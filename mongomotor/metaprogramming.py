@@ -95,8 +95,6 @@ def synchronize(method, cls_meth=False):
             alias = utils.get_alias_for_db(db)
             cls = instance_or_class if cls_meth else type(instance_or_class)
             alias = utils.get_sync_alias(alias)
-            # we need a copy here or we'll have problems with concurrency.
-            cls = copy(cls)
             with switch_db(cls, alias):
                 r = method(instance_or_class, *args, **kwargs)
 

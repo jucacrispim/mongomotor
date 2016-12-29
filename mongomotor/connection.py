@@ -25,15 +25,11 @@ from mongoengine.connection import (connect as me_connect,
 
 from mongomotor import utils
 from mongomotor.clients import (MongoMotorAsyncIOClient,
-                                MongoMotorAsyncIOReplicaSetClient,
-                                MongoMotorTornadoClient,
-                                MongoMotorTornadoReplicaSetClient)
+                                MongoMotorTornadoClient)
 from mongomotor.monkey import MonkeyPatcher
 
-CLIENTS = {'asyncio': (MongoMotorAsyncIOClient,
-                       MongoMotorAsyncIOReplicaSetClient),
-           'tornado': (MongoMotorTornadoClient,
-                       MongoMotorTornadoReplicaSetClient)}
+CLIENTS = {'asyncio': (MongoMotorAsyncIOClient,),
+           'tornado': (MongoMotorTornadoClient,)}
 
 
 def connect(db=None, async_framework='asyncio',

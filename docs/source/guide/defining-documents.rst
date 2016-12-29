@@ -35,7 +35,7 @@ One of the benefits of MongoDB is dynamic schemas for a collection, whilst data
 should be planned and organised (after all explicit is better than implicit!)
 there are scenarios where having dynamic / expando style documents is desirable.
 
-:class:`~mongoengine.DynamicDocument` documents work in the same way as
+:class:`~mongomotor.DynamicDocument` documents work in the same way as
 :class:`~mongomotor.Document` but any data / attributes set to them will also
 be saved :
 
@@ -73,38 +73,38 @@ not provided. Default values may optionally be a callable, which will be called
 to retrieve the value (such as in the above example). The field types available
 are as follows:
 
-* :class:`~mongoengine.fields.BinaryField`
-* :class:`~mongoengine.fields.BooleanField`
-* :class:`~mongoengine.fields.ComplexDateTimeField`
-* :class:`~mongoengine.fields.DateTimeField`
-* :class:`~mongoengine.fields.DecimalField`
-* :class:`~mongoengine.fields.DictField`
-* :class:`~mongoengine.fields.DynamicField`
-* :class:`~mongoengine.fields.EmailField`
-* :class:`~mongoengine.fields.EmbeddedDocumentField`
-* :class:`~mongoengine.fields.EmbeddedDocumentListField`
-* :class:`~mongoengine.fields.FileField`
-* :class:`~mongoengine.fields.FloatField`
-* :class:`~mongoengine.fields.GenericEmbeddedDocumentField`
-* :class:`~mongoengine.fields.GenericReferenceField`
-* :class:`~mongoengine.fields.GeoPointField`
-* :class:`~mongoengine.fields.ImageField`
-* :class:`~mongoengine.fields.IntField`
-* :class:`~mongoengine.fields.ListField`
-* :class:`~mongoengine.fields.MapField`
-* :class:`~mongoengine.fields.ObjectIdField`
-* :class:`~mongoengine.fields.ReferenceField`
-* :class:`~mongoengine.fields.SequenceField`
-* :class:`~mongoengine.fields.SortedListField`
-* :class:`~mongoengine.fields.StringField`
-* :class:`~mongoengine.fields.URLField`
-* :class:`~mongoengine.fields.UUIDField`
-* :class:`~mongoengine.fields.PointField`
-* :class:`~mongoengine.fields.LineStringField`
-* :class:`~mongoengine.fields.PolygonField`
-* :class:`~mongoengine.fields.MultiPointField`
-* :class:`~mongoengine.fields.MultiLineStringField`
-* :class:`~mongoengine.fields.MultiPolygonField`
+* :class:`~mongomotor.fields.BinaryField`
+* :class:`~mongomotor.fields.BooleanField`
+* :class:`~mongomotor.fields.ComplexDateTimeField`
+* :class:`~mongomotor.fields.DateTimeField`
+* :class:`~mongomotor.fields.DecimalField`
+* :class:`~mongomotor.fields.DictField`
+* :class:`~mongomotor.fields.DynamicField`
+* :class:`~mongomotor.fields.EmailField`
+* :class:`~mongomotor.fields.EmbeddedDocumentField`
+* :class:`~mongomotor.fields.EmbeddedDocumentListField`
+* :class:`~mongomotor.fields.FileField`
+* :class:`~mongomotor.fields.FloatField`
+* :class:`~mongomotor.fields.GenericEmbeddedDocumentField`
+* :class:`~mongomotor.fields.GenericReferenceField`
+* :class:`~mongomotor.fields.GeoPointField`
+* :class:`~mongomotor.fields.ImageField`
+* :class:`~mongomotor.fields.IntField`
+* :class:`~mongomotor.fields.ListField`
+* :class:`~mongomotor.fields.MapField`
+* :class:`~mongomotor.fields.ObjectIdField`
+* :class:`~mongomotor.fields.ReferenceField`
+* :class:`~mongomotor.fields.SequenceField`
+* :class:`~mongomotor.fields.SortedListField`
+* :class:`~mongomotor.fields.StringField`
+* :class:`~mongomotor.fields.URLField`
+* :class:`~mongomotor.fields.UUIDField`
+* :class:`~mongomotor.fields.PointField`
+* :class:`~mongomotor.fields.LineStringField`
+* :class:`~mongomotor.fields.PolygonField`
+* :class:`~mongomotor.fields.MultiPointField`
+* :class:`~mongomotor.fields.MultiLineStringField`
+* :class:`~mongomotor.fields.MultiPolygonField`
 
 Field arguments
 ---------------
@@ -116,7 +116,7 @@ arguments can be set on all fields:
 
 :attr:`required` (Default: False)
     If set to True and the field is not set on the document instance, a
-    :class:`~mongoengine.ValidationError` will be raised when the document is
+    :class:`~mongomotor.ValidationError` will be raised when the document is
     validated.
 
 :attr:`default` (Default: None)
@@ -125,7 +125,7 @@ arguments can be set on all fields:
     The definition of default parameters follow `the general rules on Python
     <http://docs.python.org/reference/compound_stmts.html#function-definitions>`__,
     which means that some care should be taken when dealing with default mutable objects
-    (like in :class:`~mongoengine.fields.ListField` or :class:`~mongoengine.fields.DictField`)::
+    (like in :class:`~mongomotor.fields.ListField` or :class:`~mongomotor.fields.DictField`)::
 
         class ExampleFirst(Document):
             # Default an empty list
@@ -190,8 +190,8 @@ arguments can be set on all fields:
 List fields
 -----------
 MongoDB allows storing lists of items. To add a list of items to a
-:class:`~mongomotor.Document`, use the :class:`~mongoengine.fields.ListField` field
-type. :class:`~mongoengine.fields.ListField` takes another field object as its first
+:class:`~mongomotor.Document`, use the :class:`~mongomotor.fields.ListField` field
+type. :class:`~mongomotor.fields.ListField` takes another field object as its first
 argument, which specifies which type elements may be stored within the list::
 
     class Page(Document):
@@ -202,14 +202,14 @@ Embedded documents
 MongoDB has the ability to embed documents within other documents. Schemata may
 be defined for these embedded documents, just as they may be for regular
 documents. To create an embedded document, just define a document as usual, but
-inherit from :class:`~mongoengine.EmbeddedDocument` rather than
+inherit from :class:`~mongomotor.EmbeddedDocument` rather than
 :class:`~mongomotor.Document`::
 
     class Comment(EmbeddedDocument):
         content = StringField()
 
 To embed the document within another document, use the
-:class:`~mongoengine.fields.EmbeddedDocumentField` field type, providing the embedded
+:class:`~mongomotor.fields.EmbeddedDocumentField` field type, providing the embedded
 document class as the first argument::
 
     class Page(Document):
@@ -224,7 +224,7 @@ Dictionary Fields
 Often, an embedded document may be used instead of a dictionary -- generally
 this is recommended as dictionaries don't support validation or custom field
 types. However, sometimes you will not know the structure of what you want to
-store; in this situation a :class:`~mongoengine.fields.DictField` is appropriate::
+store; in this situation a :class:`~mongomotor.fields.DictField` is appropriate::
 
     class SurveyResponse(Document):
         date = DateTimeField()
@@ -242,7 +242,7 @@ other objects, so are the most flexible field type available.
 Reference fields
 ----------------
 References may be stored to other documents in the database using the
-:class:`~mongoengine.fields.ReferenceField`. Pass in another document class as the
+:class:`~mongomotor.fields.ReferenceField`. Pass in another document class as the
 first argument to the constructor, then simply assign document objects to the
 field:
 
@@ -272,9 +272,9 @@ is done asynchronouslly.
    autor = await post.author
 
 
-To add a :class:`~mongoengine.fields.ReferenceField` that references the document
+To add a :class:`~mongomotor.fields.ReferenceField` that references the document
 being defined, use the string ``'self'`` in place of the document class as the
-argument to :class:`~mongoengine.fields.ReferenceField`'s constructor. To reference a
+argument to :class:`~mongomotor.fields.ReferenceField`'s constructor. To reference a
 document that has not yet been defined, use the name of the undefined document
 as the constructor's argument::
 
@@ -343,7 +343,7 @@ supplying the :attr:`reverse_delete_rule` attributes on the
     class ProfilePage(Document):
         ...
         employee = ReferenceField('Employee',
-	                          reverse_delete_rule=mongoengine.CASCADE)
+	                          reverse_delete_rule=mongomotor.CASCADE)
 
 The declaration in this example means that when an :class:`Employee` object is
 removed, the :class:`ProfilePage` that references that employee is removed as
@@ -352,22 +352,22 @@ linked are removed as well.
 
 Its value can take any of the following constants:
 
-:const:`mongoengine.DO_NOTHING`
+:const:`mongomotor.DO_NOTHING`
   This is the default and won't do anything.  Deletes are fast, but may cause
   database inconsistency or dangling references.
-:const:`mongoengine.DENY`
+:const:`mongomotor.DENY`
   Deletion is denied if there still exist references to the object being
   deleted.
-:const:`mongoengine.NULLIFY`
+:const:`mongomotor.NULLIFY`
   Any object's fields still referring to the object being deleted are removed
   (using MongoDB's "unset" operation), effectively nullifying the relationship.
-:const:`mongoengine.CASCADE`
+:const:`mongomotor.CASCADE`
   Any object containing fields that are referring to the object being deleted
   are deleted first.
-:const:`mongoengine.PULL`
+:const:`mongomotor.PULL`
   Removes the reference to the object (using MongoDB's "pull" operation)
   from any object's fields of
-  :class:`~mongoengine.fields.ListField` (:class:`~mongoengine.fields.ReferenceField`).
+  :class:`~mongomotor.fields.ListField` (:class:`~mongomotor.fields.ReferenceField`).
 
 
 .. warning::
@@ -394,7 +394,7 @@ Its value can take any of the following constants:
 Generic reference fields
 ''''''''''''''''''''''''
 A second kind of reference field also exists,
-:class:`~mongoengine.fields.GenericReferenceField`. This allows you to reference any
+:class:`~mongomotor.fields.GenericReferenceField`. This allows you to reference any
 kind of :class:`~mongomotor.Document`, and hence doesn't take a
 :class:`~mongomotor.Document` subclass as a constructor argument::
 
@@ -418,18 +418,18 @@ kind of :class:`~mongomotor.Document`, and hence doesn't take a
 
 .. note::
 
-   Using :class:`~mongoengine.fields.GenericReferenceField`\ s is slightly less
-   efficient than the standard :class:`~mongoengine.fields.ReferenceField`\ s, so if
+   Using :class:`~mongomotor.fields.GenericReferenceField`\ s is slightly less
+   efficient than the standard :class:`~mongomotor.fields.ReferenceField`\ s, so if
    you will only be referencing one document type, prefer the standard
-   :class:`~mongoengine.fields.ReferenceField`.
+   :class:`~mongomotor.fields.ReferenceField`.
 
 Uniqueness constraints
 ----------------------
 MongoEngine allows you to specify that a field should be unique across a
-collection by providing ``unique=True`` to a :class:`~mongoengine.fields.Field`\ 's
+collection by providing ``unique=True`` to a :class:`~mongomotor.fields.Field`\ 's
 constructor. If you try to save a document that has the same value for a unique
 field as a document that is already in the database, a
-:class:`~mongoengine.NotUniqueError` will be raised. You may also specify
+:class:`~mongomotor.NotUniqueError` will be raised. You may also specify
 multi-field uniqueness constraints by using :attr:`unique_with`, which may be
 either a single field name, or a list or tuple of field names::
 
@@ -441,7 +441,7 @@ either a single field name, or a list or tuple of field names::
 Skipping Document validation on save
 ------------------------------------
 You can also skip the whole document validation process by setting
-``validate=False`` when calling the :meth:`~mongoengine.document.Document.save`
+``validate=False`` when calling the :meth:`~mongomotor.document.Document.save`
 method::
 
     class Recipient(Document):
@@ -607,12 +607,12 @@ The best geo index for mongodb is the new "2dsphere", which has an improved
 spherical model and provides better performance and more options when querying.
 The following fields will explicitly add a "2dsphere" index:
 
-    - :class:`~mongoengine.fields.PointField`
-    - :class:`~mongoengine.fields.LineStringField`
-    - :class:`~mongoengine.fields.PolygonField`
-    - :class:`~mongoengine.fields.MultiPointField`
-    - :class:`~mongoengine.fields.MultiLineStringField`
-    - :class:`~mongoengine.fields.MultiPolygonField`
+    - :class:`~mongomotor.fields.PointField`
+    - :class:`~mongomotor.fields.LineStringField`
+    - :class:`~mongomotor.fields.PolygonField`
+    - :class:`~mongomotor.fields.MultiPointField`
+    - :class:`~mongomotor.fields.MultiLineStringField`
+    - :class:`~mongomotor.fields.MultiPolygonField`
 
 As "2dsphere" indexes can be part of a compound index, you may not want the
 automatic index but would prefer a compound index.  In this example we turn off
@@ -635,11 +635,11 @@ Pre MongoDB 2.4 Geo
     advised.
 
 Geospatial indexes will be automatically created for all
-:class:`~mongoengine.fields.GeoPointField`\ s
+:class:`~mongomotor.fields.GeoPointField`\ s
 
 It is also possible to explicitly define geospatial indexes. This is
 useful if you need to define a geospatial index on a subfield of a
-:class:`~mongoengine.fields.DictField` or a custom field that contains a
+:class:`~mongomotor.fields.DictField` or a custom field that contains a
 point. To create a geospatial index you must prefix the field with the
 ***** sign. ::
 
@@ -675,7 +675,7 @@ documentation for more information.  A common usecase might be session data::
 Comparing Indexes
 -----------------
 
-Use :func:`mongoengine.Document.compare_indexes` to compare actual indexes in
+Use :func:`mongomotor.Document.compare_indexes` to compare actual indexes in
 the database to those that your document definitions define.  This is useful
 for maintenance purposes and ensuring you have the correct indexes for your
 schema.
@@ -683,10 +683,10 @@ schema.
 Ordering
 ========
 A default ordering can be specified for your
-:class:`~mongoengine.queryset.QuerySet` using the :attr:`ordering` attribute of
+:class:`~mongomotor.queryset.QuerySet` using the :attr:`ordering` attribute of
 :attr:`~mongomotor.Document.meta`.  Ordering will be applied when the
-:class:`~mongoengine.queryset.QuerySet` is created, and can be overridden by
-subsequent calls to :meth:`~mongoengine.queryset.QuerySet.order_by`. ::
+:class:`~mongomotor.queryset.QuerySet` is created, and can be overridden by
+subsequent calls to :meth:`~mongomotor.queryset.QuerySet.order_by`. ::
 
     from datetime import datetime
 
@@ -726,8 +726,8 @@ Shard keys
 If your collection is sharded, then you need to specify the shard key as a tuple,
 using the :attr:`shard_key` attribute of :attr:`~mongomotor.Document.meta`.
 This ensures that the shard key is sent with the query when calling the
-:meth:`~mongoengine.document.Document.save` or
-:meth:`~mongoengine.document.Document.update` method on an existing
+:meth:`~mongomotor.Document.save` or
+:meth:`~mongomotor.document.Document.update` method on an existing
 :class:`~mongomotor.Document` instance::
 
     class LogEntry(Document):
@@ -781,7 +781,7 @@ the expected schema in your database ::
         }
 
 If you have wildly varying schemas then using a
-:class:`~mongoengine.DynamicDocument` might be more appropriate, instead of
+:class:`~mongomotor.DynamicDocument` might be more appropriate, instead of
 defining all possible field types.
 
 If you use :class:`~mongomotor.Document` and the database contains data that

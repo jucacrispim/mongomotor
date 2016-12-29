@@ -56,15 +56,12 @@ class MonkeyPatcher:
             self.patched.setdefault(obj, {}).setdefault(attr, olditem)
         setattr(obj, attr, newitem)
 
-    def patch_db_clients(self, client, replicaset_client):
+    def patch_db_clients(self, client):
         """Patches the db clients used to connect to mongodb.
 
-        :param client: Which client should be used.
-        :param replicaset_client: Which client should be used
-          for replicasets."""
+        :param client: Which client should be used."""
 
         self.patch_item(connection, 'MongoClient', client)
-        self.patch_item(connection, 'MongoReplicaSetClient', replicaset_client)
 
     def patch_async_connections(self):
         """Patches mongoengine.connection._connections removing all

@@ -138,4 +138,4 @@ class MongoMotorAgnosticClientTest(TestCase):
         client = create_class_with_framework(core.MongoMotorAgnosticClient,
                                              asyncio_framework,
                                              self.__module__)()
-        self.assertEqual(client._send_message, client.delegate._send_message)
+        self.assertEqual(client._topology, client.delegate._topology)

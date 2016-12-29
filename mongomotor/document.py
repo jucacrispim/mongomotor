@@ -100,7 +100,7 @@ class Document(DocumentBase, metaclass=AsyncDocumentMetaclass):
     modify = Async()
     update = Async()
     reload = Async()
-    compare_indexes = Async(cls_meth=True)
+    compare_indexes = Sync(cls_meth=True)
     ensure_indexes = Sync(cls_meth=True)
     ensure_index = Sync(cls_meth=True)
 

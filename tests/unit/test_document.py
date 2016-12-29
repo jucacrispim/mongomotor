@@ -133,7 +133,7 @@ class DocumentTest(TestCase):
 
         inst = self.indexed_test(some_index=1)
         yield from inst.save()
-        missing = (yield from self.indexed_test.compare_indexes())['missing']
+        missing = self.indexed_test.compare_indexes()['missing']
         self.assertEqual(missing[0][0][0], 'some_index')
 
     @async_test
@@ -142,8 +142,7 @@ class DocumentTest(TestCase):
         inst = self.auto_indexed_test(some_index=1)
         self.auto_indexed_test.ensure_indexes()
         yield from inst.save()
-        missing = (yield from self.auto_indexed_test.compare_indexes())[
-            'missing']
+        missing = self.auto_indexed_test.compare_indexes()['missing']
         self.assertFalse(missing)
 
     @async_test

@@ -38,6 +38,33 @@ db = 'mongomotor-test-{}{}'.format(sys.version_info.major,
                                    sys.version_info.minor)
 
 
+# class TestAuthConnection(unittest.TestCase):
+
+#     @classmethod
+#     def setUpClass(cls):
+#         super().setUpClass()
+#         connect(db, async_framework='asyncio',
+#                 host='ds127988.mlab.com', port=27988,
+#                 username='toxictester', password='4d89-93d5')
+
+#     def setUp(self):
+
+#         class Test(Document):
+#             a = StringField()
+
+#         self.test_cls = Test
+
+#     @async_test
+#     async def test_one_connection(self):
+#         obj = self.test_cls(a='a')
+#         await obj.save()
+
+#     @async_test
+#     async def test_other_connection(self):
+#         obj = self.test_cls(a='a')
+#         await obj.save()
+
+
 class MongoMotorTest(unittest.TestCase):
 
     @classmethod

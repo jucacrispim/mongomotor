@@ -17,11 +17,8 @@
 # You should have received a copy of the GNU General Public License
 # along with mongomotor. If not, see <http://www.gnu.org/licenses/>.
 
-import functools
 import textwrap
-from motor import util
 from motor.core import (AgnosticCollection, AgnosticClient, AgnosticDatabase,
-                        AgnosticClientBase, AgnosticReplicaSetClient,
                         AgnosticCursor)
 from motor.metaprogramming import create_class_with_framework, ReadOnlyProperty
 import pymongo
@@ -93,9 +90,11 @@ class MongoMotorAgnosticCollection(AgnosticCollection):
     update = OriginalDelegate()
     find_one = OriginalDelegate()
     find_and_modify = OriginalDelegate()
+    find_one_and_update = OriginalDelegate()
+    find_one_and_delete = OriginalDelegate()
     index_information = OriginalDelegate()
 
-    def __init__(self, database, name):
+    def __init__(self, database, name, _delegate=None):
 
         db_class = create_class_with_framework(
             MongoMotorAgnosticDatabase, self._framework, self.__module__)
@@ -104,7 +103,7 @@ class MongoMotorAgnosticCollection(AgnosticCollection):
             raise TypeError("First argument to MongoMotorCollection must be "
                             "MongoMotorDatabase, not %r" % database)
 
-        delegate = Collection(database.delegate, name)
+        delegate = _delegate or Collection(database.delegate, name)
         super(AgnosticCollection, self).__init__(delegate)
         self.database = database
 
@@ -159,13 +158,13 @@ class MongoMotorAgnosticDatabase(AgnosticDatabase):
 
     dereference = OriginalDelegate()
 
-    def __init__(self, connection, name):
-        if not isinstance(connection, AgnosticClientBase):
+    def __init__(self, client, name, _delegate=None):
+        if not isinstance(client, AgnosticClient):
             raise TypeError("First argument to MongoMotorDatabase must be "
-                            "a Motor client, not %r" % connection)
+                            "a Motor client, not %r" % client)
 
-        self.connection = connection
-        delegate = Database(connection.delegate, name)
+        self._client = client
+        delegate = _delegate or Database(client.delegate, name)
         super(AgnosticDatabase, self).__init__(delegate)
 
     def __getattr__(self, name):
@@ -190,30 +189,9 @@ class MongoMotorAgnosticDatabase(AgnosticDatabase):
         return collection_class(self, name)
 
 
-class MongoMotorAgnosticClientBase(AgnosticClientBase):
+class MongoMotorAgnosticClientBase(AgnosticClient):
 
     max_write_batch_size = ReadOnlyProperty()
-    _ensure_connected = OriginalDelegate()
-
-    def __init__(self, *args, **kwargs):
-        """Create a new connection to a single MongoDB instance at *host:port*.
-
-        MongoMotorAgnosticClient takes the same constructor arguments as
-        :class:`~motor.core.AgnosticClient`:
-
-        """
-        if 'io_loop' in kwargs:
-            io_loop = kwargs.pop('io_loop')
-        else:
-            io_loop = self._framework.get_event_loop()
-
-        event_class = functools.partial(util.MotorGreenletEvent, io_loop,
-                                        self._framework)
-        kwargs['_event_class'] = event_class
-
-        # Our class is not actually AgnosticClient here, it's the version of
-        # 'MotorClient' that create_class_with_framework created.
-        super(AgnosticClient, self).__init__(io_loop, *args, **kwargs)
 
     def __getattr__(self, name):
         if name.startswith('_'):
@@ -240,9 +218,3 @@ class MongoMotorAgnosticClientBase(AgnosticClientBase):
 class MongoMotorAgnosticClient(MongoMotorAgnosticClientBase, AgnosticClient):
 
     __motor_class_name__ = 'MongoMotorClient'
-
-
-class MongoMotorAgnosticReplicaSetClient(MongoMotorAgnosticClientBase,
-                                         AgnosticReplicaSetClient):
-
-    __motor_class_name__ = 'MongoMotorReplicaSetClient'

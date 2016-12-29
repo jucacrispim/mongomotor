@@ -42,8 +42,6 @@ class MongoMotorAgnosticGridFS(AgnosticGridFS):
 
         .. mongodoc:: gridfs
 
-        .. versionchanged:: 0.2
-           ``open`` method removed; no longer needed.
         """
 
         db_class = create_class_with_framework(
@@ -57,11 +55,8 @@ class MongoMotorAgnosticGridFS(AgnosticGridFS):
         self.collection = database[collection]
         self.delegate = self.__delegate_class__(
             database.delegate,
-            collection,
-            _connect=False)
+            collection)
 
         self._GridFS__collection = self.delegate._GridFS__collection
-        self._GridFS__ensure_index_files_id = \
-            self.delegate._GridFS__ensure_index_files_id
         self._GridFS__files = self.delegate._GridFS__files
         self._GridFS__chunks = self.delegate._GridFS__chunks

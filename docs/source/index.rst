@@ -82,6 +82,21 @@ Feel free to create a fork of the project, open issues, do merge requests...
 Changelog
 =========
 
+v0.9.3
+++++++
+
+  * Corrected authentication.
+
+v0.9.2
+++++++
+
+  * Corrected dereferencing of objects in lists.
+
+v0.9.1
+++++++
+
+  * Adding DynamicEmbeddedDocument to the api
+
 v0.9
 ++++
  * Completly re-wrote. Now it supports asyncio and tornado, just as motor does.

@@ -38,8 +38,6 @@ db = 'mongomotor-test-{}{}'.format(sys.version_info.major,
                                    sys.version_info.minor)
 
 
-
-
 class MongoMotorTest(unittest.TestCase):
 
     @classmethod

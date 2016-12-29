@@ -157,6 +157,7 @@ class MongoMotorAgnosticDatabase(AgnosticDatabase):
     __motor_class_name__ = 'MongoMotorDatabase'
 
     dereference = OriginalDelegate()
+    authenticate = OriginalDelegate()
 
     def __init__(self, client, name, _delegate=None):
         if not isinstance(client, AgnosticClient):

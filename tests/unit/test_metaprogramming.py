@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Copyright 2016 Juca Crispim <juca@poraodojuca.net>
+# Copyright 2016, 2017 Juca Crispim <juca@poraodojuca.net>
 
 # This file is part of mongomotor.
 
@@ -17,14 +17,15 @@
 # You should have received a copy of the GNU General Public License
 # along with mongomotor. If not, see <http://www.gnu.org/licenses/>.
 
+import asyncio
 from asyncio.futures import Future
-import textwrap
 from unittest import TestCase
 from unittest.mock import Mock
+import sys
 from mongoengine import connection
 from motor.metaprogramming import create_class_with_framework
 from motor.frameworks import asyncio as asyncio_framework
-from mongomotor import metaprogramming, Document, monkey, PY35
+from mongomotor import metaprogramming, Document, monkey
 from mongomotor.connection import connect, disconnect
 from tests import async_test
 
@@ -50,18 +51,23 @@ class OriginalDelegateTest(TestCase):
 
 class AsynchonizeTest(TestCase):
 
+    @classmethod
+    def setUpClass(cls):
+        db = 'mongomotor-test-unit-{}{}'.format(sys.version_info.major,
+                                                sys.version_info.minor)
+        connect(db)
+
+    @classmethod
+    def tearDownClass(cls):
+        disconnect()
+
     @async_test
     def test_asynchornize(self):
 
         test_mock = Mock()
 
-        class TestClass:
-
-            @classmethod
-            def _get_db(cls):
-                db = Mock()
-                db._framework = asyncio_framework
-                return db
+        class TestClass(Document):
+            meta = {'abstract': True}
 
             @metaprogramming.asynchronize
             def sync(self):
@@ -77,13 +83,9 @@ class AsynchonizeTest(TestCase):
 
         test_mock = Mock()
 
-        class TestClass:
+        class TestClass(Document):
 
-            @classmethod
-            def _get_db(cls):
-                db = Mock()
-                db._framework = asyncio_framework
-                return db
+            meta = {'abstract': True}
 
             @classmethod
             def sync(cls):
@@ -95,29 +97,6 @@ class AsynchonizeTest(TestCase):
 
         yield from TestClass.sync()
         self.assertTrue(test_mock.called)
-
-    if PY35:
-        exec(textwrap.dedent("""
-        @async_test
-        def test_asynchronize_with_stop_iteration(self):
-
-            class TestClass:
-
-                @classmethod
-                def _get_db(cls):
-                    db = Mock()
-                    db._framework = asyncio_framework
-                    return db
-
-                @metaprogramming.asynchronize
-                def sync(self):
-                    raise StopIteration
-
-            testobj = TestClass()
-            with self.assertRaises(StopAsyncIteration):
-                yield from testobj.sync()
-
-            """))
 
     @async_test
     def test_asynchornize_with_exception(self):
@@ -191,6 +170,21 @@ class AsynchonizeTest(TestCase):
         with self.assertRaises(metaprogramming.ConfusionError):
             metaprogramming.get_framework(TestClass())
 
+    def test_get_loop(self):
+
+        db = Mock()
+
+        class MyDoc:
+
+            @classmethod
+            def _get_db(cls):
+                db._framework = asyncio_framework
+                return db
+
+        loop = metaprogramming.get_loop(MyDoc())
+        self.assertTrue(loop)
+        self.assertTrue(db.get_io_loop.called)
+
     def test_get_future(self):
         class TestClass:
 
@@ -201,6 +195,20 @@ class AsynchonizeTest(TestCase):
                 return db
 
         future = metaprogramming.get_future(TestClass())
+        self.assertIsInstance(future, Future)
+
+    @async_test
+    def test_get_future_with_loop(self):
+        class TestClass:
+
+            @classmethod
+            def _get_db(cls):
+                db = Mock()
+                db._framework = asyncio_framework
+                return db
+
+        loop = asyncio.get_event_loop()
+        future = metaprogramming.get_future(TestClass(), loop=loop)
         self.assertIsInstance(future, Future)
 
 
@@ -228,18 +236,24 @@ class SynchronizeTest(TestCase):
 
 class AsyncTest(TestCase):
 
+    @classmethod
+    def setUpClass(cls):
+        db = 'mongomotor-test-unit-{}{}'.format(sys.version_info.major,
+                                                sys.version_info.minor)
+        connect(db)
+
+    @classmethod
+    def tearDownClass(cls):
+        disconnect()
+
     @async_test
     def test_create_attribute(self):
 
         test_mock = Mock()
 
-        class BaseTestClass:
+        class BaseTestClass(Document):
 
-            @classmethod
-            def _get_db(cls):
-                db = Mock()
-                db._framework = asyncio_framework
-                return db
+            meta = {'abstract': True}
 
             def some_method(self):
                 test_mock()
@@ -249,8 +263,6 @@ class AsyncTest(TestCase):
             some_method = metaprogramming.Async()
 
         test_class = TestClass
-        test_class.some_method = TestClass.some_method.create_attribute(
-            TestClass, 'some_method')
 
         test_instance = test_class()
         yield from test_instance.some_method()
@@ -261,13 +273,9 @@ class AsyncTest(TestCase):
 
         test_mock = Mock()
 
-        class BaseTestClass:
+        class BaseTestClass(Document):
 
-            @classmethod
-            def _get_db(cls):
-                db = Mock()
-                db._framework = asyncio_framework
-                return db
+            meta = {'abstract': True}
 
             @classmethod
             def some_method(cls):
@@ -277,10 +285,6 @@ class AsyncTest(TestCase):
 
             some_method = metaprogramming.Async(cls_meth=True)
 
-        test_class = TestClass
-        test_class.some_method = TestClass.some_method.create_attribute(
-            TestClass, 'some_method')
-
         yield from TestClass.some_method()
         self.assertTrue(test_mock.called)
 
@@ -289,13 +293,9 @@ class AsyncTest(TestCase):
 
         test_mock = Mock()
 
-        class BaseTestClass:
+        class BaseTestClass(Document):
 
-            @classmethod
-            def _get_db(cls):
-                db = Mock()
-                db._framework = asyncio_framework
-                return db
+            meta = {'abstract': True}
 
             def some_method(self):
                 test_mock()
@@ -312,18 +312,24 @@ class AsyncTest(TestCase):
 
 class AsyncDocumentMetaclassTest(TestCase):
 
+    @classmethod
+    def setUpClass(cls):
+        db = 'mongomotor-test-unit-{}{}'.format(sys.version_info.major,
+                                                sys.version_info.minor)
+        connect(db)
+
+    @classmethod
+    def tearDownClass(cls):
+        disconnect()
+
     @async_test
     def test_create_attributes(self):
 
         test_mock = Mock()
 
-        class BaseTestDoc:
+        class BaseTestDoc(Document):
 
-            @classmethod
-            def _get_db(cls):
-                db = Mock()
-                db._framework = asyncio_framework
-                return db
+            meta = {'abstract': True}
 
             @classmethod
             def _build_index_specs(cls, indexes):

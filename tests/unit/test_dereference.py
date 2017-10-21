@@ -2,8 +2,8 @@
 
 import sys
 from unittest import TestCase
-from mongomotor import dereference, Document, connect, disconnect
-from mongomotor.fields import StringField, ListField, ReferenceField
+from mongomotor import Document, connect, disconnect
+from mongomotor.fields import StringField, ReferenceField
 from mongomotor.metaprogramming import asynchronize
 from tests import async_test
 

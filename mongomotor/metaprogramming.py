@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Copyright 2016 Juca Crispim <juca@poraodojuca.net>
+# Copyright 2016, 2017 Juca Crispim <juca@poraodojuca.net>
 
 # This file is part of mongomotor.
 
@@ -17,9 +17,7 @@
 # You should have received a copy of the GNU General Public License
 # along with mongomotor. If not, see <http://www.gnu.org/licenses/>.
 
-from copy import copy
 import functools
-import greenlet
 from mongoengine.base.metaclasses import TopLevelDocumentMetaclass
 from mongoengine.context_managers import switch_db as me_switch_db
 from motor.metaprogramming import MotorAttributeFactory
@@ -41,32 +39,13 @@ def asynchronize(method, cls_meth=False):
        a class method."""
 
     def async_method(instance_or_class, *args, **kwargs):
+        callback = kwargs.pop('callback', None)
         framework = get_framework(instance_or_class)
-        loop = framework.get_event_loop()
-        future = framework.get_future(loop)
+        loop = kwargs.pop('_loop', None) or get_loop(instance_or_class)
 
-        def call_method():
-            # this call_method runs on a child greenlet.
-
-            try:
-                result = method(instance_or_class, *args, **kwargs)
-                framework.call_soon(
-                    loop, functools.partial(future.set_result, result))
-            except Exception as e:
-                # we can't have StopIteration raised into Future, so
-                # we raise StopAsyncIteration
-                if isinstance(e, StopIteration):
-                    e = StopAsyncIteration(str(e))
-
-                framework.call_soon(
-                    loop, functools.partial(future.set_exception, e))
-
-        greenlet.greenlet(call_method).switch()
-        # when a I/O operation is started the control will be back to
-        # this greenlet and the future will be returned. When the I/O is
-        # completed the control goes back to the child greenlet and the future
-        # will be resolved.
-        return future
+        future = framework.run_on_executor(
+            loop, method, instance_or_class, *args, **kwargs)
+        return framework.future_or_callback(future, callback, loop)
 
     # for mm_extensions.py (docs)
     async_method.is_async_method = True
@@ -105,35 +84,51 @@ def synchronize(method, cls_meth=False):
     return wrapper
 
 
+def _get_db(obj):
+    """Returns the database connection instance for a given object."""
+
+    if hasattr(obj, '_get_db'):
+        db = obj._get_db()
+
+    elif hasattr(obj, 'document_type'):
+        db = obj.document_type._get_db()
+
+    elif hasattr(obj, '_document'):
+        db = obj._document._get_db()
+
+    elif hasattr(obj, 'owner_document'):
+        db = obj.owner_document._get_db()
+
+    elif hasattr(obj, 'instance'):
+        db = obj.instance._get_db()
+
+    else:
+        raise ConfusionError('Don\'t know how to get db for {}'.format(
+            str(obj)))
+
+    return db
+
+
 def get_framework(obj):
     """Returns an asynchronous framework for a given object."""
 
-    if hasattr(obj, '_get_db'):
-        framework = obj._get_db()._framework
-
-    elif hasattr(obj, 'document_type'):
-        framework = obj.document_type._get_db()._framework
-
-    elif hasattr(obj, '_document'):
-        framework = obj._document._get_db()._framework
-
-    elif hasattr(obj, 'owner_document'):
-        framework = obj.owner_document._get_db()._framework
-
-    elif hasattr(obj, 'instance'):
-        framework = obj.instance._get_db()._framework
-
-    else:
-        raise ConfusionError('Don\'t know how to get framework for {}'.format(
-            str(obj)))
-
-    return framework
+    db = _get_db(obj)
+    return db._framework
 
 
-def get_future(obj):
+def get_loop(obj):
+    """Returns the io loop for a given object"""
+
+    db = _get_db(obj)
+    return db.get_io_loop()
+
+
+def get_future(obj, loop=None):
     """Returns a future for a given object"""
+
     framework = get_framework(obj)
-    loop = framework.get_event_loop()
+    if loop is None:
+        loop = framework.get_event_loop()
     future = framework.get_future(loop)
     return future
 

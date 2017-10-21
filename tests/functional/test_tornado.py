@@ -496,7 +496,7 @@ function(key, values){
         yield doc.save()
 
         yield doc.update(set__docname='d1')
-
+        yield gen.sleep(0.1)
         doc = yield self.maindoc.objects.get(docname='d1')
 
         self.assertTrue(doc.id)

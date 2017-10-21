@@ -19,11 +19,13 @@
 
 
 from mongoengine import (Document as DocumentBase,
-                         DynamicDocument as DynamicDocumentBase)
+                         DynamicDocument as DynamicDocumentBase,
+                         EmbeddedDocument, DynamicEmbeddedDocument)
+from mongoengine.base import (BaseDict, BaseList, EmbeddedDocumentList)
 from mongoengine.errors import InvalidDocumentError, InvalidQueryError
 from mongomotor.fields import ReferenceField, ComplexBaseField
 from mongomotor.metaprogramming import (AsyncDocumentMetaclass, Async, Sync,
-                                        get_future)
+                                        get_future, get_loop)
 from mongomotor.queryset import QuerySet
 
 
@@ -72,7 +74,7 @@ class Document(DocumentBase, metaclass=AsyncDocumentMetaclass):
     disabled by either setting cls to False on the specific index or
     by setting index_cls to False on the meta dictionary for the document.
 
-    By default, any extra attribute existing in stored data but not declared
+   By default, any extra attribute existing in stored data but not declared
     in your model will raise a :class:`mongoengine.FieldDoesNotExist` error.
     This can be disabled by setting :attr:`strict` to ``False``
     in the :attr:`meta` dictionary.
@@ -105,7 +107,7 @@ class Document(DocumentBase, metaclass=AsyncDocumentMetaclass):
     ensure_index = Sync(cls_meth=True)
 
     def __init__(self, *args, **kwargs):
-        # The thing here that if we try to dereference
+        # The thing here is that if we try to dereference
         # references now we end with a future as the attribute so
         # we don't dereference here.
         fields = []
@@ -162,7 +164,12 @@ class Document(DocumentBase, metaclass=AsyncDocumentMetaclass):
                     return
 
                 for field in self._fields_ordered:
-                    setattr(self, field, self._reload(field, updated[field]))
+                    try:
+                        setattr(self, field, self._reload(field,
+                                                          updated[field]))
+                    except AttributeError:
+                        setattr(self, field, self._reload(
+                            field, updated._data.get(field)))
 
                 self._changed_fields = updated._changed_fields
                 self._created = False
@@ -191,6 +198,23 @@ class Document(DocumentBase, metaclass=AsyncDocumentMetaclass):
         if not hasattr(self, '__objects'):
             self.__objects = QuerySet(self, self._get_collection())
         return self.__objects
+
+    def _reload(self, key, value):
+
+        # Hack!!
+        # What we do here is to raise the exception for futures because
+        # we don't really want to reload references and the way mongoengine
+        # does this stuff makes us to have a future instead of a reference in
+        # the end, so we thow the exception here, the exception will be
+        # handled by mongoengine and we will get a DBRef, and we finally
+        # simply return this DBRef so in the end we can have everything
+        # right for mongomotor
+        loop = get_loop(self)
+        fut = get_future(self, loop=loop)
+        if type(fut) is type(value):
+            raise AttributeError
+
+        return super()._reload(key, value)
 
 
 class DynamicDocument(Document, DynamicDocumentBase,

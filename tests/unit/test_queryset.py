@@ -121,6 +121,15 @@ class QuerySetTest(TestCase):
         docs = yield from qs.to_list()
         self.assertEqual(len(docs), 0)
 
+    def test_get_loop(self):
+        collection = self.test_doc._get_collection()
+
+        qs = QuerySet(self.test_doc, collection)
+
+        loop = qs._get_loop()
+        aio_loop = asyncio.get_event_loop()
+        self.assertIs(loop, aio_loop)
+
     @async_test
     def test_delete_with_rule_cascade(self):
         try:

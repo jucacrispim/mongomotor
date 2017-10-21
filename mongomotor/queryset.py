@@ -207,7 +207,6 @@ class QuerySet(BaseQuerySet, metaclass=AsyncGenericMetaclass):
 
         :returns number of deleted documents
         """
-
         queryset = self.clone()
         doc = queryset._document
 
@@ -230,23 +229,24 @@ class QuerySet(BaseQuerySet, metaclass=AsyncGenericMetaclass):
         dr_future = self._check_delete_rules(doc, queryset, cascade_refs,
                                              write_concern)
 
-        ret_future = get_future(self)
+        loop = self._get_loop()
+        ret_future = get_future(self, loop=loop)
 
         def dr_cb(dr_future):
             """callback for _check_delete_rules future"""
             try:
                 dr_future.result()
 
-                remove_future = queryset._collection.remove(
+                remove_future = queryset._collection.delete_many(
                     queryset._query, **write_concern)
 
                 def r_cb(remove_future):
-                    """Callback for _collection.remove"""
+                    """Callback for _collection.delete_many"""
 
                     try:
                         result = remove_future.result()
                         if result:
-                            ret_future.set_result(result.get('n'))
+                            ret_future.set_result(result.deleted_count)
                     except Exception as e:
                         ret_future.set_exception(e)
 
@@ -756,7 +756,8 @@ class QuerySet(BaseQuerySet, metaclass=AsyncGenericMetaclass):
                        % (document_cls.__name__, field_name))
                 raise OperationError(msg)
 
-        ret_future = get_future(self)
+        loop = self._get_loop()
+        ret_future = get_future(self, loop=loop)
 
         # We need to set result for the future if there's no rules otherwise
         # the callbacks will never be called.
@@ -806,7 +807,7 @@ class QuerySet(BaseQuerySet, metaclass=AsyncGenericMetaclass):
 
                 update_future = document_cls.objects(
                     **{field_name + '__in': self}).update(
-                        write_concern=write_concern, **updatekw)
+                        write_concern=write_concern, _loop=loop, **updatekw)
 
                 def update_cb(update_future):
                     try:
@@ -828,3 +829,10 @@ class QuerySet(BaseQuerySet, metaclass=AsyncGenericMetaclass):
             doc.delete(**write_concern)
             cnt += 1
         return cnt
+
+    def _get_loop(self):
+        """Returns the ioloop for this queryset."""
+
+        db = self._document._get_db()
+        loop = db.get_io_loop()
+        return loop

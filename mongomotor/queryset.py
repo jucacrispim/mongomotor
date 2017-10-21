@@ -28,7 +28,6 @@ from mongoengine.queryset.queryset import QuerySet as BaseQuerySet
 from mongoengine.errors import OperationError
 from motor.core import coroutine_annotation
 from mongomotor import PY35
-from mongomotor.dereference import MongoMotorDeReference
 from mongomotor.exceptions import ConfusionError
 from mongomotor.metaprogramming import (get_future, AsyncGenericMetaclass,
                                         Async, asynchronize)

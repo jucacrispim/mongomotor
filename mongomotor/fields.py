@@ -17,7 +17,6 @@
 # You should have received a copy of the GNU General Public License
 # along with mongomotor. If not, see <http://www.gnu.org/licenses/>.
 
-import greenlet
 from mongoengine import fields
 from mongoengine.base.datastructures import (
     BaseDict, BaseList, EmbeddedDocumentList)
@@ -28,7 +27,7 @@ from mongomotor import EmbeddedDocument, gridfs
 from mongomotor.metaprogramming import (asynchronize, Async, get_future,
                                         AsyncGenericMetaclass)
 
-from mongoengine.fields import *  # noqa: f403 for the sake of the api
+from mongoengine.fields import *  # noqa f403 for the sake of the api
 
 
 class ReferenceField(fields.ReferenceField):
@@ -69,8 +68,7 @@ class ComplexBaseField(fields.ComplexBaseField):
             # It is not in fact dereferenced, we are cheating.
             value._dereferenced = True
         super_meth = super().__get__
-        if isinstance(self.field, ReferenceField) and self._auto_dereference \
-           and greenlet.getcurrent().parent is None:
+        if isinstance(self.field, ReferenceField) and self._auto_dereference:
             # we only need to asynchronize this if we we are not in a
             # child greenlet
             r = asynchronize(super_meth)(instance, owner)
@@ -136,8 +134,9 @@ class GridFSProxy(fields.GridFSProxy, metaclass=AsyncGenericMetaclass):
     def write(self, string):
         if self.grid_id:
             if not self.newfile:
-                raise GridFSError('This document already has a file. Either '
-                                  'delete it or call replace to overwrite it')
+                raise GridFSError(  # noqa f405
+                    'This document already has a file. Either '
+                    'delete it or call replace to overwrite it')
 
         def new_file_cb(new_file_future):
             self.newfile.write(string)

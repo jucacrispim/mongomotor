@@ -19,9 +19,8 @@
 
 
 from mongoengine import (Document as DocumentBase,
-                         DynamicDocument as DynamicDocumentBase,
-                         EmbeddedDocument, DynamicEmbeddedDocument)
-from mongoengine.base import (BaseDict, BaseList, EmbeddedDocumentList)
+                         DynamicDocument as DynamicDocumentBase)
+
 from mongoengine.errors import InvalidDocumentError, InvalidQueryError
 from mongomotor.fields import ReferenceField, ComplexBaseField
 from mongomotor.metaprogramming import (AsyncDocumentMetaclass, Async, Sync,

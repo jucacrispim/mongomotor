@@ -1,7 +1,7 @@
 :tocdepth: 1
 
-MongoMotor: An asynchronous object-document mapper for Python and MongoDB
-=========================================================================
+MongoMotor: Asynchronous Object-Document Mapper
+===============================================
 
 |mongomotor-logo|
 
@@ -18,7 +18,7 @@ using python 3.4+.
 Installation
 ============
 
-To install it using pip:
+To install MongoMotor, use pip:
 
 .. code-block:: sh
 
@@ -28,8 +28,8 @@ To install it using pip:
 And that's it!
 
 
-MongoMotor usage
-================
+Usage
+=====
 
 MongoMotor can be used with `Tornado <http://tornadoweb.org/>`_ or with
 `asyncio <https://docs.python.org/3/library/asyncio.html>`_. In its
@@ -64,6 +64,14 @@ API Documentation
    apidoc/modules
 
 
+CHANGELOG
+=========
+
+.. toctree::
+   :maxdepth: 1
+
+   CHANGELOG
+
 Licence
 =======
 
@@ -74,65 +82,8 @@ Contributing
 ============
 
 MongoMotor's code is hosted on
-`gitlab <https://gitlab.com/mongomotor/mongomotor>`_ and there is the
-`issue tracker <https://gitlab.com/mongomotor/mongomotor/issues>`_, too.
-Feel free to create a fork of the project, open issues, do merge requests...
-
-
-Changelog
-=========
-
-v0.9.3
-++++++
-
-  * Corrected authentication.
-
-v0.9.2
-++++++
-
-  * Corrected dereferencing of objects in lists.
-
-v0.9.1
-++++++
-
-  * Adding DynamicEmbeddedDocument to the api
-
-v0.9
-++++
- * Completly re-wrote. Now it supports asyncio and tornado, just as motor does.
- * Now it supports GridFS
-
-v0.8.2
-++++++
-
-* Correcting __get__ on empty ComplexBaseField.
-
-v0.8.1
-++++++
-
-* Correcting __getitem__ on queryset
-
-v0.8
-++++
-
-* Backing ComplexBaseField and ReferenceField behavior to old one. It
-  now always returns a future. The other way was confusing.
-
-v0.7
-++++++
-
-* Added eager_on on get() method of queryset.
-* Corrected how ComplexBaseField and ReferenceField handle references.
-  Now it only returns a future when the database is really reached.
-* Adding modify() to queryset
-* Updating motor to 0.6.2. That changed aggregate interface. It now returns
-  a cursor.
-
-
-Documentation translations
-==========================
-
-`Documentação do MongoMotor em português <http://mongomotor.poraodojuca.net/ptbr/>`_
+`github <https://github.com/jucacrispim/mongomotor>`_. Feel free to create
+a fork of the project, open issues, do merge requests...
 
 
 Well, that's it!

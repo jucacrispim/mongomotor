@@ -655,7 +655,9 @@ modifier comes before the field, not after it:
 
 The positional operator allows you to update list items without knowing the
 index position, therefore making the update a single atomic operation.  As we
-cannot use the `$` syntax in keyword arguments it has been mapped to `S`::
+cannot use the `$` syntax in keyword arguments it has been mapped to `S`:
+
+.. code-block:: python
 
     post = BlogPost(title='Test', page_views=0, tags=['database', 'mongo'])
     await post.save()

@@ -10,7 +10,8 @@ Connecting to a database
 
 The first thing to do is to connect to a database (an instance of mongod).
 To do so we will use :func:`~mongomotor.connect`. In this example all we
-need is to call the function with a single parameter, the database name.
+need is to call the function with a two parameters, the database name and
+the async framework name.
 
 
 .. code-block:: python
@@ -241,4 +242,4 @@ statement and then use :meth:`~mongomotor.queryset.QuerySet.next_object`.
 
 
 
-For more information see :doc:`guides/querying`.
+For more information see :doc:`guide/querying`.

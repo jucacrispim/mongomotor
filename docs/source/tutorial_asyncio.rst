@@ -282,4 +282,4 @@ statement and then use :meth:`~mongomotor.queryset.QuerySet.next_object`.
 
 
 
-For more information see :doc:`guides/querying`.
+For more information see :doc:`guide/querying`.

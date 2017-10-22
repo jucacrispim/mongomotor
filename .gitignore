@@ -20,3 +20,4 @@ mongoengine
 mongoengine*.egg
 /.dir-locals.el
 .eggs/
+htmlcov/

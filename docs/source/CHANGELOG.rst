@@ -1,0 +1,57 @@
+Changelog
+=========
+
+
+v0.9.4
+++++++
+
+* Motor updated. Now asynchronize stuff is done with a thread pool instad
+  of greenlets
+
+v0.9.3
+++++++
+
+* Corrected authentication.
+
+v0.9.2
+++++++
+
+* Corrected dereferencing of objects in lists.
+
+v0.9.1
+++++++
+
+* Adding DynamicEmbeddedDocument to the api
+
+v0.9
+++++
+
+* Completly re-wrote. Now it supports asyncio and tornado, just as motor
+   does.
+* Now it supports GridFS
+
+v0.8.2
+++++++
+
+* Correcting __get__ on empty ComplexBaseField.
+
+v0.8.1
+++++++
+
+* Correcting __getitem__ on queryset
+
+v0.8
+++++
+
+* Backing ComplexBaseField and ReferenceField behavior to old one. It
+  now always returns a future. The other way was confusing.
+
+v0.7
+++++++
+
+* Added eager_on on get() method of queryset.
+* Corrected how ComplexBaseField and ReferenceField handle references.
+  Now it only returns a future when the database is really reached.
+* Adding modify() to queryset
+* Updating motor to 0.6.2. That changed aggregate interface. It now returns
+  a cursor.

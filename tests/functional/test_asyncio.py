@@ -21,21 +21,16 @@
 import asyncio
 from bson.objectid import ObjectId
 import os
-import sys
 import unittest
 from mongoengine.errors import OperationError
-from mongomotor import connect, disconnect
+from mongomotor import disconnect
 from mongomotor import Document, EmbeddedDocument
 from mongomotor.fields import (StringField, IntField, ListField, DictField,
                                EmbeddedDocumentField, ReferenceField,
                                FileField)
 
-from tests import async_test
+from tests import async_test, connect2db
 from tests.functional import DATA_DIR
-
-
-db = 'mongomotor-test-{}{}'.format(sys.version_info.major,
-                                   sys.version_info.minor)
 
 
 class MongoMotorTest(unittest.TestCase):
@@ -43,7 +38,7 @@ class MongoMotorTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        connect(db, async_framework='asyncio')
+        connect2db(async_framework='asyncio')
 
     @classmethod
     def tearDownClass(cls):
@@ -597,7 +592,7 @@ class GridFSTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        connect(db, async_framework='asyncio')
+        connect2db(async_framework='asyncio')
 
     @classmethod
     def tearDownClass(cls):

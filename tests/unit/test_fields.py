@@ -17,27 +17,24 @@
 # You should have received a copy of the GNU General Public License
 # along with mongomotor. If not, see <http://www.gnu.org/licenses/>.
 
-import sys
 from unittest import TestCase
 from unittest.mock import Mock
 from motor.frameworks import asyncio as asyncio_framework
 from motor.metaprogramming import create_class_with_framework
-from mongomotor import Document, connect, disconnect, EmbeddedDocument
+from mongomotor import Document, disconnect, EmbeddedDocument
 from mongomotor.fields import (ReferenceField, ListField,
                                EmbeddedDocumentField, StringField, DictField,
                                BaseList, BaseDict, GridFSProxy, FileField,
                                GridFSError)
 from mongomotor.gridfs import MongoMotorAgnosticGridFS
-from tests import async_test
+from tests import async_test, connect2db
 
 
 class TestReferenceField(TestCase):
 
     @classmethod
     def setUpClass(cls):
-        db = 'mongomotor-test-unit-{}{}'.format(sys.version_info.major,
-                                                sys.version_info.minor)
-        connect(db)
+        connect2db(async_framework='asyncio')
 
     @classmethod
     def tearDownClass(cls):
@@ -102,9 +99,7 @@ class TestComplexField(TestCase):
 
     @classmethod
     def setUpClass(cls):
-        db = 'mongomotor-test-unit-{}{}'.format(sys.version_info.major,
-                                                sys.version_info.minor)
-        connect(db)
+        connect2db(async_framework='asyncio')
 
     @classmethod
     def tearDownClass(cls):
@@ -218,9 +213,7 @@ class GridFSProxyTest(TestCase):
 
     @classmethod
     def setUpClass(cls):
-        db = 'mongomotor-test-unit-{}{}'.format(sys.version_info.major,
-                                                sys.version_info.minor)
-        connect(db)
+        connect2db(async_framework='asyncio')
 
     @classmethod
     def tearDownClass(cls):
@@ -238,9 +231,7 @@ class FileFieldTest(TestCase):
 
     @classmethod
     def setUpClass(cls):
-        db = 'mongomotor-test-unit-{}{}'.format(sys.version_info.major,
-                                                sys.version_info.minor)
-        connect(db)
+        connect2db(async_framework='asyncio')
 
     @classmethod
     def tearDownClass(cls):

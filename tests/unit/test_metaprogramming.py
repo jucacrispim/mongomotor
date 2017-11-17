@@ -27,7 +27,7 @@ from motor.metaprogramming import create_class_with_framework
 from motor.frameworks import asyncio as asyncio_framework
 from mongomotor import metaprogramming, Document, monkey
 from mongomotor.connection import connect, disconnect
-from tests import async_test
+from tests import async_test, connect2db
 
 
 class OriginalDelegateTest(TestCase):
@@ -53,9 +53,7 @@ class AsynchonizeTest(TestCase):
 
     @classmethod
     def setUpClass(cls):
-        db = 'mongomotor-test-unit-{}{}'.format(sys.version_info.major,
-                                                sys.version_info.minor)
-        connect(db)
+        connect2db(async_framework='asyncio')
 
     @classmethod
     def tearDownClass(cls):
@@ -228,7 +226,7 @@ class SynchronizeTest(TestCase):
         # so it does not interfere in our test
         with monkey.MonkeyPatcher() as patcher:
             patcher.patch_sync_connections()
-            connect()
+            connect2db(async_framework='asyncio')
             self.assertEqual(len(connection._connections), 1)
             TestClass().some_method()
             self.assertEqual(len(connection._connections), 2)
@@ -238,9 +236,7 @@ class AsyncTest(TestCase):
 
     @classmethod
     def setUpClass(cls):
-        db = 'mongomotor-test-unit-{}{}'.format(sys.version_info.major,
-                                                sys.version_info.minor)
-        connect(db)
+        connect2db(async_framework='asyncio')
 
     @classmethod
     def tearDownClass(cls):
@@ -314,9 +310,7 @@ class AsyncDocumentMetaclassTest(TestCase):
 
     @classmethod
     def setUpClass(cls):
-        db = 'mongomotor-test-unit-{}{}'.format(sys.version_info.major,
-                                                sys.version_info.minor)
-        connect(db)
+        connect2db(async_framework='asyncio')
 
     @classmethod
     def tearDownClass(cls):

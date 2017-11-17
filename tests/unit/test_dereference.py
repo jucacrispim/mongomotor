@@ -1,11 +1,10 @@
 # -*- coding: utf-8 -*-
 
-import sys
 from unittest import TestCase
-from mongomotor import Document, connect, disconnect
+from mongomotor import Document, disconnect
 from mongomotor.fields import StringField, ReferenceField
 from mongomotor.metaprogramming import asynchronize
-from tests import async_test
+from tests import async_test, connect2db
 
 
 class MongoMotorDeReferenceTest(TestCase):
@@ -23,9 +22,7 @@ class MongoMotorDeReferenceTest(TestCase):
         cls.test_ref = TestRef
         cls.test_cls = TestCls
 
-        db = 'mongomotor-test-unit-{}{}'.format(sys.version_info.major,
-                                                sys.version_info.minor)
-        connect(db)
+        connect2db(async_framework='asyncio')
 
     @classmethod
     @async_test

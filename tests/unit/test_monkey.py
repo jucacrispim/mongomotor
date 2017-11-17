@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Copyright 2016 Juca Crispim <juca@poraodojuca.net>
+# Copyright 2016, 2017 Juca Crispim <juca@poraodojuca.net>
 
 # This file is part of mongomotor.
 
@@ -21,7 +21,8 @@ from unittest import TestCase
 from unittest.mock import Mock
 from mongoengine import connection as me_connection
 from mongomotor import monkey, Document, metaprogramming
-from mongomotor.connection import connect, disconnect
+from mongomotor.connection import disconnect
+from tests import connect2db
 
 
 class MonkeyPatcherTest(TestCase):
@@ -38,12 +39,11 @@ class MonkeyPatcherTest(TestCase):
 
         self.assertNotEqual(client, me_connection.MongoClient)
 
-
     def test_patch_async_connections(self):
         # here we create one mongomotor connection
         with monkey.MonkeyPatcher() as p:
             p.patch_sync_connections()
-            connect()
+            connect2db()
 
             with monkey.MonkeyPatcher() as patcher:
                 # the patcher will remove all mongomotor connections
@@ -55,7 +55,7 @@ class MonkeyPatcherTest(TestCase):
 
     def test_patch_sync_connections(self):
         # here we create one mongomotor connection
-        connect()
+        connect2db()
 
         class TestClass(Document):
 
@@ -88,3 +88,13 @@ class MonkeyPatcherTest(TestCase):
 
         from mongoengine.dereference import DeReference
         self.assertIs(DeReference, monkey.MongoMotorDeReference)
+
+    # def test_patch_qs_stop_iteration(self):
+    #     with monkey.MonkeyPatcher() as patcher:
+    #         patcher.patch_qs_stop_iteration()
+
+    #     from mongoengine.queryset import base, queryset
+    #     from mongoengine import dereference
+    #     self.assertIs(queryset.StopIteration, StopAsyncIteration)
+    #     self.assertIs(base.StopIteration, StopAsyncIteration)
+    #     self.assertIs(dereference.StopIteration, StopAsyncIteration)

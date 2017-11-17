@@ -20,21 +20,17 @@
 
 from bson.objectid import ObjectId
 import os
-import sys
 import tornado
 from tornado import gen
 from tornado.testing import AsyncTestCase, gen_test
 from mongoengine.errors import OperationError
-from mongomotor import connect, disconnect
+from mongomotor import disconnect
 from mongomotor import Document, EmbeddedDocument
 from mongomotor.fields import (StringField, IntField, ListField, DictField,
                                EmbeddedDocumentField, ReferenceField,
                                FileField)
+from tests import connect2db
 from tests.functional import DATA_DIR
-
-
-db = 'mongomotor-test-{}{}'.format(sys.version_info.major,
-                                   sys.version_info.minor)
 
 
 class MongoMotorTest(AsyncTestCase):
@@ -42,7 +38,7 @@ class MongoMotorTest(AsyncTestCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        connect(db, async_framework='tornado')
+        connect2db(async_framework='tornado')
 
     @classmethod
     def tearDownClass(cls):
@@ -592,7 +588,7 @@ class GridFSTest(AsyncTestCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        connect(db, async_framework='tornado')
+        connect2db(async_framework='tornado')
 
     @classmethod
     def tearDownClass(cls):

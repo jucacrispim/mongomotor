@@ -18,26 +18,23 @@
 # along with mongomotor. If not, see <http://www.gnu.org/licenses/>.
 
 import asyncio
-import sys
 import textwrap
 from unittest import TestCase
 import mongoengine
-from mongomotor import Document, connect, disconnect
+from mongomotor import Document, disconnect
 from mongomotor.dereference import MongoMotorDeReference
 from mongomotor.fields import StringField, ListField, IntField, ReferenceField
 from mongomotor.queryset import (QuerySet, OperationError, Code,
                                  ConfusionError, SON, MapReduceDocument,
                                  PY35)
-from tests import async_test
+from tests import async_test, connect2db
 
 
 class QuerySetTest(TestCase):
 
     @classmethod
     def setUpClass(cls):
-        db = 'mongomotor-test-unit-{}{}'.format(sys.version_info.major,
-                                                sys.version_info.minor)
-        connect(db)
+        connect2db(async_framework='asyncio')
 
     @classmethod
     def tearDownClass(cls):
@@ -567,9 +564,7 @@ if PY35:
 
         @classmethod
         def setUpClass(cls):
-            db = 'mongomotor-test-unit-{}{}'.format(sys.version_info.major,
-                                                    sys.version_info.minor)
-            connect(db)
+            connect2db(async_framework='asyncio')
 
         @classmethod
         def tearDownClass(cls):

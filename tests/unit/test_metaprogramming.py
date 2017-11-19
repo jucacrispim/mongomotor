@@ -21,7 +21,6 @@ import asyncio
 from asyncio.futures import Future
 from unittest import TestCase
 from unittest.mock import Mock
-import sys
 from mongoengine import connection
 from motor.metaprogramming import create_class_with_framework
 from motor.frameworks import asyncio as asyncio_framework
@@ -60,7 +59,7 @@ class AsynchonizeTest(TestCase):
         disconnect()
 
     @async_test
-    def test_asynchornize(self):
+    def test_asynchronize(self):
 
         test_mock = Mock()
 
@@ -77,7 +76,7 @@ class AsynchonizeTest(TestCase):
         self.assertTrue(test_mock.called)
 
     @async_test
-    def test_asynchornize_cls(self):
+    def test_asynchronize_cls(self):
 
         test_mock = Mock()
 

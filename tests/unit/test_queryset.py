@@ -20,10 +20,12 @@
 import asyncio
 import textwrap
 from unittest import TestCase
+from unittest.mock import patch, Mock
 import mongoengine
 from mongomotor import Document, disconnect
 from mongomotor.dereference import MongoMotorDeReference
 from mongomotor.fields import StringField, ListField, IntField, ReferenceField
+from mongomotor import queryset
 from mongomotor.queryset import (QuerySet, OperationError, Code,
                                  ConfusionError, SON, MapReduceDocument,
                                  PY35)
@@ -127,6 +129,7 @@ class QuerySetTest(TestCase):
         aio_loop = asyncio.get_event_loop()
         self.assertIs(loop, aio_loop)
 
+    @patch.object(queryset, 'TEST_ENV', True)
     @async_test
     def test_delete_with_rule_cascade(self):
         try:
@@ -142,13 +145,15 @@ class QuerySetTest(TestCase):
             d = SomeDoc(ref=r)
             yield from d.save()
             yield from r.delete()
-            yield from asyncio.sleep(0.05)
+            yield from asyncio.gather(*queryset._delete_futures)
             with self.assertRaises(SomeDoc.DoesNotExist):
                 yield from SomeDoc.objects.get(id=d.id)
         finally:
+            queryset._delete_futures = []
             yield from SomeRef.drop_collection()
             yield from SomeDoc.drop_collection()
 
+    @patch.object(queryset, 'TEST_ENV', True)
     @async_test
     def test_delete_with_rule_nullify(self):
         try:
@@ -164,13 +169,16 @@ class QuerySetTest(TestCase):
             d = SomeDoc(ref=r)
             yield from d.save()
             yield from r.delete()
-            yield from asyncio.sleep(0.01)
+            yield from asyncio.gather(*queryset._delete_futures)
             d = yield from SomeDoc.objects.get(id=d.id)
             self.assertIsNone((yield from d.ref))
+
         finally:
+            queryset._delete_futures = []
             yield from SomeRef.drop_collection()
             yield from SomeDoc.drop_collection()
 
+    @patch.object(queryset, 'TEST_ENV', True)
     @async_test
     def test_delete_with_rule_pull(self):
         try:
@@ -186,10 +194,11 @@ class QuerySetTest(TestCase):
             d = SomeDoc(ref=[r])
             yield from d.save()
             yield from r.delete()
-            yield from asyncio.sleep(0.01)
+            yield from asyncio.gather(*queryset._delete_futures)
             d = yield from SomeDoc.objects.get(id=d.id)
             self.assertEqual(len((yield from d.ref)), 0)
         finally:
+            queryset._delete_futures = []
             yield from SomeRef.drop_collection()
             yield from SomeDoc.drop_collection()
 

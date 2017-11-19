@@ -20,6 +20,7 @@
 from bson.code import Code
 from bson import SON
 import functools
+import os
 import textwrap
 from mongoengine import signals, DENY, CASCADE, NULLIFY, PULL
 from mongoengine.connection import get_db
@@ -32,6 +33,10 @@ from mongomotor.exceptions import ConfusionError
 from mongomotor.metaprogramming import (get_future, AsyncGenericMetaclass,
                                         Async, asynchronize)
 from mongomotor.monkey import MonkeyPatcher
+
+# for tests
+TEST_ENV = os.environ.get('MONGOMOTOR_TEST_ENV')
+_delete_futures = []
 
 
 class QuerySet(BaseQuerySet, metaclass=AsyncGenericMetaclass):
@@ -797,6 +802,8 @@ class QuerySet(BaseQuerySet, metaclass=AsyncGenericMetaclass):
                         ret_future.set_exception(e)
 
                 ref_q_count_future.add_done_callback(count_cb)
+                if TEST_ENV:
+                    _delete_futures.append(ref_q_count_future)
 
             elif rule in (NULLIFY, PULL):
                 if rule == NULLIFY:
@@ -816,6 +823,8 @@ class QuerySet(BaseQuerySet, metaclass=AsyncGenericMetaclass):
                         ret_future.set_exception(e)
 
                 update_future.add_done_callback(update_cb)
+                if TEST_ENV:
+                    _delete_futures.append(update_future)
 
         return ret_future
 

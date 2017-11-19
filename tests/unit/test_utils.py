@@ -18,6 +18,7 @@
 # along with mongomotor. If not, see <http://www.gnu.org/licenses/>.
 
 from unittest import TestCase
+from unittest.mock import Mock
 from mongoengine import connection
 from mongoengine.connection import get_db, connect, disconnect
 from mongomotor import utils
@@ -39,12 +40,8 @@ class GetAliasForDbTest(TestCase):
         super().tearDown()
 
     def test_get_alias(self):
-        try:
-            alias = 'bla'
-            connect(alias=alias)
-            db = get_db(alias)
-            returned_alias = utils.get_alias_for_db(db)
-            self.assertEqual(returned_alias, alias)
-        finally:
-            del connection._connections['bla']
-            del connection._connection_settings['bla']
+        alias = 'bla'
+        db = Mock()
+        connection._dbs[alias] = db
+        returned_alias = utils.get_alias_for_db(db)
+        self.assertEqual(returned_alias, alias)

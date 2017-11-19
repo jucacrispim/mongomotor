@@ -2,7 +2,6 @@
 
 import asyncio
 import os
-import sys
 from mongomotor import connect
 
 # tks stackoverflow!
@@ -30,7 +29,7 @@ def connect2db(async_framework='asyncio'):
         conn_kw['host'] = host
 
     if port:
-        conn_kw['port'] = port
+        conn_kw['port'] = int(port)
 
     if username:
         conn_kw['username'] = username
@@ -38,7 +37,6 @@ def connect2db(async_framework='asyncio'):
     if password:
         conn_kw['password'] = password
 
-    db = 'mongomotor-test-{}{}'.format(sys.version_info.major,
-                                       sys.version_info.minor)
+    db = 'mongomotor-test'
 
     connect(db, **conn_kw)

@@ -30,7 +30,7 @@ from mongomotor.fields import (StringField, IntField, ListField, DictField,
                                FileField)
 
 from tests import async_test, connect2db
-from tests.functional import DATA_DIR
+from tests.functional import DATA_DIR, CANNOT_EXEC_JS
 
 
 class MongoMotorTest(unittest.TestCase):
@@ -558,12 +558,13 @@ function(key, values){
         self.assertEqual(total, 0)
         self.assertFalse(None)
 
-    @async_test
-    def test_exec_js(self):
-        d = self.maindoc(list_field=['a', 'b'])
-        yield from d.save()
-        r = yield from self.maindoc.objects.exec_js('db.getCollectionNames()')
-        self.assertTrue(r)
+    if not CANNOT_EXEC_JS:
+        @async_test
+        def test_exec_js(self):
+            d = self.maindoc(list_field=['a', 'b'])
+            yield from d.save()
+            r = yield from self.maindoc.objects.exec_js('db.getCollectionNames()')
+            self.assertTrue(r)
 
     @asyncio.coroutine
     def _create_data(self):

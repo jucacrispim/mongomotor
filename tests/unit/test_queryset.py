@@ -440,8 +440,10 @@ function(key, values){
 
     @async_test
     def test_sum(self):
-        futures = [self.test_doc(docint=i).save() for i in range(5)]
-        asyncio.gather(*futures)
+        for i in range(5):
+            d = self.test_doc(docint=i)
+            yield from d.save()
+
         soma = yield from self.test_doc.objects.sum('docint')
         self.assertEqual(soma, 10)
 

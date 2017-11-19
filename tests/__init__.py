@@ -20,8 +20,8 @@ def connect2db(async_framework='asyncio'):
 
     host = os.environ.get('MONGOMOTOR_TEST_DB_HOST')
     port = os.environ.get('MONGOMOTOR_TEST_DB_PORT')
-    username = os.environ.get('MONGOMOTORT_TEST_DB_USERNAME')
-    password = os.environ.get('MONGOMOTORT_TEST_DB_PASSWORD')
+    username = os.environ.get('MONGOMOTOR_TEST_DB_USERNAME')
+    password = os.environ.get('MONGOMOTOR_TEST_DB_PASSWORD')
 
     conn_kw = {'async_framework': async_framework}
 

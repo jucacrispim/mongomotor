@@ -25,7 +25,7 @@ from mongomotor import Document, disconnect, EmbeddedDocument
 from mongomotor.fields import (ReferenceField, ListField,
                                EmbeddedDocumentField, StringField, DictField,
                                BaseList, BaseDict, GridFSProxy, FileField,
-                               GridFSError)
+                               GridFSError, GenericReferenceField)
 from mongomotor.gridfs import MongoMotorAgnosticGridFS
 from tests import async_test, connect2db
 
@@ -93,6 +93,35 @@ class TestReferenceField(TestCase):
         finally:
             yield from RefClass.drop_collection()
             yield from TestDocument.drop_collection()
+
+
+class GenericReferenceFieldTest(TestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        connect2db(async_framework='asyncio')
+
+    @classmethod
+    def tearDownClass(cls):
+        disconnect()
+
+    def test_get(self):
+        class RefClass(Document):
+
+            @classmethod
+            def _get_db(self):
+                db = Mock()
+                db._framework = asyncio_framework
+                return db
+
+        class SomeClass(Document):
+            ref = GenericReferenceField()
+
+        someclass = SomeClass()
+        someclass.ref = RefClass()
+
+        # ref should be a future
+        self.assertTrue(hasattr(someclass.ref, 'set_result'))
 
 
 class TestComplexField(TestCase):

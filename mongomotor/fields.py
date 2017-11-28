@@ -30,7 +30,8 @@ from mongomotor.metaprogramming import (asynchronize, Async, get_future,
 from mongoengine.fields import *  # noqa f403 for the sake of the api
 
 
-class ReferenceField(fields.ReferenceField):
+class BaseAsyncReferenceField:
+    """Base class to asynchronize reference fields."""
 
     def __get__(self, instance, owner):
         # When we are getting the field from a class not from an
@@ -47,6 +48,46 @@ class ReferenceField(fields.ReferenceField):
             meth = asynchronize(meth)
 
         return meth(instance, owner)
+
+
+class ReferenceField(BaseAsyncReferenceField, fields.ReferenceField):
+    """A reference to a document that will be automatically dereferenced on
+    access (lazily).
+
+    Use the `reverse_delete_rule` to handle what should happen if the document
+    the field is referencing is deleted.  EmbeddedDocuments, DictFields and
+    MapFields does not support reverse_delete_rule and an
+    `InvalidDocumentError` will be raised if trying to set on one of these
+    Document / Field types.
+
+    The options are:
+
+      * DO_NOTHING (0)  - don't do anything (default).
+      * NULLIFY    (1)  - Updates the reference to null.
+      * CASCADE    (2)  - Deletes the documents associated with the reference.
+      * DENY       (3)  - Prevent the deletion of the reference object.
+      * PULL       (4)  - Pull the reference from a
+        :class:`~mongomotor.fields.ListField` of references
+
+    Alternative syntax for registering delete rules (useful when implementing
+    bi-directional delete rules)
+
+    .. code-block:: python
+
+        class Bar(Document):
+            content = StringField()
+            foo = ReferenceField('Foo')
+
+        Foo.register_delete_rule(Bar, 'foo', NULLIFY)
+
+    """
+
+    pass
+
+
+class GenericReferenceField(BaseAsyncReferenceField, fields.
+                            GenericReferenceField):
+    pass
 
 
 class ComplexBaseField(fields.ComplexBaseField):

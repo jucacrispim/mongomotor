@@ -28,7 +28,7 @@ from mongomotor import disconnect
 from mongomotor import Document, EmbeddedDocument
 from mongomotor.fields import (StringField, IntField, ListField, DictField,
                                EmbeddedDocumentField, ReferenceField,
-                               FileField)
+                               FileField, GenericReferenceField)
 from tests import connect2db
 from tests.functional import DATA_DIR, CANNOT_EXEC_JS
 
@@ -76,11 +76,15 @@ class MongoMotorTest(AsyncTestCase):
             embedded = EmbeddedDocumentField(Embed)
             ref = ReferenceField(RefDoc)
 
+        class GenericRefDoc(SuperDoc):
+            ref = GenericReferenceField()
+
         self.maindoc = MainDoc
         self.embed = Embed
         self.refdoc = RefDoc
         self.embedref = EmbedRef
         self.otherdoc = OtherDoc
+        self.genericdoc = GenericRefDoc
 
     @gen_test
     def tearDown(self):
@@ -565,6 +569,16 @@ function(key, values){
             yield d.save()
             r = yield self.maindoc.objects.exec_js('db.getCollectionNames()')
             self.assertTrue(r)
+
+    @gen_test
+    def test_generic_reference(self):
+        r = self.refdoc()
+        yield r.save()
+        d = self.genericdoc(some_field='asdf', ref=r)
+        yield d.save()
+        yield d.reload()
+        ref = yield d.ref
+        self.assertEqual(r, ref)
 
     @gen.coroutine
     def _create_data(self):

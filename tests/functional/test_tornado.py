@@ -580,6 +580,14 @@ function(key, values){
         ref = yield d.ref
         self.assertEqual(r, ref)
 
+    @gen_test
+    def test_update_doc_list_field_pull(self):
+        d = self.maindoc(docint=1, list_field=['a', 'b'])
+        yield d.save()
+        yield d.update(pull__list_field='a')
+        yield d.reload()
+        self.assertEqual(len(d.list_field), 1)
+
     @gen.coroutine
     def _create_data(self):
         # here we create the following data:

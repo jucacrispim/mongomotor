@@ -68,6 +68,7 @@ class MongoMotorTest(unittest.TestCase):
 
         class Embed(EmbeddedDocument):
             dict_field = DictField()
+            list_field = ListField()
 
         class MainDoc(SuperDoc):
             docname = StringField()
@@ -580,6 +581,14 @@ function(key, values){
         yield from d.reload()
         ref = yield from d.ref
         self.assertEqual(r, ref)
+
+    @async_test
+    def test_update_doc_list_field_pull(self):
+        d = self.maindoc(docint=1, list_field=['a', 'b'])
+        yield from d.save()
+        yield from d.update(pull__list_field='a')
+        yield from d.reload()
+        self.assertEqual(len(d.list_field), 1)
 
     @asyncio.coroutine
     def _create_data(self):

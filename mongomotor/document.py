@@ -99,7 +99,6 @@ class Document(DocumentBase, metaclass=AsyncDocumentMetaclass):
     save = Async()
     delete = Async()
     modify = Async()
-    update = Async()
     reload = Async()
     compare_indexes = Sync(cls_meth=True)
     ensure_indexes = Sync(cls_meth=True)

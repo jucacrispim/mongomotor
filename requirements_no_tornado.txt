@@ -1,3 +1,4 @@
+asyncblink==0.3
 Jinja2==2.7.3
 MarkupSafe==0.23
 Pygments==2.2.0

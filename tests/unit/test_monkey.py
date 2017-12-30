@@ -19,6 +19,7 @@
 
 from unittest import TestCase
 from unittest.mock import Mock
+from asyncblink import NamedAsyncSignal
 from mongoengine import connection as me_connection
 from mongomotor import monkey, Document, metaprogramming
 from mongomotor.connection import disconnect
@@ -98,3 +99,10 @@ class MonkeyPatcherTest(TestCase):
     #     self.assertIs(queryset.StopIteration, StopAsyncIteration)
     #     self.assertIs(base.StopIteration, StopAsyncIteration)
     #     self.assertIs(dereference.StopIteration, StopAsyncIteration)
+
+    def test_patch_signals(self):
+        with monkey.MonkeyPatcher() as patcher:
+            patcher.patch_signals()
+
+            from mongoengine.signals import pre_init
+            self.assertIsInstance(pre_init, NamedAsyncSignal)

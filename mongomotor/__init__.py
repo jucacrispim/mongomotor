@@ -9,6 +9,7 @@ from mongomotor.monkey import MonkeyPatcher
 
 patcher = MonkeyPatcher()
 patcher.patch_dereference()
+patcher.patch_signals()
 
 from mongomotor.connection import connect, disconnect
 from mongoengine.document import (MapReduceDocument, EmbeddedDocument,

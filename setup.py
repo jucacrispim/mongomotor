@@ -39,7 +39,7 @@ setup(name='mongomotor',
       url='http://mongomotor.poraodojuca.net/',
       packages=find_packages(exclude=['tests', 'tests.*']),
       install_requires=['mongoengine>=0.10', 'motor>=1.1', 'blinker>=1.3',
-                        'pymongo<4,>=3.4'],
+                        'pymongo<4,>=3.4', 'asyncblink>=0.3'],
       extras_require={'tornado': ['tornado']},
       classifiers=[
           'Development Status :: 3 - Alpha',

@@ -18,10 +18,17 @@
 # along with mongomotor. If not, see <http://www.gnu.org/licenses/>.
 
 from unittest import TestCase
+from unittest.mock import patch
+try:
+    import tornado
+except ImportError:
+    tornado = None
+
 from mongoengine.connection import _connection_settings
 from mongomotor import connect, disconnect
 from mongomotor.connection import (MongoMotorAsyncIOClient,
                                    MongoMotorTornadoClient)
+from mongomotor.clients import DummyMongoMotorTornadoClient
 
 
 class ConnectionTest(TestCase):
@@ -29,9 +36,16 @@ class ConnectionTest(TestCase):
     def tearDown(self):
         disconnect()
 
-    def test_connect_with_tornado(self):
-        conn = connect(async_framework='tornado')
-        self.assertTrue(isinstance(conn, MongoMotorTornadoClient))
+    if tornado:
+        def test_connect_with_tornado(self):
+            conn = connect(async_framework='tornado')
+            self.assertTrue(isinstance(conn, MongoMotorTornadoClient))
+
+    @patch('mongomotor.connection.CLIENTS',
+           {'tornado': DummyMongoMotorTornadoClient})
+    def test_connect_with_tornado_not_installed(self):
+        with self.assertRaises(Exception):
+            connect(async_framework='tornado')
 
     def test_connect_with_asyncio(self):
         conn = connect()

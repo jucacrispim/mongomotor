@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Copyright 2016 Juca Crispim <juca@poraodojuca.net>
+# Copyright 2016-2017 Juca Crispim <juca@poraodojuca.net>
 
 # This file is part of mongomotor.
 
@@ -18,15 +18,33 @@
 # along with mongomotor. If not, see <http://www.gnu.org/licenses/>.
 
 from motor.frameworks import asyncio as asyncio_framework
-from motor.frameworks import tornado as tornado_framework
+try:
+    from motor.frameworks import tornado as tornado_framework
+except ImportError:
+    tornado_framework = None
 from motor.metaprogramming import create_class_with_framework
-from mongomotor.core import (MongoMotorAgnosticClient)
+from mongomotor.core import MongoMotorAgnosticClient
+from mongomotor.exceptions import MissingFramework
 
 
 MongoMotorAsyncIOClient = create_class_with_framework(MongoMotorAgnosticClient,
                                                       asyncio_framework,
                                                       'mongomotor.clients')
 
-MongoMotorTornadoClient = create_class_with_framework(MongoMotorAgnosticClient,
-                                                      tornado_framework,
-                                                      'mongomotor.clients')
+
+class DummyMongoMotorTornadoClient:
+    """A dummy class to raise an exception when creating an instance
+    warning about the absense of tornado. """
+
+    def __init__(self, *args, **kwargs):
+        msg = 'tornado framework is not present. '
+        msg += 'Did you installed tornado?'
+        raise MissingFramework(msg)
+
+
+if tornado_framework:
+    MongoMotorTornadoClient = create_class_with_framework(
+        MongoMotorAgnosticClient, tornado_framework, 'mongomotor.clients')
+
+else:
+    MongoMotorTornadoClient = DummyMongoMotorTornadoClient

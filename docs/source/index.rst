@@ -24,6 +24,15 @@ To install MongoMotor, use pip:
 
     $ pip install mongomotor
 
+.. note::
+
+   If you want to use mongomotor with tornado, you can install tornado as a
+   dependency with:
+
+   .. code-block:: sh
+
+      $ pip install mongomotor[tornado]
+
 
 And that's it!
 

@@ -19,6 +19,7 @@
 
 from copy import copy
 from mongoengine import connection, dereference
+from mongoengine.queryset import base, queryset
 from pymongo.mongo_client import MongoClient
 from pymongo.mongo_replica_set_client import MongoReplicaSetClient
 from mongomotor.dereference import MongoMotorDeReference
@@ -100,4 +101,14 @@ class MonkeyPatcher:
 
     def patch_dereference(self):
         self.patch_item(dereference, 'DeReference', MongoMotorDeReference,
+                        undo=False)
+
+    def patch_qs_stop_iteration(self):
+        """Patches StopIterations raised by mongoengine's queryset
+        replacing it by AsyncStopIteration so it can interact well
+        with futures."""
+
+        self.patch_item(base, 'StopIteration', StopAsyncIteration, undo=False)
+        #self.patch_item(queryset, 'StopIteration', StopAsyncIteration)
+        self.patch_item(dereference, 'StopIteration', StopAsyncIteration,
                         undo=False)

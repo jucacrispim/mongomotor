@@ -4,6 +4,10 @@ Using MongoMotor with tornado
 In this introductory tutorial lets create a simple music catalog. In this
 catalog we'll have artists, albums and musics.
 
+.. note::
+
+   You must to have tornado installed to use MongoMotor with tornado
+
 
 Connecting to a database
 ++++++++++++++++++++++++

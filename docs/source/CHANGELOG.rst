@@ -1,6 +1,24 @@
 Changelog
 =========
 
+v0.11.0
++++++++
+
+* Changing signals to AsyncBlink signals. Now coroutines can be used as
+  receivers for signals
+
+* Tornado is now an optional dependency.
+
+v0.10.1
++++++++
+
+* Corrected Document update() method.
+
+
+v0.10.0
++++++++
+
+* Added asynchronous GenericReferenceField
 
 v0.9.4
 ++++++

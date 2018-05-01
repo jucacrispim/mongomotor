@@ -110,7 +110,6 @@ class QuerySetTest(TestCase):
     def test_delete_queryset(self):
         d = self.test_doc(a='a')
         yield from d.save()
-
         collection = self.test_doc._get_collection()
 
         qs = QuerySet(self.test_doc, collection)

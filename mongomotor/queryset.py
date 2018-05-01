@@ -17,6 +17,7 @@
 # You should have received a copy of the GNU General Public License
 # along with mongomotor. If not, see <http://www.gnu.org/licenses/>.
 
+import asyncio
 from bson.code import Code
 from bson import SON
 import functools
@@ -260,7 +261,7 @@ class QuerySet(BaseQuerySet, metaclass=AsyncGenericMetaclass):
                 ret_future.set_exception(e)
 
         dr_future.add_done_callback(dr_cb)
-        return ret_future
+        return asyncio.gather(*[ret_future, dr_future] + _delete_futures)
 
     @coroutine_annotation
     def upsert_one(self, write_concern=None, **update):
@@ -747,6 +748,7 @@ class QuerySet(BaseQuerySet, metaclass=AsyncGenericMetaclass):
         Raises an exception if any document has a DENY rule."""
 
         delete_rules = doc._meta.get('delete_rules') or {}
+        all_futs = []
         # Check for DENY rules before actually deleting/nullifying any other
         # references
         for rule_entry in delete_rules:
@@ -762,7 +764,7 @@ class QuerySet(BaseQuerySet, metaclass=AsyncGenericMetaclass):
 
         loop = self._get_loop()
         ret_future = get_future(self, loop=loop)
-
+        all_futs.append(ret_future)
         # We need to set result for the future if there's no rules otherwise
         # the callbacks will never be called.
         if not delete_rules:
@@ -802,6 +804,7 @@ class QuerySet(BaseQuerySet, metaclass=AsyncGenericMetaclass):
                         ret_future.set_exception(e)
 
                 ref_q_count_future.add_done_callback(count_cb)
+                all_futs.append(ref_q_count_future)
                 if TEST_ENV:
                     _delete_futures.append(ref_q_count_future)
 
@@ -823,10 +826,11 @@ class QuerySet(BaseQuerySet, metaclass=AsyncGenericMetaclass):
                         ret_future.set_exception(e)
 
                 update_future.add_done_callback(update_cb)
+                all_futs.append(update_future)
                 if TEST_ENV:
                     _delete_futures.append(update_future)
 
-        return ret_future
+        return ret_future  # asyncio.gather(*all_futs)
 
     def _document_delete(self, queryset, write_concern):
         """Delete the documents in queryset by calling the document's delete

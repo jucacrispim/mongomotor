@@ -19,13 +19,14 @@
 
 import asyncio
 from asyncio.futures import Future
+from multiprocessing.pool import ThreadPool
 from unittest import TestCase
 from unittest.mock import Mock
 from mongoengine import connection
 from motor.metaprogramming import create_class_with_framework
 from motor.frameworks import asyncio as asyncio_framework
 from mongomotor import metaprogramming, Document, monkey
-from mongomotor.connection import connect, disconnect
+from mongomotor.connection import disconnect
 from tests import async_test, connect2db
 
 
@@ -73,6 +74,28 @@ class AsynchonizeTest(TestCase):
         testobj = TestClass()
         self.assertTrue(isinstance(testobj.sync(), Future))
         yield from testobj.sync()
+        self.assertTrue(test_mock.called)
+
+    @async_test
+    def test_asynchronize_not_on_main_thread(self):
+
+        test_mock = Mock()
+
+        def create_instance():
+            class TestClass(Document):
+                meta = {'abstract': True}
+
+                @metaprogramming.asynchronize
+                def sync(self):
+                    test_mock()
+
+            return TestClass()
+
+        pool = ThreadPool(processes=1)
+        r = pool.apply_async(create_instance)
+        testobj = r.get()
+        self.assertFalse(isinstance(testobj.sync(), Future))
+        testobj.sync()
         self.assertTrue(test_mock.called)
 
     @async_test

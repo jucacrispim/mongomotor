@@ -17,6 +17,7 @@
 # You should have received a copy of the GNU General Public License
 # along with mongomotor. If not, see <http://www.gnu.org/licenses/>.
 
+import threading
 from mongoengine.connection import _dbs
 
 
@@ -33,3 +34,7 @@ def get_alias_for_db(db):
     for alias, connected_db in _dbs.items():
         if db == connected_db:
             return alias
+
+
+def is_main_thread():
+    return threading.current_thread() == threading.main_thread()

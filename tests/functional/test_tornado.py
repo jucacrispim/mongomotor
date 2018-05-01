@@ -572,7 +572,8 @@ if tornado:
             def test_exec_js(self):
                 d = self.maindoc(list_field=['a', 'b'])
                 yield d.save()
-                r = yield self.maindoc.objects.exec_js('db.getCollectionNames()')
+                r = yield self.maindoc.objects.exec_js(
+                    'db.getCollectionNames()')
                 self.assertTrue(r)
 
         @gen_test

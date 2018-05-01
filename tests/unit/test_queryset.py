@@ -145,7 +145,6 @@ class QuerySetTest(TestCase):
             d = SomeDoc(ref=r)
             yield from d.save()
             yield from r.delete()
-            yield from asyncio.gather(*queryset._delete_futures)
             with self.assertRaises(SomeDoc.DoesNotExist):
                 yield from SomeDoc.objects.get(id=d.id)
         finally:

@@ -168,7 +168,6 @@ class QuerySetTest(TestCase):
             d = SomeDoc(ref=r)
             yield from d.save()
             yield from r.delete()
-            yield from asyncio.gather(*queryset._delete_futures)
             d = yield from SomeDoc.objects.get(id=d.id)
             self.assertIsNone((yield from d.ref))
 
@@ -193,7 +192,6 @@ class QuerySetTest(TestCase):
             d = SomeDoc(ref=[r])
             yield from d.save()
             yield from r.delete()
-            yield from asyncio.gather(*queryset._delete_futures)
             d = yield from SomeDoc.objects.get(id=d.id)
             self.assertEqual(len((yield from d.ref)), 0)
         finally:

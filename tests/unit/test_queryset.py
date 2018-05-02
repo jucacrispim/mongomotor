@@ -153,6 +153,27 @@ class QuerySetTest(TestCase):
 
     @patch.object(queryset, 'TEST_ENV', True)
     @async_test
+    def test_delete_with_rule_cascade_no_reference(self):
+        try:
+            class SomeRef(Document):
+                pass
+
+            class SomeDoc(Document):
+                ref = ReferenceField(
+                    SomeRef, reverse_delete_rule=mongoengine.CASCADE)
+
+            r = SomeRef()
+            yield from r.save()
+            yield from r.delete()
+            with self.assertRaises(SomeRef.DoesNotExist):
+                yield from SomeRef.objects.get(id=r.id)
+        finally:
+            queryset._delete_futures = []
+            yield from SomeRef.drop_collection()
+            yield from SomeDoc.drop_collection()
+
+    @patch.object(queryset, 'TEST_ENV', True)
+    @async_test
     def test_delete_with_rule_nullify(self):
         try:
             class SomeRef(Document):

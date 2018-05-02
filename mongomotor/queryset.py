@@ -800,6 +800,10 @@ class QuerySet(BaseQuerySet, metaclass=AsyncGenericMetaclass):
                                     ret_future.set_exception(e)
 
                             del_future.add_done_callback(del_cb)
+                        else:
+                            if not ret_future.done():
+                                ret_future.set_result(None)
+
                     except Exception as e:
                         ret_future.set_exception(e)
 

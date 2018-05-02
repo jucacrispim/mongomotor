@@ -20,7 +20,7 @@
 import asyncio
 import textwrap
 from unittest import TestCase
-from unittest.mock import patch, Mock
+from unittest.mock import patch
 import mongoengine
 from mongomotor import Document, disconnect
 from mongomotor.dereference import MongoMotorDeReference
@@ -146,6 +146,33 @@ class QuerySetTest(TestCase):
             yield from r.delete()
             with self.assertRaises(SomeDoc.DoesNotExist):
                 yield from SomeDoc.objects.get(id=d.id)
+        finally:
+            queryset._delete_futures = []
+            yield from SomeRef.drop_collection()
+            yield from SomeDoc.drop_collection()
+
+    @async_test
+    def test_delete_with_multiple_rule_cascade(self):
+        try:
+            class SomeRef(Document):
+                pass
+
+            class SomeDoc(Document):
+                ref = ReferenceField(
+                    SomeRef, reverse_delete_rule=mongoengine.CASCADE)
+
+            class OtherDoc(Document):
+                ref = ReferenceField(
+                    SomeRef, reverse_delete_rule=mongoengine.CASCADE)
+
+            r = SomeRef()
+            yield from r.save()
+            d = SomeDoc(ref=r)
+            yield from d.save()
+            yield from r.delete()
+            with self.assertRaises(SomeDoc.DoesNotExist):
+                yield from SomeDoc.objects.get(id=d.id)
+
         finally:
             queryset._delete_futures = []
             yield from SomeRef.drop_collection()

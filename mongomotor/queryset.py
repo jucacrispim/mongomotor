@@ -37,7 +37,6 @@ from mongomotor.monkey import MonkeyPatcher
 
 # for tests
 TEST_ENV = os.environ.get('MONGOMOTOR_TEST_ENV')
-_delete_futures = []
 
 
 class QuerySet(BaseQuerySet, metaclass=AsyncGenericMetaclass):
@@ -261,7 +260,7 @@ class QuerySet(BaseQuerySet, metaclass=AsyncGenericMetaclass):
                 ret_future.set_exception(e)
 
         dr_future.add_done_callback(dr_cb)
-        return asyncio.gather(*[ret_future, dr_future] + _delete_futures)
+        return asyncio.gather(*[ret_future, dr_future])
 
     @coroutine_annotation
     def upsert_one(self, write_concern=None, **update):
@@ -748,7 +747,6 @@ class QuerySet(BaseQuerySet, metaclass=AsyncGenericMetaclass):
         Raises an exception if any document has a DENY rule."""
 
         delete_rules = doc._meta.get('delete_rules') or {}
-        all_futs = []
         # Check for DENY rules before actually deleting/nullifying any other
         # references
         for rule_entry in delete_rules:
@@ -763,18 +761,19 @@ class QuerySet(BaseQuerySet, metaclass=AsyncGenericMetaclass):
                 raise OperationError(msg)
 
         loop = self._get_loop()
-        ret_future = get_future(self, loop=loop)
-        all_futs.append(ret_future)
         # We need to set result for the future if there's no rules otherwise
         # the callbacks will never be called.
         if not delete_rules:
+            ret_future = get_future(self, loop=loop)
             ret_future.set_result(None)
+            return ret_future
 
         for rule_entry in delete_rules:
             document_cls, field_name = rule_entry
             if document_cls._meta.get('abstract'):
                 continue
             rule = doc._meta['delete_rules'][rule_entry]
+            ret_future = get_future(self, loop=loop)
             if rule == CASCADE:
                 cascade_refs = set() if cascade_refs is None else cascade_refs
                 for ref in queryset:
@@ -783,34 +782,9 @@ class QuerySet(BaseQuerySet, metaclass=AsyncGenericMetaclass):
                                                 'id__nin': cascade_refs})
 
                 ref_q_count_future = ref_q.count()
-
-                def count_cb(count_future):
-                    try:
-                        count = count_future.result()
-                        if count > 0:
-                            del_future = ref_q.delete(
-                                write_concern=write_concern,
-                                cascade_refs=cascade_refs)
-
-                            def del_cb(del_future):
-                                try:
-                                    r = del_future.result()
-                                    ret_future.set_result(r)
-                                except Exception as e:
-                                    ret_future.set_exception(e)
-
-                            del_future.add_done_callback(del_cb)
-                        else:
-                            if not ret_future.done():
-                                ret_future.set_result(None)
-
-                    except Exception as e:
-                        ret_future.set_exception(e)
-
+                count_cb = self._get_count_cb(ret_future, ref_q, write_concern,
+                                              cascade_refs)
                 ref_q_count_future.add_done_callback(count_cb)
-                all_futs.append(ref_q_count_future)
-                if TEST_ENV:
-                    _delete_futures.append(ref_q_count_future)
 
             elif rule in (NULLIFY, PULL):
                 if rule == NULLIFY:
@@ -830,11 +804,34 @@ class QuerySet(BaseQuerySet, metaclass=AsyncGenericMetaclass):
                         ret_future.set_exception(e)
 
                 update_future.add_done_callback(update_cb)
-                all_futs.append(update_future)
-                if TEST_ENV:
-                    _delete_futures.append(update_future)
 
-        return ret_future  # asyncio.gather(*all_futs)
+        return ret_future
+
+    def _get_count_cb(self, rfuture, ref_q, write_concern, cascade_refs):
+
+        def count_cb(count_future):
+            try:
+                count = count_future.result()
+                if count > 0:
+                    del_future = ref_q.delete(
+                        write_concern=write_concern,
+                        cascade_refs=cascade_refs)
+
+                    def del_cb(del_future):
+                        try:
+                            r = del_future.result()
+                            rfuture.set_result(r)
+                        except Exception as e:
+                            rfuture.set_exception(e)
+
+                    del_future.add_done_callback(del_cb)
+                else:
+                    rfuture.set_result(None)
+
+            except Exception as e:
+                rfuture.set_exception(e)
+
+        return count_cb
 
     def _document_delete(self, queryset, write_concern):
         """Delete the documents in queryset by calling the document's delete

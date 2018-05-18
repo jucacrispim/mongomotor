@@ -98,8 +98,6 @@ if tornado:
             yield self.otherdoc.drop_collection()
             yield self.refdoc.drop_collection()
 
-            super(MongoMotorTest, self).tearDown()
-
         def get_new_ioloop(self):
             return tornado.ioloop.IOLoop.instance()
 

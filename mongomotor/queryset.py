@@ -59,6 +59,12 @@ class QuerySet(BaseQuerySet, metaclass=AsyncGenericMetaclass):
     def __len__(self):
         raise TypeError('len() is not supported. Use count()')
 
+    def _iter_results(self):
+        try:
+            return super()._iter_results()
+        except StopIteration:
+            raise StopAsyncIteration
+
     def __getitem__(self, index):
         # If we received an slice we will return a queryset
         # and as we will not touch the db now we do not need a future
@@ -704,6 +710,15 @@ class QuerySet(BaseQuerySet, metaclass=AsyncGenericMetaclass):
             raw, _auto_dereference=self._auto_dereference,
             only_fields=self.only_fields)
 
+    def no_cache(self):
+        """Convert to a non-caching queryset
+        """
+        if self._result_cache is not None:
+            raise OperationError('QuerySet already cached')
+
+        return self._clone_into(QuerySetNoCache(self._document,
+                                                self._collection))
+
     def _get_code(self, func):
         f_scope = {}
         if isinstance(func, Code):
@@ -856,3 +871,19 @@ class QuerySet(BaseQuerySet, metaclass=AsyncGenericMetaclass):
         db = self._document._get_db()
         loop = db.get_io_loop()
         return loop
+
+
+class QuerySetNoCache(QuerySet):
+    """A non caching QuerySet"""
+
+    def cache(self):
+        """Convert to a caching queryset
+        """
+        return self._clone_into(QuerySet(self._document, self._collection))
+
+    def __iter__(self):
+        queryset = self
+        if queryset._iter:
+            queryset = self.clone()
+        queryset.rewind()
+        return queryset

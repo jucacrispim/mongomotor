@@ -606,6 +606,12 @@ function(key, values){
         doc = yield from self.test_doc.objects.create(a='123')
         self.assertTrue(doc.id)
 
+    @async_test
+    def test_no_cache(self):
+        yield from self.test_doc.objects.create(a='123')
+        doc = yield from self.test_doc.objects.no_cache().get(a='123')
+        self.assertTrue(doc.id)
+
     # @async_test
     # def test_explain(self):
     #     plan = yield from self.test_doc.objects.explain()

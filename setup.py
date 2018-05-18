@@ -38,7 +38,7 @@ setup(name='mongomotor',
       long_description=LONG_DESCRIPTION,
       url='http://mongomotor.poraodojuca.net/',
       packages=find_packages(exclude=['tests', 'tests.*']),
-      install_requires=['mongoengine>=0.10', 'motor>=1.1', 'blinker>=1.3',
+      install_requires=['mongoengine>=0.15.0', 'motor>=1.1', 'blinker>=1.3',
                         'pymongo<4,>=3.4', 'asyncblink>=0.3'],
       extras_require={'tornado': ['tornado>=5.0']},
       classifiers=[

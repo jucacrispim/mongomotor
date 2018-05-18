@@ -18,6 +18,11 @@
 # along with mongomotor. If not, see <http://www.gnu.org/licenses/>.
 
 import asyncio
+try:
+    from asyncio import ensure_future
+except ImportError:
+    from asyncio import async as ensure_future
+
 from bson.code import Code
 from bson import SON
 import functools
@@ -785,6 +790,7 @@ class QuerySet(BaseQuerySet, metaclass=AsyncGenericMetaclass):
                 count_cb = self._get_count_cb(ret_future, ref_q, write_concern,
                                               cascade_refs)
                 ref_q_count_future.add_done_callback(count_cb)
+                ensure_future(ref_q_count_future)
 
             elif rule in (NULLIFY, PULL):
                 if rule == NULLIFY:
@@ -804,6 +810,7 @@ class QuerySet(BaseQuerySet, metaclass=AsyncGenericMetaclass):
                         ret_future.set_exception(e)
 
                 update_future.add_done_callback(update_cb)
+                ensure_future(update_future)
 
         return ret_future
 

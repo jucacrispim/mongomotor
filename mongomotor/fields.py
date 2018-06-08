@@ -110,8 +110,6 @@ class ComplexBaseField(fields.ComplexBaseField):
             value._dereferenced = True
         super_meth = super().__get__
         if isinstance(self.field, ReferenceField) and self._auto_dereference:
-            # we only need to asynchronize this if we we are not in a
-            # child greenlet
             r = asynchronize(super_meth)(instance, owner)
         else:
             r = super_meth(instance, owner)

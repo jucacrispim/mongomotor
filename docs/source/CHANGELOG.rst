@@ -1,6 +1,32 @@
 Changelog
 =========
 
+v0.13.0
++++++++
+
+* Dropped support for python 3.4 and tornado syntax because torando supports
+  await/async syntax. That makes the code much easier to maintain.
+
+v0.12.0
++++++++
+
+* Added :class:`~mongomotor.queryset.QuerySetNoCache`
+
+v0.11.3
++++++++
+
+* Corrected multiple cascade delete rules
+
+v0.11.2
++++++++
+
+* corrected cascade delete rule without reference
+
+v0.11.1
++++++++
+
+* Corrected asynchronous on non-main threads
+
 v0.11.0
 +++++++
 

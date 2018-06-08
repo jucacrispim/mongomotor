@@ -17,6 +17,12 @@
 # You should have received a copy of the GNU General Public License
 # along with mongomotor. If not, see <http://www.gnu.org/licenses/>.
 
+import asyncio
+try:
+    from asyncio import ensure_future
+except ImportError:
+    from asyncio import async as ensure_future
+
 from bson.code import Code
 from bson import SON
 import functools
@@ -36,7 +42,6 @@ from mongomotor.monkey import MonkeyPatcher
 
 # for tests
 TEST_ENV = os.environ.get('MONGOMOTOR_TEST_ENV')
-_delete_futures = []
 
 
 class QuerySet(BaseQuerySet, metaclass=AsyncGenericMetaclass):
@@ -53,6 +58,12 @@ class QuerySet(BaseQuerySet, metaclass=AsyncGenericMetaclass):
 
     def __len__(self):
         raise TypeError('len() is not supported. Use count()')
+
+    def _iter_results(self):
+        try:
+            return super()._iter_results()
+        except StopIteration:
+            raise StopAsyncIteration
 
     def __getitem__(self, index):
         # If we received an slice we will return a queryset
@@ -195,9 +206,8 @@ class QuerySet(BaseQuerySet, metaclass=AsyncGenericMetaclass):
 
         return insert_future
 
-    @coroutine_annotation
-    def delete(self, write_concern=None, _from_doc_delete=False,
-               cascade_refs=None):
+    async def delete(self, write_concern=None, _from_doc_delete=False,
+                     cascade_refs=None):
         """Deletes the documents matched by the query.
 
         :param write_concern: Extra keyword arguments are passed down which
@@ -230,37 +240,13 @@ class QuerySet(BaseQuerySet, metaclass=AsyncGenericMetaclass):
             async_method = asynchronize(self._document_delete)
             return async_method(queryset, write_concern)
 
-        dr_future = self._check_delete_rules(doc, queryset, cascade_refs,
-                                             write_concern)
+        await self._check_delete_rules(doc, queryset, cascade_refs,
+                                       write_concern)
 
-        loop = self._get_loop()
-        ret_future = get_future(self, loop=loop)
+        r = await queryset._collection.delete_many(
+            queryset._query, **write_concern)
 
-        def dr_cb(dr_future):
-            """callback for _check_delete_rules future"""
-            try:
-                dr_future.result()
-
-                remove_future = queryset._collection.delete_many(
-                    queryset._query, **write_concern)
-
-                def r_cb(remove_future):
-                    """Callback for _collection.delete_many"""
-
-                    try:
-                        result = remove_future.result()
-                        if result:
-                            ret_future.set_result(result.deleted_count)
-                    except Exception as e:
-                        ret_future.set_exception(e)
-
-                remove_future.add_done_callback(r_cb)
-
-            except Exception as e:
-                ret_future.set_exception(e)
-
-        dr_future.add_done_callback(dr_cb)
-        return ret_future
+        return r
 
     @coroutine_annotation
     def upsert_one(self, write_concern=None, **update):
@@ -602,8 +588,7 @@ class QuerySet(BaseQuerySet, metaclass=AsyncGenericMetaclass):
         fn_future.add_done_callback(fetch_next_cb)
         return future
 
-    @coroutine_annotation
-    def sum(self, field):
+    async def sum(self, field):
         """Sum over the values of the specified field.
 
         :param field: the field to sum over; use dot-notation to refer to
@@ -641,25 +626,16 @@ class QuerySet(BaseQuerySet, metaclass=AsyncGenericMetaclass):
             }
         """)
 
-        mr_future = self.inline_map_reduce(map_func, reduce_func)
-        future = get_future(self)
+        results = await self.inline_map_reduce(map_func, reduce_func)
+        for result in results:
+            r = result.value
+            break
+        else:
+            r = 0
 
-        def sum_cb(mr_future):
-            results = mr_future.result()
+        return r
 
-            for result in results:
-                r = result.value
-                break
-            else:
-                r = 0
-
-            future.set_result(r)
-
-        mr_future.add_done_callback(sum_cb)
-        return future
-
-    @coroutine_annotation
-    def aggregate_sum(self, field):
+    async def aggregate_sum(self, field):
         """Sum over the values of the specified field.
 
         :param field: the field to sum over; use dot-notation to refer to
@@ -673,20 +649,14 @@ class QuerySet(BaseQuerySet, metaclass=AsyncGenericMetaclass):
             {'$group': {'_id': 'sum', 'total': {'$sum': '$' + field}}}
         ])
 
-        fn_future = cursor.fetch_next
-        future = get_future(self)
+        has_next = await cursor.fetch_next
+        if has_next:
+            doc = cursor.next_object()
+            r = doc['total']
+        else:
+            r = 0
 
-        def sum_cb(fn_future):
-            if fn_future.result():
-                doc = cursor.next_object()
-                r = doc['total']
-            else:
-                r = 0
-
-            future.set_result(r)
-
-        fn_future.add_done_callback(sum_cb)
-        return future
+        return r
 
     @property
     @coroutine_annotation
@@ -698,6 +668,15 @@ class QuerySet(BaseQuerySet, metaclass=AsyncGenericMetaclass):
         return self._document._from_son(
             raw, _auto_dereference=self._auto_dereference,
             only_fields=self.only_fields)
+
+    def no_cache(self):
+        """Convert to a non-caching queryset
+        """
+        if self._result_cache is not None:
+            raise OperationError('QuerySet already cached')
+
+        return self._clone_into(QuerySetNoCache(self._document,
+                                                self._collection))
 
     def _get_code(self, func):
         f_scope = {}
@@ -742,7 +721,8 @@ class QuerySet(BaseQuerySet, metaclass=AsyncGenericMetaclass):
 
         return out
 
-    def _check_delete_rules(self, doc, queryset, cascade_refs, write_concern):
+    async def _check_delete_rules(self, doc, queryset, cascade_refs,
+                                  write_concern):
         """Checks the delete rules for documents being deleted in a queryset.
         Raises an exception if any document has a DENY rule."""
 
@@ -760,14 +740,10 @@ class QuerySet(BaseQuerySet, metaclass=AsyncGenericMetaclass):
                        % (document_cls.__name__, field_name))
                 raise OperationError(msg)
 
-        loop = self._get_loop()
-        ret_future = get_future(self, loop=loop)
-
-        # We need to set result for the future if there's no rules otherwise
-        # the callbacks will never be called.
         if not delete_rules:
-            ret_future.set_result(None)
+            return
 
+        r = None
         for rule_entry in delete_rules:
             document_cls, field_name = rule_entry
             if document_cls._meta.get('abstract'):
@@ -780,30 +756,10 @@ class QuerySet(BaseQuerySet, metaclass=AsyncGenericMetaclass):
                 ref_q = document_cls.objects(**{field_name + '__in': self,
                                                 'id__nin': cascade_refs})
 
-                ref_q_count_future = ref_q.count()
-
-                def count_cb(count_future):
-                    try:
-                        count = count_future.result()
-                        if count > 0:
-                            del_future = ref_q.delete(
-                                write_concern=write_concern,
-                                cascade_refs=cascade_refs)
-
-                            def del_cb(del_future):
-                                try:
-                                    r = del_future.result()
-                                    ret_future.set_result(r)
-                                except Exception as e:
-                                    ret_future.set_exception(e)
-
-                            del_future.add_done_callback(del_cb)
-                    except Exception as e:
-                        ret_future.set_exception(e)
-
-                ref_q_count_future.add_done_callback(count_cb)
-                if TEST_ENV:
-                    _delete_futures.append(ref_q_count_future)
+                count = await ref_q.count()
+                if count > 0:
+                    r = await ref_q.delete(write_concern=write_concern,
+                                           cascade_refs=cascade_refs)
 
             elif rule in (NULLIFY, PULL):
                 if rule == NULLIFY:
@@ -811,22 +767,11 @@ class QuerySet(BaseQuerySet, metaclass=AsyncGenericMetaclass):
                 else:
                     updatekw = {'pull_all__%s' % field_name: self}
 
-                update_future = document_cls.objects(
+                r = await document_cls.objects(
                     **{field_name + '__in': self}).update(
-                        write_concern=write_concern, _loop=loop, **updatekw)
+                        write_concern=write_concern, **updatekw)
 
-                def update_cb(update_future):
-                    try:
-                        result = update_future.result()
-                        ret_future.set_result(result)
-                    except Exception as e:
-                        ret_future.set_exception(e)
-
-                update_future.add_done_callback(update_cb)
-                if TEST_ENV:
-                    _delete_futures.append(update_future)
-
-        return ret_future
+        return r
 
     def _document_delete(self, queryset, write_concern):
         """Delete the documents in queryset by calling the document's delete
@@ -844,3 +789,19 @@ class QuerySet(BaseQuerySet, metaclass=AsyncGenericMetaclass):
         db = self._document._get_db()
         loop = db.get_io_loop()
         return loop
+
+
+class QuerySetNoCache(QuerySet):
+    """A non caching QuerySet"""
+
+    def cache(self):
+        """Convert to a caching queryset
+        """
+        return self._clone_into(QuerySet(self._document, self._collection))
+
+    def __iter__(self):
+        queryset = self
+        if queryset._iter:
+            queryset = self.clone()
+        queryset.rewind()
+        return queryset

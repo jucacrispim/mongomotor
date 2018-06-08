@@ -18,9 +18,10 @@
 # along with mongomotor. If not, see <http://www.gnu.org/licenses/>.
 
 from unittest import TestCase
-from unittest.mock import patch
+from unittest.mock import patch, Mock
 import mongoengine
 from mongomotor import Document, disconnect
+from mongomotor import document
 from mongomotor.fields import IntField, ListField, ReferenceField
 from tests import async_test, connect2db
 
@@ -87,14 +88,29 @@ class DocumentTest(TestCase):
         with self.assertRaises(mongoengine.errors.NotUniqueError):
             yield from other.save()
 
-    @patch('mongoengine.signals.post_delete')
+    @patch.object(document, 'signals', Mock())
+    @async_test
     def test_delete(self, *args, **kwargs):
         doc = self.test_doc(i=1)
         yield from doc.save()
-
         yield from doc.delete()
 
-        self.assertTrue(mongoengine.signals.post_delete.called)
+        self.assertTrue(document.signals.post_delete.send.called)
+
+    @patch.object(document, 'signals', Mock())
+    @async_test
+    def test_delete_subclass(self, *args, **kwargs):
+
+        class extended(Document):
+
+            async def delete(self):
+                return await super().delete()
+
+        doc = extended()
+        yield from doc.save()
+        yield from doc.delete()
+
+        self.assertTrue(document.signals.post_delete.send.called)
 
     @async_test
     def test_update(self):

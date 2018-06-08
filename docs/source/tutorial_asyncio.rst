@@ -1,5 +1,5 @@
-Using MongoMotor with asyncio
-=============================
+Using MongoMotor - An introduction
+===================================
 
 In this introductory tutorial lets create a simple music catalog. In this
 catalog we'll have artists, albums and musics.
@@ -141,7 +141,7 @@ Inserting data
 
 First let's create some artists by creating an instance of *SingleMusician*
 or *MusicalGroup* and then use the :meth:`~mongomotor.document.Document.save`
-in a ``yield from`` statement.
+with an ``await`` statement.
 
 .. note::
 
@@ -172,30 +172,6 @@ in a ``yield from`` statement.
    >>> loop.run_until_complete(insert_artist())
    57ac52e27c1c8440398a347e
    57ac56767c1c8440398a347f
-
-If you are using Python 3.4 you must to use the ``asyncio.coroutine`` decorator
-and ``yield from`` instead of ``await``.
-
-.. code-block:: python
-
-   >>> import asyncio
-   >>> loop = asyncio.get_event_loop()
-   >>> artist = SingleMusician(name='Tim Maia', real_name='Sebastião Maia')
-   >>> group = MusicalGroup()
-   >>> group.name = 'j.m.k.e.'
-   >>> group.people = ['Villu', 'Reimo', 'Andres', 'Livia', 'Promille']
-   >>>
-   >>> @asycio.coroutine
-   ... def insert_artist():
-   ...     yield from artist.save()
-   ...     yield from group.save()
-   ...     print(artist.id)
-   ...     print(group.id)
-   ...
-   >>> loop.run_until_complete(insert_artist())
-   57ac52e27c1c8440398a347e
-   57ac56767c1c8440398a347f
-
 
 As you can see, an ID was created automatically when the document was saved to
 the database. Now, let's create some albums and reference the artists in
@@ -257,29 +233,6 @@ To iterate over a queryset we use ``async for``.
    ...                 print('  - {}'.format(track.title))
    ...
    >>> loop.run_until_complete(list_artists())
-
-
-In Python 3.4 you must use a ``while`` loop and call
-:meth:`~mongomotor.queryset.QuerySet.fetch_next` in a ``yield from``
-statement and then use :meth:`~mongomotor.queryset.QuerySet.next_object`.
-
-.. code-block:: python
-
-   >>> @asyncio.coroutine
-   ... def list_artists():
-   ...     artists = Artist.objects:
-   ...     while (yield from artists.fetch_next):
-   ...         artist = artists.next_object()
-   ...         albums = Album.objects.filter(artists=artist)
-   ...         print(artist.name)
-   ...         while (yield from albums.fetch_next):
-   ...             album = albums.next_object()
-   ...             print(' - {}'.format(album.title))
-   ...             for track in album.tracks:
-   ...                 print('  - {}'.format(track.title))
-   ...
-   >>> loop.run_until_complete(list_artists())
-
 
 
 For more information see :doc:`guide/querying`.

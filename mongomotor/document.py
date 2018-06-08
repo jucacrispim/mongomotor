@@ -17,15 +17,19 @@
 # You should have received a copy of the GNU General Public License
 # along with mongomotor. If not, see <http://www.gnu.org/licenses/>.
 
-
+import inspect
 from mongoengine import (Document as DocumentBase,
                          DynamicDocument as DynamicDocumentBase)
-
+from mongoengine import signals
+from mongoengine.common import _import_class
 from mongoengine.errors import InvalidDocumentError, InvalidQueryError
+from pymongo.read_preferences import ReadPreference
 from mongomotor.fields import ReferenceField, ComplexBaseField
+from mongoengine.queryset import OperationError
 from mongomotor.metaprogramming import (AsyncDocumentMetaclass, Async, Sync,
-                                        get_future, get_loop)
+                                        get_future)
 from mongomotor.queryset import QuerySet
+import pymongo
 
 
 class Document(DocumentBase, metaclass=AsyncDocumentMetaclass):
@@ -97,7 +101,6 @@ class Document(DocumentBase, metaclass=AsyncDocumentMetaclass):
 
     # Methods that will run asynchronally  and return a future
     save = Async()
-    delete = Async()
     modify = Async()
     reload = Async()
     compare_indexes = Sync(cls_meth=True)
@@ -120,6 +123,41 @@ class Document(DocumentBase, metaclass=AsyncDocumentMetaclass):
         # and here we back things to normal
         for field, deref in fields:
             field._auto_dereference = deref
+
+    async def delete(self, signal_kwargs=None, **write_concern):
+        """Delete the :class:`~mongoengine.Document` from the database. This
+        will only take effect if the document has been previously saved.
+
+        :parm signal_kwargs: (optional) kwargs dictionary to be passed to
+            the signal calls.
+        :param write_concern: Extra keyword arguments are passed down which
+            will be used as options for the resultant
+            ``getLastError`` command.  For example,
+            ``save(..., write_concern={w: 2, fsync: True}, ...)`` will
+            wait until at least two servers have recorded the write and
+            will force an fsync on the primary server.
+
+        """
+        signal_kwargs = signal_kwargs or {}
+        signals.pre_delete.send(self.__class__, document=self, **signal_kwargs)
+
+        # Delete FileFields separately
+        FileField = _import_class('FileField')
+        for name, field in self._fields.items():
+            if isinstance(field, FileField):
+                getattr(self, name).delete()
+
+        try:
+            r = await self._qs.filter(
+                **self._object_key).delete(write_concern=write_concern,
+                                           _from_doc_delete=True)
+            signals.post_delete.send(
+                self.__class__, document=self, **signal_kwargs)
+        except pymongo.errors.OperationFailure as err:
+            message = 'Could not delete document (%s)' % err.message
+            raise OperationError(message)
+
+        return r
 
     def modify(self, query={}, **update):
         """Perform an atomic update of the document in the database and reload
@@ -207,9 +245,7 @@ class Document(DocumentBase, metaclass=AsyncDocumentMetaclass):
         # handled by mongoengine and we will get a DBRef, and we finally
         # simply return this DBRef so in the end we can have everything
         # right for mongomotor
-        loop = get_loop(self)
-        fut = get_future(self, loop=loop)
-        if type(fut) is type(value):
+        if inspect.isawaitable(value):
             raise AttributeError
 
         return super()._reload(key, value)

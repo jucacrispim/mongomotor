@@ -38,6 +38,11 @@ def asynchronize(method, cls_meth=False):
     :param cls_meth: Indicates if the method being asynchronized is
        a class method."""
 
+    # If we are not in the main thread, things are already asynchronized
+    # so we don't need to asynchronize it again.
+    if not utils.is_main_thread():
+        return method
+
     def async_method(instance_or_class, *args, **kwargs):
         callback = kwargs.pop('callback', None)
         framework = get_framework(instance_or_class)

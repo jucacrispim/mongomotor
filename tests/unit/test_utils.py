@@ -17,10 +17,11 @@
 # You should have received a copy of the GNU General Public License
 # along with mongomotor. If not, see <http://www.gnu.org/licenses/>.
 
+from multiprocessing.pool import ThreadPool
 from unittest import TestCase
 from unittest.mock import Mock
 from mongoengine import connection
-from mongoengine.connection import get_db, connect, disconnect
+from mongoengine.connection import disconnect
 from mongomotor import utils
 
 
@@ -45,3 +46,15 @@ class GetAliasForDbTest(TestCase):
         connection._dbs[alias] = db
         returned_alias = utils.get_alias_for_db(db)
         self.assertEqual(returned_alias, alias)
+
+
+class ThreadingTest(TestCase):
+
+    def test_is_main_thread_not_main(self):
+        pool = ThreadPool(processes=1)
+        r = pool.apply_async(utils.is_main_thread)
+
+        self.assertFalse(r.get())
+
+    def test_is_main_thread_on_main(self):
+        self.assertTrue(utils.is_main_thread())

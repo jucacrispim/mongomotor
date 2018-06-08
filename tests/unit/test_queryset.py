@@ -20,7 +20,7 @@
 import asyncio
 import textwrap
 from unittest import TestCase
-from unittest.mock import patch, Mock
+from unittest.mock import patch
 import mongoengine
 from mongomotor import Document, disconnect
 from mongomotor.dereference import MongoMotorDeReference
@@ -110,7 +110,6 @@ class QuerySetTest(TestCase):
     def test_delete_queryset(self):
         d = self.test_doc(a='a')
         yield from d.save()
-
         collection = self.test_doc._get_collection()
 
         qs = QuerySet(self.test_doc, collection)
@@ -145,9 +144,56 @@ class QuerySetTest(TestCase):
             d = SomeDoc(ref=r)
             yield from d.save()
             yield from r.delete()
-            yield from asyncio.gather(*queryset._delete_futures)
             with self.assertRaises(SomeDoc.DoesNotExist):
                 yield from SomeDoc.objects.get(id=d.id)
+        finally:
+            queryset._delete_futures = []
+            yield from SomeRef.drop_collection()
+            yield from SomeDoc.drop_collection()
+
+    @async_test
+    def test_delete_with_multiple_rule_cascade(self):
+        try:
+            class SomeRef(Document):
+                pass
+
+            class SomeDoc(Document):
+                ref = ReferenceField(
+                    SomeRef, reverse_delete_rule=mongoengine.CASCADE)
+
+            class OtherDoc(Document):
+                ref = ReferenceField(
+                    SomeRef, reverse_delete_rule=mongoengine.CASCADE)
+
+            r = SomeRef()
+            yield from r.save()
+            d = SomeDoc(ref=r)
+            yield from d.save()
+            yield from r.delete()
+            with self.assertRaises(SomeDoc.DoesNotExist):
+                yield from SomeDoc.objects.get(id=d.id)
+
+        finally:
+            queryset._delete_futures = []
+            yield from SomeRef.drop_collection()
+            yield from SomeDoc.drop_collection()
+
+    @patch.object(queryset, 'TEST_ENV', True)
+    @async_test
+    def test_delete_with_rule_cascade_no_reference(self):
+        try:
+            class SomeRef(Document):
+                pass
+
+            class SomeDoc(Document):
+                ref = ReferenceField(
+                    SomeRef, reverse_delete_rule=mongoengine.CASCADE)
+
+            r = SomeRef()
+            yield from r.save()
+            yield from r.delete()
+            with self.assertRaises(SomeRef.DoesNotExist):
+                yield from SomeRef.objects.get(id=r.id)
         finally:
             queryset._delete_futures = []
             yield from SomeRef.drop_collection()
@@ -169,7 +215,6 @@ class QuerySetTest(TestCase):
             d = SomeDoc(ref=r)
             yield from d.save()
             yield from r.delete()
-            yield from asyncio.gather(*queryset._delete_futures)
             d = yield from SomeDoc.objects.get(id=d.id)
             self.assertIsNone((yield from d.ref))
 
@@ -194,7 +239,6 @@ class QuerySetTest(TestCase):
             d = SomeDoc(ref=[r])
             yield from d.save()
             yield from r.delete()
-            yield from asyncio.gather(*queryset._delete_futures)
             d = yield from SomeDoc.objects.get(id=d.id)
             self.assertEqual(len((yield from d.ref)), 0)
         finally:
@@ -560,6 +604,12 @@ function(key, values){
     @async_test
     def test_create(self):
         doc = yield from self.test_doc.objects.create(a='123')
+        self.assertTrue(doc.id)
+
+    @async_test
+    def test_no_cache(self):
+        yield from self.test_doc.objects.create(a='123')
+        doc = yield from self.test_doc.objects.no_cache().get(a='123')
         self.assertTrue(doc.id)
 
     # @async_test

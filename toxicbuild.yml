@@ -14,8 +14,8 @@ builders:
       master
 
     plugins:
-      name: python-venv
-      pyversion: python3.5
+      - name: python-venv
+        pyversion: python3.5
 
     platform: python3.5
 
@@ -27,8 +27,8 @@ builders:
       master
 
     plugins:
-      name: python-venv
-      pyversion: python3.6
+      - name: python-venv
+        pyversion: python3.6
 
     platform: python3.6
 
@@ -40,9 +40,9 @@ builders:
       master
 
     plugins:
-      name: python-venv
-      pyversion: python3.6
-      requirements_file: requirements_no_tornado.txt
+      - name: python-venv
+        pyversion: python3.6
+        requirements_file: requirements_no_tornado.txt
 
     platform: python3.6
 
@@ -54,8 +54,8 @@ builders:
       release
 
     plugins:
-      name: python-venv
-      pyversion: python3.6
+      - name: python-venv
+        pyversion: python3.6
 
     platform: python3.6
 

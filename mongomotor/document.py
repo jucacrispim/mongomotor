@@ -124,7 +124,7 @@ class Document(DocumentBase, metaclass=AsyncDocumentMetaclass):
         for field, deref in fields:
             field._auto_dereference = deref
 
-    def delete(self, signal_kwargs=None, **write_concern):
+    async def delete(self, signal_kwargs=None, **write_concern):
         """Delete the :class:`~mongoengine.Document` from the database. This
         will only take effect if the document has been previously saved.
 
@@ -147,27 +147,17 @@ class Document(DocumentBase, metaclass=AsyncDocumentMetaclass):
             if isinstance(field, FileField):
                 getattr(self, name).delete()
 
-        ret_fut = get_future(self)
-        del_fut = self._qs.filter(
-            **self._object_key).delete(write_concern=write_concern,
-                                       _from_doc_delete=True)
+        try:
+            r = await self._qs.filter(
+                **self._object_key).delete(write_concern=write_concern,
+                                           _from_doc_delete=True)
+            signals.post_delete.send(
+                self.__class__, document=self, **signal_kwargs)
+        except pymongo.errors.OperationFailure as err:
+            message = 'Could not delete document (%s)' % err.message
+            raise OperationError(message)
 
-        def del_fut_cb(del_fut):
-            try:
-                try:
-                    r = del_fut.result()
-                    signals.post_delete.send(
-                        self.__class__, document=self, **signal_kwargs)
-                    ret_fut.set_result(r)
-                except pymongo.errors.OperationFailure as err:
-                    message = 'Could not delete document (%s)' % err.message
-                    raise OperationError(message)
-
-            except Exception as e:
-                ret_fut.set_exception(r)
-
-        del_fut.add_done_callback(del_fut_cb)
-        return ret_fut
+        return r
 
     def modify(self, query={}, **update):
         """Perform an atomic update of the document in the database and reload

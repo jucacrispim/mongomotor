@@ -11,7 +11,7 @@ UPLOAD_DOCS_CMD:  &UPLOAD_DOCS_CMD
 builders:
   - name: python3.5
     branches:
-      master
+      - master
 
     plugins:
       - name: python-venv
@@ -24,7 +24,7 @@ builders:
 
   - name: python3.6
     branches:
-      master
+      - master
 
     plugins:
       - name: python-venv
@@ -37,7 +37,7 @@ builders:
 
   - name: python3.6-no-tornado
     branches:
-      master
+      - master
 
     plugins:
       - name: python-venv
@@ -51,7 +51,7 @@ builders:
 
   - name: release
     branches:
-      release
+      - release
 
     plugins:
       - name: python-venv

@@ -11,22 +11,6 @@ fetch documents from the database:
 
 .. code-block:: python
 
-    # Prints out the names of all the Artists in the database
-    while (yield from Artist.objects.fetch_next):
-        artist = Artist.objects.next_object()
-        print(artist.name)
-
-
-.. note::
-
-   Here we use a ``yield from`` statement. If you are using tornado use
-   ``yield`` instead.
-
-
-With Python 3.5+ you can use ``async for`` to iterate over the queryset:
-
-.. code-block:: python
-
     # Prints out the names of all the artists in the database
     async for artist in Aritst.objects:
         print(artist.name)
@@ -34,10 +18,11 @@ With Python 3.5+ you can use ``async for`` to iterate over the queryset:
 
 .. note::
 
-    As of MongoEngine 0.8 the querysets utilise a local cache.  So iterating
+    MongoMotor querysets utilise a local cache.  So iterating
     it multiple times will only cause a single query.  If this is not the
-    desired behaviour you can call :class:`mongoengine.QuerySet.no_cache`
-    (version **0.8.3+**) to return a non-caching queryset.
+    desired behaviour you can call
+    :class:`~mongomotor.queryset.QuerySet.no_cache` to return a non-caching
+    queryset.
 
 Filtering queries
 =================

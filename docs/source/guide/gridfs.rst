@@ -21,8 +21,8 @@ a document is created to store details about animals, including a photo:
     marmot = Animal(genus='Marmota', family='Sciuridae')
 
     marmot_photo = open('marmot.jpg', 'rb')
-    yield from marmot.photo.put(marmot_photo, content_type = 'image/jpeg')
-    yield from marmot.save()
+    await marmot.photo.put(marmot_photo, content_type = 'image/jpeg')
+    await marmot.save()
 
 Retrieval
 ---------
@@ -43,12 +43,12 @@ slightly different manner.  First, a new file must be created by calling the
 
 .. code-block:: python
 
-    yield from marmot.photo.new_file()
-    yield from marmot.photo.write('some_image_data')
-    yield from marmot.photo.write('some_more_image_data')
-    yield from marmot.photo.close()
+    await marmot.photo.new_file()
+    await marmot.photo.write('some_image_data')
+    await marmot.photo.write('some_more_image_data')
+    await marmot.photo.close()
 
-    yield from marmot.save()
+    await marmot.save()
 
 Deletion
 --------
@@ -57,7 +57,7 @@ Deleting stored files is achieved with the :func:`delete` method:
 
 .. code-block:: python
 
-    yield from marmot.photo.delete()
+    await marmot.photo.delete()
 
 .. warning::
 
@@ -77,4 +77,4 @@ the :func:`put` method so even metadata can (and should) be replaced:
 .. code-block:: python
 
     another_marmot = open('another_marmot.png', 'rb')
-    yield from marmot.photo.replace(another_marmot, content_type='image/png')
+    await marmot.photo.replace(another_marmot, content_type='image/png')

@@ -35,20 +35,6 @@ builders:
     steps:
       - <<: *TESTS_CMD
 
-  - name: python3.6-no-tornado
-    branches:
-      - master
-
-    plugins:
-      - name: python-venv
-        pyversion: python3.6
-        requirements_file: requirements_no_tornado.txt
-
-    platform: python3.6
-
-    steps:
-      - <<: *TESTS_CMD
-
   - name: release
     branches:
       - release

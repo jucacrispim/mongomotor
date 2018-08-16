@@ -634,8 +634,6 @@ class GridFSTest(unittest.TestCase):
     @async_test
     def tearDown(self):
         yield from self.test_doc.drop_collection()
-        yield from self.test_doc._get_db().fs.files.remove()
-        yield from self.test_doc._get_db().fs.chunks.remove()
 
     @async_test
     def test_put_file(self):
@@ -648,4 +646,5 @@ class GridFSTest(unittest.TestCase):
         yield from doc.save()
         doc = yield from self.test_doc.objects.get(id=doc.id)
         self.assertEqual((yield from doc.filefield.read()), fcontents)
-        self.assertEqual(doc.filefield.mime_type, 'plain/text')
+        self.assertEqual(doc.filefield.grid_out.metadata['mime_type'],
+                         'plain/text')

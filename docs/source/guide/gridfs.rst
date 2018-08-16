@@ -21,7 +21,7 @@ a document is created to store details about animals, including a photo:
     marmot = Animal(genus='Marmota', family='Sciuridae')
 
     marmot_photo = open('marmot.jpg', 'rb')
-    await marmot.photo.put(marmot_photo, content_type = 'image/jpeg')
+    await marmot.photo.put(marmot_photo, content_type='image/jpeg')
     await marmot.save()
 
 Retrieval
@@ -32,7 +32,7 @@ field. The file can also be retrieved just as easily::
 
     marmot = Animal.objects(genus='Marmota').first()
     photo = marmot.photo.read()
-    content_type = marmot.photo.content_type
+    content_type = marmot.photo.metadata['content_type']
 
 Streaming
 ---------
@@ -47,6 +47,15 @@ slightly different manner.  First, a new file must be created by calling the
     await marmot.photo.write('some_image_data')
     await marmot.photo.write('some_more_image_data')
     await marmot.photo.close()
+
+    await marmot.save()
+
+Or you may use the async context manager:
+
+.. code-block:: python
+
+    async with marmot.photo.new_file():
+        marmot.photo.write(b'some-data')
 
     await marmot.save()
 

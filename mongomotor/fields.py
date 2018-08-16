@@ -17,6 +17,7 @@
 # You should have received a copy of the GNU General Public License
 # along with mongomotor. If not, see <http://www.gnu.org/licenses/>.
 
+from uuid import uuid4
 from mongoengine import fields
 from mongoengine.base.datastructures import (
     BaseDict, BaseList, EmbeddedDocumentList)
@@ -148,15 +149,16 @@ class GridFSProxy(fields.GridFSProxy, metaclass=AsyncGenericMetaclass):
     replace = Async()
     close = Async()
 
-    def __getattr__(self, name):
-        attrs = ('_fs', 'grid_id', 'key', 'instance', 'db_alias',
-                 'collection_name', 'newfile', 'gridout', 'fs')
-        if name in attrs:
-            return self.__getattribute__(name)
-        obj = self.get()
-        if hasattr(obj, name):
-            return getattr(obj, name)
-        raise AttributeError
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.grid_in = None
+        self.grid_out = None
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, exc, exc_type, exc_tb):
+        await self.close()
 
     @property
     def fs(self):
@@ -170,37 +172,75 @@ class GridFSProxy(fields.GridFSProxy, metaclass=AsyncGenericMetaclass):
 
         return self._fs
 
-    def write(self, string):
+    def new_file(self, **metadata):
+        """Opens a new stream for writing to gridfs.
+
+        :param metadata: File's metadata.
+        """
+        file_name = uuid4().hex
+        grid_in = self.fs.open_upload_stream(file_name, metadata=metadata)
+        self.grid_id = grid_in._id
+        self.grid_in = grid_in
+        self._mark_as_changed()
+        return self
+
+    async def close(self):
+        if self.grid_in:
+            await self.grid_in.close()
+            self.grid_in = None
+
+    async def write(self, data):
+        """Writes ``data`` to gridfs.
+
+        :param data: String or bytes to write to gridfs."""
+
         if self.grid_id:
-            if not self.newfile:
+            if not self.grid_in:
                 raise GridFSError(  # noqa f405
                     'This document already has a file. Either '
                     'delete it or call replace to overwrite it')
 
-        def new_file_cb(new_file_future):
-            self.newfile.write(string)
+        elif not self.grid_in:
+            raise GridFSError('You must create a new file first. Call '
+                              '``new_file`` or use the async context manager')
 
-        new_future = self.new_file()
-        new_future.add_done_callback(new_file_cb)
-        return new_future
+        return self.grid_in.write(data)
 
-    def replace(self, file_obj, **kwargs):
-        del_future = self.delete()
+    async def put(self, data, **metadata):
+        """Writes ``data`` to gridfs.
 
-        ret_future = get_future(self)
+        :param data: byte-string to write.
+        :param metatada: File's metadata.
+        """
 
-        def del_cb(del_future):
-            put_future = self.put(file_obj, **kwargs)
+        async with self.new_file(**metadata):
+            await self.write(data)
+        self._mark_as_changed()
 
-            def put_cb(put_future):
-                result = put_future.result()
-                ret_future.set_result(result)
+    async def read(self):
+        if not self.grid_id:
+            return None
 
-            put_future.add_done_callback(put_cb)
+        self.grid_out = await self.fs.open_download_stream(self.grid_id)
+        r = await self.grid_out.read()
+        return r
 
-        del_future.add_done_callback(del_cb)
+    async def delete(self):
+        # Delete file from GridFS, FileField still remains
+        await self.fs.delete(self.grid_id)
+        self.grid_in = None
+        self.grid_id = None
+        self.grid_out = None
+        self._mark_as_changed()
 
-        return ret_future
+    async def replace(self, data, **metadata):
+        """Replaces the contents of the file with ``data``.
+
+        :param data: A byte-string to write to gridfs.
+        :param metatada: File metadata.
+        """
+        await self.delete()
+        await self.put(data, **metadata)
 
 
 class FileField(fields.FileField):

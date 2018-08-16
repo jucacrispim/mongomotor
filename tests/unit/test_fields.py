@@ -20,6 +20,7 @@
 import io
 from unittest import TestCase
 from unittest.mock import Mock
+from mongoengine.connection import get_db
 from motor.frameworks import asyncio as asyncio_framework
 from motor.metaprogramming import create_class_with_framework
 from mongomotor import Document, disconnect, EmbeddedDocument
@@ -252,6 +253,12 @@ class GridFSProxyTest(TestCase):
     def setUp(self):
         self.proxy = GridFSProxy()
 
+    @async_test
+    async def tearDown(self):
+        db = get_db()
+        coll = db.fs
+        await coll.drop()
+
     def test_fs(self):
         grid_class = create_class_with_framework(
             MongoMotorAgnosticGridFS, asyncio_framework,
@@ -260,25 +267,55 @@ class GridFSProxyTest(TestCase):
 
     @async_test
     async def test_new_file(self):
-        await self.proxy.new_file('my-file', **{'contentType': 'text/plain'})
+        self.proxy.new_file(**{'contentType': 'text/plain'})
         self.assertTrue(self.proxy.grid_in)
 
     @async_test
-    async def test_write_gridfs_error(self):
+    async def test_write_with_id_not_grid_in(self):
         self.proxy.grid_id = 'some-id'
         with self.assertRaises(GridFSError):
             await self.proxy.write('some-str')
 
     @async_test
+    async def test_write_not_grid_in(self):
+        with self.assertRaises(GridFSError):
+            await self.proxy.write('some-str')
+
+    @async_test
     async def test_write(self):
-        self.proxy.new_file('my-file')
-        await self.proxy.write('bla')
+        self.proxy.new_file()
+        await self.proxy.write(b'bla')
         await self.proxy.grid_in.close()
-        buff = io.StringIO()
-        await self.proxy.download_to_stream(self.proxy.file_id, buff)
+        buff = io.BytesIO()
+        await self.proxy.fs.download_to_stream(self.proxy.grid_in._id, buff)
         buff.seek(0)
         content = buff.read()
-        self.assertEqual(content, 'bla')
+        self.assertEqual(content, b'bla')
+
+    @async_test
+    async def test_put(self):
+        await self.proxy.put(b'asdf')
+        buff = io.BytesIO()
+        await self.proxy.fs.download_to_stream(self.proxy.grid_id, buff)
+        buff.seek(0)
+        content = buff.read()
+        self.assertEqual(content, b'asdf')
+
+    @async_test
+    async def test_read(self):
+        fcontents = b'asdf'
+        await self.proxy.put(fcontents)
+        contents = await self.proxy.read()
+        self.assertEqual(fcontents, contents)
+
+    @async_test
+    async def test_replace(self):
+        fcontents = b'asdf'
+        new_contents = b'123'
+        await self.proxy.put(fcontents)
+        await self.proxy.replace(new_contents)
+        contents = await self.proxy.read()
+        self.assertEqual(contents, new_contents)
 
 
 class FileFieldTest(TestCase):
@@ -301,8 +338,8 @@ class FileFieldTest(TestCase):
     @async_test
     def tearDown(self):
         yield from self.test_doc.drop_collection()
-        yield from self.test_doc._get_db().fs.files.remove()
-        yield from self.test_doc._get_db().fs.chunks.remove()
+        db = self.test_doc._get_db()
+        yield from db.fs.drop()
 
     @async_test
     def test_file_field_put(self):
@@ -321,10 +358,9 @@ class FileFieldTest(TestCase):
         contents = yield from doc.ff.read()
         self.assertEqual(contents, fcontents)
 
-    @async_test
     def test_new_file(self):
         doc = self.test_doc()
-        yield from doc.ff.new_file()
+        doc.ff.new_file()
         self.assertTrue(doc.ff.grid_id)
 
     @async_test
@@ -336,12 +372,13 @@ class FileFieldTest(TestCase):
             yield from doc.ff.write('something')
 
     @async_test
-    def test_field_write(self):
+    async def test_field_write(self):
         doc = self.test_doc()
-        yield from doc.ff.write(b'a file')
-        yield from doc.ff.write(b'\nthe test')
-        yield from doc.ff.close()
-        content = yield from doc.ff.read()
+        doc.ff.new_file()
+        await doc.ff.write(b'a file')
+        await doc.ff.write(b'\nthe test')
+        await doc.ff.close()
+        content = await doc.ff.read()
         self.assertEqual(len(content.split(b'\n')), 2)
 
     @async_test

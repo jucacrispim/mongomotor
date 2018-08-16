@@ -31,7 +31,7 @@ And that's it!
 Usage
 =====
 
- In the MongoMotor introduction tutorial we will create a simple music catalog.
+In the MongoMotor introduction tutorial we will create a simple music catalog.
 
 
 .. toctree::

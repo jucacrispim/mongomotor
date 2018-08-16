@@ -59,6 +59,7 @@ def connect(db=None, async_framework='asyncio',
 
     # here we register a connection that will use the original pymongo
     # client and if used will block the process
+    kwargs.pop('io_loop', None)
     sync_alias = utils.get_sync_alias(alias)
     register_connection(sync_alias, db, **kwargs)
 

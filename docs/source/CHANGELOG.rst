@@ -1,6 +1,14 @@
 Changelog
 =========
 
+v0.14.0
++++++++
+
+* Upgraded to motor 2
+* Corrected sessions
+* Corrected handling of io_loop argument to connect
+
+
 v0.13.0
 +++++++
 

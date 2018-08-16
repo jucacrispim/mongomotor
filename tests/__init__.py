@@ -37,6 +37,7 @@ def connect2db(async_framework='asyncio'):
     if password:
         conn_kw['password'] = password
 
+    conn_kw['io_loop'] = asyncio.get_event_loop()
     db = 'mongomotor-test'
 
     connect(db, **conn_kw)

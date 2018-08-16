@@ -17,6 +17,7 @@
 # You should have received a copy of the GNU General Public License
 # along with mongomotor. If not, see <http://www.gnu.org/licenses/>.
 
+import io
 from unittest import TestCase
 from unittest.mock import Mock
 from motor.frameworks import asyncio as asyncio_framework
@@ -248,12 +249,36 @@ class GridFSProxyTest(TestCase):
     def tearDownClass(cls):
         disconnect()
 
+    def setUp(self):
+        self.proxy = GridFSProxy()
+
     def test_fs(self):
-        proxy = GridFSProxy()
         grid_class = create_class_with_framework(
             MongoMotorAgnosticGridFS, asyncio_framework,
             'mongomotor.gridfs')
-        self.assertIsInstance(proxy.fs, grid_class)
+        self.assertIsInstance(self.proxy.fs, grid_class)
+
+    @async_test
+    async def test_new_file(self):
+        await self.proxy.new_file('my-file', **{'contentType': 'text/plain'})
+        self.assertTrue(self.proxy.grid_in)
+
+    @async_test
+    async def test_write_gridfs_error(self):
+        self.proxy.grid_id = 'some-id'
+        with self.assertRaises(GridFSError):
+            await self.proxy.write('some-str')
+
+    @async_test
+    async def test_write(self):
+        self.proxy.new_file('my-file')
+        await self.proxy.write('bla')
+        await self.proxy.grid_in.close()
+        buff = io.StringIO()
+        await self.proxy.download_to_stream(self.proxy.file_id, buff)
+        buff.seek(0)
+        content = buff.read()
+        self.assertEqual(content, 'bla')
 
 
 class FileFieldTest(TestCase):

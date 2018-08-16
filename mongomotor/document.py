@@ -23,7 +23,6 @@ from mongoengine import (Document as DocumentBase,
 from mongoengine import signals
 from mongoengine.common import _import_class
 from mongoengine.errors import InvalidDocumentError, InvalidQueryError
-from pymongo.read_preferences import ReadPreference
 from mongomotor.fields import ReferenceField, ComplexBaseField
 from mongoengine.queryset import OperationError
 from mongomotor.metaprogramming import (AsyncDocumentMetaclass, Async, Sync,

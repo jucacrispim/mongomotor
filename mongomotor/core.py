@@ -86,8 +86,12 @@ class MongoMotorAgnosticCollection(AgnosticCollection):
     # so I don't get a future as the return value and don't need to work
     # with mongoengine code.
     insert = OriginalDelegate()
+    insert_many = OriginalDelegate()
+    insert_one = OriginalDelegate()
     save = OriginalDelegate()
     update = OriginalDelegate()
+    update_one = OriginalDelegate()
+    update_many = OriginalDelegate()
     find_one = OriginalDelegate()
     find_and_modify = OriginalDelegate()
     find_one_and_update = OriginalDelegate()
@@ -188,6 +192,9 @@ class MongoMotorAgnosticDatabase(AgnosticDatabase):
             MongoMotorAgnosticCollection, self._framework, self.__module__)
 
         return collection_class(self, name)
+
+    def eval(self, code, *fields):
+        return self.command('eval', code, *fields)
 
 
 class MongoMotorAgnosticClientBase(AgnosticClient):

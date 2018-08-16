@@ -119,6 +119,21 @@ class MongoMotorAgnosticDatabaseTest(TestCase):
         coll = db['bla']
         self.assertTrue(isinstance(coll, comp_coll))
 
+    @patch('mongomotor.core.Database', return_value=None)
+    @patch('mongomotor.core.Collection', return_value=None)
+    def test_eval(self, *args, **kwargs):
+        connection = Mock(spec=core.MongoMotorAgnosticClient)
+        delegate = MagicMock()
+        connection.delegate = delegate
+        name = 'blabla'
+        db = create_class_with_framework(core.MongoMotorAgnosticDatabase,
+                                         asyncio_framework,
+                                         self.__module__)(connection, name)
+        db.command = MagicMock(spec=db.command)
+        db.eval(Mock())
+        command = db.command.call_args[0][0]
+        self.assertEqual(command, 'eval')
+
 
 class MongoMotorAgnosticClientTest(TestCase):
 

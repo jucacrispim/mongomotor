@@ -31,9 +31,6 @@ from mongomotor.monkey import MonkeyPatcher
 def asynchronize(method, cls_meth=False):
     """Decorates `method` so it returns a Future.
 
-    The method runs on a child greenlet and resolves the Future when the
-    greenlet completes.
-
     :param method: A mongoengine method to be asynchronized.
     :param cls_meth: Indicates if the method being asynchronized is
        a class method."""
@@ -44,13 +41,12 @@ def asynchronize(method, cls_meth=False):
         return method
 
     def async_method(instance_or_class, *args, **kwargs):
-        callback = kwargs.pop('callback', None)
         framework = get_framework(instance_or_class)
         loop = kwargs.pop('_loop', None) or get_loop(instance_or_class)
 
         future = framework.run_on_executor(
             loop, method, instance_or_class, *args, **kwargs)
-        return framework.future_or_callback(future, callback, loop)
+        return future
 
     # for mm_extensions.py (docs)
     async_method.is_async_method = True

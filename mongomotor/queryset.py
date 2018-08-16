@@ -17,12 +17,6 @@
 # You should have received a copy of the GNU General Public License
 # along with mongomotor. If not, see <http://www.gnu.org/licenses/>.
 
-import asyncio
-try:
-    from asyncio import ensure_future
-except ImportError:
-    from asyncio import async as ensure_future
-
 from bson.code import Code
 from bson import SON
 import functools
@@ -155,7 +149,17 @@ class QuerySet(BaseQuerySet, metaclass=AsyncGenericMetaclass):
         :param with_limit_and_skip: Indicates if limit and skip applied to
           the queryset should be taken into account."""
 
-        return super().count(with_limit_and_skip)
+        if self._limit == 0 and with_limit_and_skip or self._none:
+            return 0
+
+        kw = {}
+        if with_limit_and_skip and self._limit:
+            kw['limit'] = self._limit
+
+        if with_limit_and_skip and self._skip:
+            kw['skip'] = self._skip
+
+        return self._collection.count_documents(self._query, **kw)
 
     @coroutine_annotation
     def insert(self, doc_or_docs, load_bulk=True, write_concern=None):
@@ -272,7 +276,7 @@ class QuerySet(BaseQuerySet, metaclass=AsyncGenericMetaclass):
 
         def update_cb(update_future):
             try:
-                result = update_future.result()
+                result = update_future.result().raw_result
                 if result['updatedExisting']:
                     document_future = self.first()
                 else:
@@ -435,7 +439,6 @@ class QuerySet(BaseQuerySet, metaclass=AsyncGenericMetaclass):
 
         :param field: the field to use
         :param normalize: normalize the results so they add to 1.0
-        :param map_reduce: Use map_reduce over exec_js
         """
 
         map_func = """

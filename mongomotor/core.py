@@ -18,6 +18,7 @@
 # along with mongomotor. If not, see <http://www.gnu.org/licenses/>.
 
 import textwrap
+import types
 from motor.core import (AgnosticCollection, AgnosticClient, AgnosticDatabase,
                         AgnosticCursor)
 from motor.metaprogramming import create_class_with_framework, ReadOnlyProperty
@@ -26,6 +27,14 @@ from pymongo.database import Database
 from pymongo.collection import Collection
 from mongomotor import PY35
 from mongomotor.metaprogramming import OriginalDelegate
+
+
+def _rebound(ret, obj):
+    try:
+        ret = types.MethodType(ret.__func__, obj)
+    except AttributeError:
+        pass
+    return ret
 
 
 class MongoMotorAgnosticCursor(AgnosticCursor):
@@ -123,7 +132,7 @@ class MongoMotorAgnosticCollection(AgnosticCollection):
                     " collection, use collection['%s']." % (
                         self.__class__.__name__, name, name,
                         name))
-            return ret
+            return _rebound(ret, self)
 
         return self[name]
 
@@ -183,7 +192,7 @@ class MongoMotorAgnosticDatabase(AgnosticDatabase):
                     " collection, use database['%s']." % (
                         self.__class__.__name__, name, name,
                         name))
-            return ret
+            return _rebound(ret, self)
 
         return self[name]
 
@@ -212,7 +221,8 @@ class MongoMotorAgnosticClientBase(AgnosticClient):
                     "%s has no attribute %r. To access the %s"
                     " database, use client['%s']." % (
                         self.__class__.__name__, name, name, name))
-            return ret
+
+            return _rebound(ret, self)
 
         return self[name]
 

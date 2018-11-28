@@ -25,7 +25,7 @@ from mongoengine.connection import get_db
 
 from motor.metaprogramming import create_class_with_framework
 from mongomotor import EmbeddedDocument, gridfs
-from mongomotor.metaprogramming import (asynchronize, Async, get_future,
+from mongomotor.metaprogramming import (asynchronize, Async,
                                         AsyncGenericMetaclass)
 
 from mongoengine.fields import *  # noqa f403 for the sake of the api

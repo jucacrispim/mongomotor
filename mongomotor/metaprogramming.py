@@ -18,7 +18,10 @@
 # along with mongomotor. If not, see <http://www.gnu.org/licenses/>.
 
 import functools
-from mongoengine.base.metaclasses import TopLevelDocumentMetaclass
+from mongoengine.base.metaclasses import (
+    TopLevelDocumentMetaclass,
+    DocumentMetaclass
+)
 from mongoengine.context_managers import switch_db as me_switch_db
 from motor.metaprogramming import MotorAttributeFactory
 from pymongo.database import Database
@@ -240,9 +243,14 @@ class AsyncWrapperMetaclass(type):
         return new_class
 
 
-class AsyncDocumentMetaclass(AsyncWrapperMetaclass, TopLevelDocumentMetaclass):
+class AsyncTopLevelDocumentMetaclass(AsyncWrapperMetaclass,
+                                     TopLevelDocumentMetaclass):
     """Metaclass for top level documents that have asynchronous methods."""
 
 
 class AsyncGenericMetaclass(AsyncWrapperMetaclass):
     """Metaclass for any type of documents that use MotorAttributeFactory."""
+
+
+class AsyncDocumentMetaclass(AsyncWrapperMetaclass, DocumentMetaclass):
+    """Metaclass for documents that use MotorAttributeFactory."""

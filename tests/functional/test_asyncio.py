@@ -69,6 +69,7 @@ class MongoMotorTest(unittest.TestCase):
         class Embed(EmbeddedDocument):
             dict_field = DictField()
             list_field = ListField()
+            ref = ReferenceField(RefDoc)
 
         class MainDoc(SuperDoc):
             docname = StringField()

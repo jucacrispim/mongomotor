@@ -357,8 +357,9 @@ class AsyncDocumentMetaclassTest(TestCase):
             def meth(self):
                 test_mock()
 
-        class TestDoc(BaseTestDoc,
-                      metaclass=metaprogramming.AsyncDocumentMetaclass):
+        class TestDoc(
+                BaseTestDoc,
+                metaclass=metaprogramming.AsyncTopLevelDocumentMetaclass):
 
             meta = {'abstract': True,
                     'max_documents': None,

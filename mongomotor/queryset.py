@@ -25,7 +25,7 @@ import textwrap
 from mongoengine import signals, DENY, CASCADE, NULLIFY, PULL
 from mongoengine.connection import get_db
 from mongoengine.document import MapReduceDocument
-from mongoengine.queryset.queryset import QuerySet as BaseQuerySet
+from mongoengine.queryset.queryset import QuerySet as MEQuerySet
 from mongoengine.errors import OperationError
 from motor.core import coroutine_annotation
 from mongomotor import PY35
@@ -38,7 +38,7 @@ from mongomotor.monkey import MonkeyPatcher
 TEST_ENV = os.environ.get('MONGOMOTOR_TEST_ENV')
 
 
-class QuerySet(BaseQuerySet, metaclass=AsyncGenericMetaclass):
+class QuerySet(MEQuerySet, metaclass=AsyncGenericMetaclass):
 
     distinct = Async()
     explain = Async()
@@ -67,7 +67,7 @@ class QuerySet(BaseQuerySet, metaclass=AsyncGenericMetaclass):
             return super().__getitem__(index)
 
         else:
-            sync_getitem = BaseQuerySet.__getitem__
+            sync_getitem = MEQuerySet.__getitem__
             async_getitem = asynchronize(sync_getitem)
             return async_getitem(self, index)
 
@@ -180,7 +180,7 @@ class QuerySet(BaseQuerySet, metaclass=AsyncGenericMetaclass):
         return just ``ObjectIds``
         """
 
-        super_insert = BaseQuerySet.insert
+        super_insert = MEQuerySet.insert
         async_in_bulk = self.in_bulk
         # this sync method is not really sync, it uses motor sockets and
         # greenlets events, but looks like sync, so...

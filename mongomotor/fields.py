@@ -24,7 +24,8 @@ from mongoengine.base.datastructures import (
 from mongoengine.connection import get_db
 
 from motor.metaprogramming import create_class_with_framework
-from mongomotor import EmbeddedDocument, gridfs
+from mongoengine.document import EmbeddedDocument
+from mongomotor import gridfs
 from mongomotor.metaprogramming import (asynchronize, Async,
                                         AsyncGenericMetaclass)
 

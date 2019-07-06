@@ -84,6 +84,7 @@ class QuerySetTest(TestCase):
         qs = QuerySet(self.test_doc, collection)
 
         returned = yield from qs.get(id=d.id)
+
         self.assertEqual(d.id, returned.id)
 
     @async_test
@@ -611,6 +612,7 @@ function(key, values){
         yield from self.test_doc.objects.create(a='123')
         doc = yield from self.test_doc.objects.no_cache().get(a='123')
         self.assertTrue(doc.id)
+        self.assertFalse(self.test_doc.objects._result_cache)
 
     # @async_test
     # def test_explain(self):

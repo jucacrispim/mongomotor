@@ -20,18 +20,51 @@
 import inspect
 from mongoengine import (Document as DocumentBase,
                          DynamicDocument as DynamicDocumentBase)
+from mongoengine.document import (
+    EmbeddedDocument as EmbeddedDocumentBase,
+    DynamicEmbeddedDocument as DynamicEmbeddedDocumentBase
+)
 from mongoengine import signals
 from mongoengine.common import _import_class
 from mongoengine.errors import InvalidDocumentError, InvalidQueryError
 from mongomotor.fields import ReferenceField, ComplexBaseField
 from mongoengine.queryset import OperationError
-from mongomotor.metaprogramming import (AsyncDocumentMetaclass, Async, Sync,
-                                        get_future)
+from mongomotor.metaprogramming import (
+    AsyncTopLevelDocumentMetaclass,
+    AsyncDocumentMetaclass,
+    Async,
+    Sync,
+    get_future
+)
 from mongomotor.queryset import QuerySet
 import pymongo
 
 
-class Document(DocumentBase, metaclass=AsyncDocumentMetaclass):
+class NoDerefInitMixin:
+    """A mixin used to Documents and EmbeddedDocuments not to dereference
+    reference fields on __init__.
+    """
+
+    def __init__(self, *args, **kwargs):
+        # The thing here is that if we try to dereference
+        # references now we end with a future as the attribute so
+        # we don't dereference here.
+        fields = []
+        for name, field in self._fields.items():
+            if isinstance(field, ReferenceField) or (
+                    isinstance(field, ComplexBaseField) and
+                    isinstance(field.field, ReferenceField)):
+                fields.append((field, field._auto_dereference))
+                field._auto_dereference = False
+
+        super().__init__(*args, **kwargs)
+        # and here we back things to normal
+        for field, deref in fields:
+            field._auto_dereference = deref
+
+
+class Document(NoDerefInitMixin, DocumentBase,
+               metaclass=AsyncTopLevelDocumentMetaclass):
     """The base class used for defining the structure and properties of
     collections of documents stored in MongoDB. Inherit from this class, and
     add fields as class attributes to define a document's structure.
@@ -105,23 +138,6 @@ class Document(DocumentBase, metaclass=AsyncDocumentMetaclass):
     compare_indexes = Sync(cls_meth=True)
     ensure_indexes = Sync(cls_meth=True)
     ensure_index = Sync(cls_meth=True)
-
-    def __init__(self, *args, **kwargs):
-        # The thing here is that if we try to dereference
-        # references now we end with a future as the attribute so
-        # we don't dereference here.
-        fields = []
-        for name, field in self._fields.items():
-            if isinstance(field, ReferenceField) or (
-                    isinstance(field, ComplexBaseField) and
-                    isinstance(field.field, ReferenceField)):
-                fields.append((field, field._auto_dereference))
-                field._auto_dereference = False
-
-        super().__init__(*args, **kwargs)
-        # and here we back things to normal
-        for field, deref in fields:
-            field._auto_dereference = deref
 
     async def delete(self, signal_kwargs=None, **write_concern):
         """Delete the :class:`~mongoengine.Document` from the database. This
@@ -251,7 +267,7 @@ class Document(DocumentBase, metaclass=AsyncDocumentMetaclass):
 
 
 class DynamicDocument(Document, DynamicDocumentBase,
-                      metaclass=AsyncDocumentMetaclass):
+                      metaclass=AsyncTopLevelDocumentMetaclass):
 
     meta = {'abstract': True,
             'max_documents': None,
@@ -271,6 +287,33 @@ class DynamicDocument(Document, DynamicDocumentBase,
         DynamicDocumentBase.__delattr__(self, *args, **kwargs)
 
 
-# class MapReducedDocument(DynamicDocument, metaclass=AsyncDocumentMetaclass):
-#     """This MapReduceDocument is different from the mongoengine's one
-#     because its intent is to allow you to query over."""
+class EmbeddedDocument(NoDerefInitMixin, EmbeddedDocumentBase,
+                       metaclass=AsyncDocumentMetaclass):
+
+    meta = {'abstract': True,
+            'max_documents': None,
+            'max_size': None,
+            'ordering': [],
+            'indexes': [],
+            'id_field': None,
+            'index_background': False,
+            'index_drop_dups': False,
+            'index_opts': None,
+            'delete_rules': None,
+            'allow_inheritance': None}
+
+
+class DynamicEmbeddedDocument(NoDerefInitMixin, DynamicEmbeddedDocumentBase,
+                              metaclass=AsyncDocumentMetaclass):
+
+    meta = {'abstract': True,
+            'max_documents': None,
+            'max_size': None,
+            'ordering': [],
+            'indexes': [],
+            'id_field': None,
+            'index_background': False,
+            'index_drop_dups': False,
+            'index_opts': None,
+            'delete_rules': None,
+            'allow_inheritance': None}

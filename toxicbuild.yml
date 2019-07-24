@@ -17,8 +17,8 @@ versions:
 branches:
   - master
 
-  steps:
-    - <<: *TESTS_CMD
+steps:
+  - <<: *TESTS_CMD
 
 
 builders:

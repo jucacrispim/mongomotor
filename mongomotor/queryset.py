@@ -732,7 +732,7 @@ class QuerySet(MEQuerySet, metaclass=AsyncGenericMetaclass):
         delete_rules = doc._meta.get('delete_rules') or {}
         # Check for DENY rules before actually deleting/nullifying any other
         # references
-        for rule_entry in delete_rules:
+        for rule_entry in delete_rules.copy():
             document_cls, field_name = rule_entry
             if document_cls._meta.get('abstract'):
                 continue

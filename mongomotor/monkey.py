@@ -19,7 +19,7 @@
 
 from copy import copy
 from asyncblink import signal
-from mongoengine import connection, dereference, signals
+from mongoengine import connection, dereference, signals, mongodb_support
 from mongoengine.queryset import base
 from pymongo.mongo_client import MongoClient
 from pymongo.mongo_replica_set_client import MongoReplicaSetClient
@@ -57,6 +57,17 @@ class MonkeyPatcher:
         if undo and olditem is not NONE:
             self.patched.setdefault(obj, {}).setdefault(attr, olditem)
         setattr(obj, attr, newitem)
+
+    def patch_get_mongodb_version(self):
+        """Patches mongoengine's get_mongodb_version
+        to use a function does not reach the database.
+        """
+
+        from .connection import get_db_version
+        from mongoengine import fields
+
+        self.patch_item(fields, 'get_mongodb_version',
+                        get_db_version)
 
     def patch_db_clients(self, client):
         """Patches the db clients used to connect to mongodb.

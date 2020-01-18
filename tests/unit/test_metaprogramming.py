@@ -247,11 +247,12 @@ class SynchronizeTest(TestCase):
         # as we are testing synchronize, we remove all sync connections
         # so it does not interfere in our test
         with monkey.MonkeyPatcher() as patcher:
-            patcher.patch_sync_connections()
             connect2db(async_framework='asyncio')
+            patcher.patch_sync_connections()
+            # 2 for the sync connection
             self.assertEqual(len(connection._connections), 1)
             TestClass().some_method()
-            self.assertEqual(len(connection._connections), 2)
+        self.assertEqual(len(connection._connections), 2)
 
 
 class AsyncTest(TestCase):

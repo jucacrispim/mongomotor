@@ -620,39 +620,34 @@ function(key, values){
     #     self.assertFalse(isinstance(plan, asyncio.futures.Future))
 
 
-if PY35:
-    exec(textwrap.dedent(
-        """
-    class PY35QuerySetTest(TestCase):
+class PY35QuerySetTest(TestCase):
 
-        @classmethod
-        def setUpClass(cls):
-            connect2db(async_framework='asyncio')
+    @classmethod
+    def setUpClass(cls):
+        connect2db(async_framework='asyncio')
 
-        @classmethod
-        def tearDownClass(cls):
-            disconnect()
+    @classmethod
+    def tearDownClass(cls):
+        disconnect()
 
-        def setUp(self):
-            class TestDoc(Document):
-                a = StringField()
+    def setUp(self):
+        class TestDoc(Document):
+            a = StringField()
 
-            self.test_doc = TestDoc
+        self.test_doc = TestDoc
 
-        @async_test
-        def tearDown(self):
-            yield from self.test_doc.drop_collection()
+    @async_test
+    def tearDown(self):
+        yield from self.test_doc.drop_collection()
 
-        @async_test
-        async def test_async_iterate_queryset(self):
-            docs = [self.test_doc(str(i)) for i in range(4)]
-            await self.test_doc.objects.insert(docs)
+    @async_test
+    async def test_async_iterate_queryset(self):
+        docs = [self.test_doc(a=str(i)) for i in range(4)]
+        await self.test_doc.objects.insert(docs)
 
-            async for doc in self.test_doc.objects:
-                self.assertTrue(isinstance(doc, self.test_doc))
-                self.assertTrue(doc.id)
+        async for doc in self.test_doc.objects:
+            self.assertTrue(isinstance(doc, self.test_doc))
+            self.assertTrue(doc.id)
 
-            count = await self.test_doc.objects.count()
-            self.assertEqual(count, 4)
-
-    """))
+        count = await self.test_doc.objects.count()
+        self.assertEqual(count, 4)

@@ -50,9 +50,11 @@ class MonkeyPatcherTest(TestCase):
                 # the patcher will remove all mongomotor connections
                 patcher.patch_async_connections()
 
-                self.assertEqual(len(me_connection._connections), 0)
+                # the one connection here is the sync connection
+                # that is a mongoengine connection
+                self.assertEqual(len(me_connection._connections), 1)
 
-            self.assertEqual(len(me_connection._connections), 1)
+            self.assertEqual(len(me_connection._connections), 2)
 
     def test_patch_sync_connections(self):
         # here we create one mongomotor connection

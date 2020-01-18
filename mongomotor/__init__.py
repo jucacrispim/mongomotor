@@ -10,6 +10,7 @@ from mongomotor.monkey import MonkeyPatcher
 patcher = MonkeyPatcher()
 patcher.patch_dereference()
 patcher.patch_signals()
+patcher.patch_get_mongodb_version()
 
 from mongomotor.connection import connect, disconnect
 from mongoengine.document import (MapReduceDocument,

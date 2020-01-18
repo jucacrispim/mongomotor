@@ -564,15 +564,6 @@ function(key, values){
         self.assertEqual(total, 0)
         self.assertFalse(None)
 
-    if not CANNOT_EXEC_JS:
-        @async_test
-        def test_exec_js(self):
-            d = self.maindoc(list_field=['a', 'b'])
-            yield from d.save()
-            r = yield from self.maindoc.objects.exec_js(
-                'db.getCollectionNames()')
-            self.assertTrue(r)
-
     @async_test
     def test_generic_reference(self):
         r = self.refdoc()

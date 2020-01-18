@@ -18,10 +18,12 @@
 # along with mongomotor. If not, see <http://www.gnu.org/licenses/>.
 
 
+from mongoengine import connection
 from mongoengine.connection import (connect as me_connect,
                                     DEFAULT_CONNECTION_NAME,
                                     disconnect as me_disconnect,
-                                    register_connection)
+                                    register_connection,
+                                    get_connection)
 
 from mongomotor import utils
 from mongomotor.clients import (MongoMotorAsyncIOClient,
@@ -30,6 +32,29 @@ from mongomotor.monkey import MonkeyPatcher
 
 CLIENTS = {'asyncio': (MongoMotorAsyncIOClient,),
            'tornado': (MongoMotorTornadoClient,)}
+
+_db_version = {}
+
+
+def get_mongodb_version(alias=DEFAULT_CONNECTION_NAME):
+    """Return the version of the connected mongoDB (first 2 digits)
+
+    :param alias: The alias identifying the connection
+    :return: tuple(int, int)
+    """
+    # e.g: (3, 2)
+    version_list = get_connection(alias).server_info()["versionArray"][:2]
+    return tuple(version_list)
+
+
+def get_db_version(alias=DEFAULT_CONNECTION_NAME):
+    """Returns the version of the database for a given alias. This
+    will patch the original mongoengine's get_mongodb_version.
+
+    :param alias: The alias identifying the connection.
+    """
+
+    return _db_version[alias]
 
 
 def connect(db=None, async_framework='asyncio',
@@ -58,11 +83,16 @@ def connect(db=None, async_framework='asyncio',
         ret = me_connect(db=db, alias=alias, **kwargs)
 
     # here we register a connection that will use the original pymongo
-    # client and if used will block the process
-    kwargs.pop('io_loop', None)
-    sync_alias = utils.get_sync_alias(alias)
-    register_connection(sync_alias, db, **kwargs)
-
+    # client and if used will block the process.
+    # We need to patch here otherwise we will get the async connection
+    # beeing reused instead of a sync one.
+    with MonkeyPatcher() as patcher:
+        patcher.patch_item(connection, '_find_existing_connection',
+                           lambda *a, **kw: None)
+        kwargs.pop('io_loop', None)
+        sync_alias = utils.get_sync_alias(alias)
+        register_connection(sync_alias, db, **kwargs)
+        _db_version[alias] = get_mongodb_version(sync_alias)
     return ret
 
 

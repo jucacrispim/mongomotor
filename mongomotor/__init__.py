@@ -18,7 +18,7 @@ from mongoengine.document import (MapReduceDocument,
 from mongomotor.document import (Document, EmbeddedDocument,
                                  DynamicDocument)
 
-VERSION = '0.14.4'
+VERSION = '0.15.0'
 
 __all__ = ['connect', 'disconnect', 'Document', 'DynamicDocument',
            'EmbeddedDocument', 'DynamicEmbeddedDocument', 'MapReduceDocument']

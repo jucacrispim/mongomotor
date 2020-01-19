@@ -1,7 +1,7 @@
 TESTS_CMD:  &TESTS_CMD
   - name: Run tests
     command: python setup.py test
-    timeout: 30
+    timeout: 120
 
 UPLOAD_DOCS_CMD:  &UPLOAD_DOCS_CMD
   - name: Upload documentation

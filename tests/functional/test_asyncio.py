@@ -530,7 +530,7 @@ function(key, values){
                             'total': {'$sum': 1}}}
         unwind = {'$unwind': '$list_field'}
 
-        cursor = self.maindoc.objects.aggregate(unwind, group)
+        cursor = self.maindoc.objects.aggregate([unwind, group])
 
         while (yield from cursor.fetch_next):
             d = cursor.next_object()

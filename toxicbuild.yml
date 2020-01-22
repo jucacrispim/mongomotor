@@ -13,6 +13,7 @@ UPLOAD_DOCS_CMD:  &UPLOAD_DOCS_CMD
 
 
 language: python
+docker: true
 versions:
   - '3.5'
   - '3.6'

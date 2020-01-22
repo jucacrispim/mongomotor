@@ -1,3 +1,7 @@
+SETUP_DB:  &SETUP_DB
+  - name: setup db
+    command: ./build-scripts/db.sh
+
 TESTS_CMD:  &TESTS_CMD
   - name: Run tests
     command: python setup.py test

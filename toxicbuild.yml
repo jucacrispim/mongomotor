@@ -1,17 +1,3 @@
-SETUP_DB:  &SETUP_DB
-  - name: setup db
-    command: ./build-scripts/db.sh
-
-TESTS_CMD:  &TESTS_CMD
-  - name: Run tests
-    command: python setup.py test
-    timeout: 120
-
-UPLOAD_DOCS_CMD:  &UPLOAD_DOCS_CMD
-  - name: Upload documentation
-    command: pdj-deployer pdj01 software_deploy mongomotor release
-
-
 language: python
 docker: true
 versions:
@@ -23,7 +9,12 @@ branches:
   - master
 
 steps:
-  - <<: *TESTS_CMD
+  - name: setup db
+    command: ./build-scripts/db.sh
+
+  - name: Run tests
+    command: python setup.py test
+    timeout: 120
 
 
 builders:
@@ -38,4 +29,5 @@ builders:
     platform: python3.7
 
     steps:
-      - <<: *UPLOAD_DOCS_CMD
+      - name: Upload documentation
+        command: pdj-deployer pdj01 software_deploy mongomotor release

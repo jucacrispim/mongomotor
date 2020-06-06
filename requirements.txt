@@ -20,7 +20,7 @@ pep8==1.7.0
 pkginfo==1.2.1
 pyflakes==1.0.0
 pymongo==3.10.1
-requests==2.7.0
+requests==2.20.0
 sphinx-pdj-theme==0.1
 tornado==5.0.1
 twine==1.5.0

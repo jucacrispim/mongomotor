@@ -65,41 +65,41 @@ class DocumentTest(TestCase):
         self.unique = UniqueGuy
 
     @async_test
-    def tearDown(self):
-        yield from self.ref_doc.drop_collection()
-        yield from self.test_doc.drop_collection()
-        yield from self.indexed_test.drop_collection()
-        yield from self.auto_indexed_test.drop_collection()
-        yield from self.unique.drop_collection()
+    async def tearDown(self):
+        await self.ref_doc.drop_collection()
+        await self.test_doc.drop_collection()
+        await self.indexed_test.drop_collection()
+        await self.auto_indexed_test.drop_collection()
+        await self.unique.drop_collection()
 
     @async_test
-    def test_save(self):
+    async def test_save(self):
         doc = self.test_doc(i=1)
         self.assertFalse(doc.id)
-        yield from doc.save()
+        await doc.save()
         self.assertTrue(doc.id)
 
     @async_test
-    def test_save_unique(self):
+    async def test_save_unique(self):
         doc = self.unique(attr=1)
         self.unique.ensure_indexes()
-        yield from doc.save()
+        await doc.save()
         other = self.unique(attr=1)
         with self.assertRaises(mongoengine.errors.NotUniqueError):
-            yield from other.save()
+            await other.save()
 
     @patch.object(document, 'signals', Mock())
     @async_test
-    def test_delete(self, *args, **kwargs):
+    async def test_delete(self, *args, **kwargs):
         doc = self.test_doc(i=1)
-        yield from doc.save()
-        yield from doc.delete()
+        await doc.save()
+        await doc.delete()
 
         self.assertTrue(document.signals.post_delete.send.called)
 
     @patch.object(document, 'signals', Mock())
     @async_test
-    def test_delete_subclass(self, *args, **kwargs):
+    async def test_delete_subclass(self, *args, **kwargs):
 
         class extended(Document):
 
@@ -107,78 +107,78 @@ class DocumentTest(TestCase):
                 return await super().delete()
 
         doc = extended()
-        yield from doc.save()
-        yield from doc.delete()
+        await doc.save()
+        await doc.delete()
 
         self.assertTrue(document.signals.post_delete.send.called)
 
     @async_test
-    def test_update(self):
+    async def test_update(self):
         d = self.test_doc(i=1)
-        yield from d.save()
-        yield from d.update(i=2)
-        d = yield from self.test_doc.objects.get(id=d.id)
+        await d.save()
+        await d.update(i=2)
+        d = await self.test_doc.objects.get(id=d.id)
         self.assertEqual(d.i, 2)
 
     @async_test
-    def test_modify(self):
+    async def test_modify(self):
         d = self.test_doc(i=1)
-        yield from d.save()
-        yield from d.modify(i=2)
-        d = yield from self.test_doc.objects.get(id=d.id)
+        await d.save()
+        await d.modify(i=2)
+        d = await self.test_doc.objects.get(id=d.id)
         self.assertEqual(d.i, 2)
 
     @async_test
-    def test_modify_without_pk(self):
+    async def test_modify_without_pk(self):
         d = self.test_doc(i=1)
         with self.assertRaises(mongoengine.errors.InvalidDocumentError):
-            yield from d.modify(i=2)
+            await d.modify(i=2)
 
     @async_test
-    def test_modify_with_bad_pk(self):
+    async def test_modify_with_bad_pk(self):
         d = self.test_doc(i=1)
-        yield from d.save()
+        await d.save()
         with self.assertRaises(mongoengine.errors.InvalidQueryError):
-            yield from d.modify(i=2, _id="123")
+            await d.modify(i=2, _id="123")
 
     @async_test
-    def test_compare_indexes(self):
+    async def test_compare_indexes(self):
 
         inst = self.indexed_test(some_index=1)
-        yield from inst.save()
+        await inst.save()
         missing = self.indexed_test.compare_indexes()['missing']
         self.assertEqual(missing[0][0][0], 'some_index')
 
     @async_test
-    def test_ensure_indexes(self):
+    async def test_ensure_indexes(self):
 
         inst = self.auto_indexed_test(some_index=1)
         self.auto_indexed_test.ensure_indexes()
-        yield from inst.save()
+        await inst.save()
         missing = self.auto_indexed_test.compare_indexes()['missing']
         self.assertFalse(missing)
 
     @async_test
-    def test_reload_document(self):
+    async def test_reload_document(self):
         ref = self.ref_doc()
-        yield from ref.save()
+        await ref.save()
         d = self.test_doc(i=1, refs_list=[ref])
-        yield from d.save()
+        await d.save()
 
-        yield from self.test_doc.objects(id=d.id).update(i=2)
-        yield from d.reload()
+        await self.test_doc.objects(id=d.id).update(i=2)
+        await d.reload()
         self.assertEqual(d.i, 2)
 
     @async_test
-    def test_reload_document_references(self):
+    async def test_reload_document_references(self):
         ref = self.ref_doc()
-        yield from ref.save()
+        await ref.save()
         d = self.test_doc(i=1, refs_list=[])
-        yield from d.save()
+        await d.save()
 
-        yield from self.test_doc.objects(id=d.id).update(refs_list=[ref])
+        await self.test_doc.objects(id=d.id).update(refs_list=[ref])
 
-        yield from d.reload()
+        await d.reload()
 
-        refs = yield from d.refs_list
+        refs = await d.refs_list
         self.assertEqual(len(refs), 1)

@@ -26,15 +26,15 @@ class MongoMotorDeReferenceTest(TestCase):
 
     @classmethod
     @async_test
-    def tearDownClass(cls):
-        yield from cls.test_cls.drop_collection()
-        yield from cls.test_ref.drop_collection()
+    async def tearDownClass(cls):
+        await cls.test_cls.drop_collection()
+        await cls.test_ref.drop_collection()
         disconnect()
 
     @async_test
-    def test_patch_in_bulk(self):
+    async def test_patch_in_bulk(self):
         ref = self.test_ref(attr='bla')
-        yield from ref.save()
+        await ref.save()
 
         ref_map = {self.test_ref: ref.id}
         qs = self.test_cls.objects
@@ -43,13 +43,13 @@ class MongoMotorDeReferenceTest(TestCase):
             self.assertFalse(hasattr(cls.objects.in_bulk, '__wrapped__'))
 
     @async_test
-    def test_find_references(self):
+    async def test_find_references(self):
 
         ref = self.test_ref(attr='bla')
-        yield from ref.save()
+        await ref.save()
 
         doc = self.test_cls(someattr='ble', ref=ref)
-        yield from doc.save()
+        await doc.save()
 
         qs = self.test_cls.objects
 
@@ -59,6 +59,6 @@ class MongoMotorDeReferenceTest(TestCase):
             return qs._dereference.reference_map
 
         find_ref = asynchronize(find_ref)
-        ref_map = yield from find_ref(qs)
+        ref_map = await find_ref(qs)
         for doc in ref_map.keys():
             self.assertTrue(doc.__name__.startswith('Patched'))

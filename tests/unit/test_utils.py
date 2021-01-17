@@ -54,6 +54,7 @@ class ThreadingTest(TestCase):
         pool = ThreadPool(processes=1)
         r = pool.apply_async(utils.is_main_thread)
 
+        pool.close()
         self.assertFalse(r.get())
 
     def test_is_main_thread_on_main(self):

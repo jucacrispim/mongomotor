@@ -73,7 +73,7 @@ class TestReferenceField(TestCase):
         self.assertIsInstance(SomeClass.ref, ReferenceField)
 
     @async_test
-    def test_reference_field_in_a_embedded_field(self):
+    async def test_reference_field_in_a_embedded_field(self):
         try:
             class RefClass(Document):
                 pass
@@ -85,16 +85,16 @@ class TestReferenceField(TestCase):
                 embed = EmbeddedDocumentField(Embed)
 
             r = RefClass()
-            yield from r.save()
+            await r.save()
             embed = Embed(ref=r)
             d = TestDocument(embed=embed)
-            yield from d.save()
+            await d.save()
 
-            d = yield from TestDocument.objects.get(id=d.id)
-            self.assertTrue((yield from d.embed.ref).id)
+            d = await TestDocument.objects.get(id=d.id)
+            self.assertTrue((await d.embed.ref).id)
         finally:
-            yield from RefClass.drop_collection()
-            yield from TestDocument.drop_collection()
+            await RefClass.drop_collection()
+            await TestDocument.drop_collection()
 
 
 class GenericReferenceFieldTest(TestCase):
@@ -166,78 +166,78 @@ class TestComplexField(TestCase):
         self.test_embed_ref = TestEmbedRef
 
     @async_test
-    def tearDown(self):
-        yield from self.reference_class.drop_collection()
-        yield from self.test_class.drop_collection()
-        yield from self.ref_by_embed.drop_collection()
-        yield from self.test_embed_ref.drop_collection()
+    async def tearDown(self):
+        await self.reference_class.drop_collection()
+        await self.test_class.drop_collection()
+        await self.ref_by_embed.drop_collection()
+        await self.test_embed_ref.drop_collection()
 
     def test_get_list_field_with_class(self):
         field = self.test_class.list_reference
         self.assertTrue(isinstance(field, ListField))
 
     @async_test
-    def test_get_list_field_with_string(self):
+    async def test_get_list_field_with_string(self):
         test_doc = self.test_class(list_field=['a', 'b'])
-        yield from test_doc.save()
+        await test_doc.save()
 
-        test_doc = yield from self.test_class.objects.get(id=test_doc.id)
+        test_doc = await self.test_class.objects.get(id=test_doc.id)
         self.assertEqual(test_doc.list_field, ['a', 'b'])
 
     @async_test
-    def test_get_list_field_with_embedded(self):
+    async def test_get_list_field_with_embedded(self):
         embed = self.embed(field='bla')
         test_doc = self.reference_class(embed_list=[embed])
-        yield from test_doc.save()
+        await test_doc.save()
 
-        test_doc = yield from self.reference_class.objects.get(id=test_doc.id)
+        test_doc = await self.reference_class.objects.get(id=test_doc.id)
         self.assertEqual(test_doc.embed_list, [embed])
 
     @async_test
-    def test_get_list_field_with_reference(self):
+    async def test_get_list_field_with_reference(self):
         ref = self.reference_class()
-        yield from ref.save()
+        await ref.save()
         test_doc = self.test_class(list_reference=[ref])
-        yield from test_doc.save()
+        await test_doc.save()
 
-        test_doc = yield from self.test_class.objects.get(id=test_doc.id)
-        refs = yield from test_doc.list_reference
+        test_doc = await self.test_class.objects.get(id=test_doc.id)
+        refs = await test_doc.list_reference
         self.assertTrue(isinstance(refs[0], self.reference_class))
 
     @async_test
-    def test_get_list_field_with_empyt_references(self):
+    async def test_get_list_field_with_empyt_references(self):
         """Ensures that a empty list of references returns a empyt list,
         not None."""
         test_doc = self.test_class()
-        yield from test_doc.save()
+        await test_doc.save()
 
-        test_doc = yield from self.test_class.objects.get(id=test_doc.id)
-        refs = yield from test_doc.list_reference
+        test_doc = await self.test_class.objects.get(id=test_doc.id)
+        refs = await test_doc.list_reference
         self.assertIsInstance(refs, list)
         self.assertFalse(refs)
 
     @async_test
-    def test_convert_value_with_list(self):
+    async def test_convert_value_with_list(self):
         doc = self.test_class(list_field=[1, 2])
         self.assertIsInstance(doc.list_field, BaseList)
 
     @async_test
-    def test_convert_value_with_dict(self):
+    async def test_convert_value_with_dict(self):
         doc = self.test_class(dict_field={'a': 1, 'b': 2})
         self.assertIsInstance(doc.dict_field, BaseDict)
 
     @async_test
-    def test_embedded_list_with_references(self):
+    async def test_embedded_list_with_references(self):
         """Ensures that we can retrieve a list of embedded documents
         that has references."""
 
         ref = self.ref_by_embed()
-        yield from ref.save()
+        await ref.save()
         embed = self.embed_ref(ref=ref)
         doc = self.test_embed_ref(embedlist=[embed])
-        yield from doc.save()
-        doc = yield from self.test_embed_ref.objects.get(id=doc.id)
-        self.assertTrue((yield from doc.embedlist[0].ref).id)
+        await doc.save()
+        doc = await self.test_embed_ref.objects.get(id=doc.id)
+        self.assertTrue((await doc.embedlist[0].ref).id)
 
 
 class GridFSProxyTest(TestCase):
@@ -336,26 +336,26 @@ class FileFieldTest(TestCase):
         self.test_doc = TestFileDoc
 
     @async_test
-    def tearDown(self):
-        yield from self.test_doc.drop_collection()
+    async def tearDown(self):
+        await self.test_doc.drop_collection()
         db = self.test_doc._get_db()
-        yield from db.fs.drop()
+        await db.fs.drop()
 
     @async_test
-    def test_file_field_put(self):
+    async def test_file_field_put(self):
         doc = self.test_doc()
         fcontents = b'some file contents'
-        yield from doc.ff.put(fcontents)
+        await doc.ff.put(fcontents)
         self.assertTrue(doc.ff.grid_id)
 
     @async_test
-    def test_file_field_read(self):
+    async def test_file_field_read(self):
         doc = self.test_doc()
         fcontents = b'some file contents'
-        yield from doc.ff.put(fcontents)
-        yield from doc.save()
-        doc = yield from self.test_doc.objects.get(id=doc.id)
-        contents = yield from doc.ff.read()
+        await doc.ff.put(fcontents)
+        await doc.save()
+        doc = await self.test_doc.objects.get(id=doc.id)
+        contents = await doc.ff.read()
         self.assertEqual(contents, fcontents)
 
     def test_new_file(self):
@@ -364,12 +364,12 @@ class FileFieldTest(TestCase):
         self.assertTrue(doc.ff.grid_id)
 
     @async_test
-    def test_field_write_with_already_existent_file(self):
+    async def test_field_write_with_already_existent_file(self):
         doc = self.test_doc()
-        yield from doc.ff.put(b'a file')
+        await doc.ff.put(b'a file')
 
         with self.assertRaises(GridFSError):
-            yield from doc.ff.write('something')
+            await doc.ff.write('something')
 
     @async_test
     async def test_field_write(self):
@@ -382,18 +382,18 @@ class FileFieldTest(TestCase):
         self.assertEqual(len(content.split(b'\n')), 2)
 
     @async_test
-    def test_field_delete(self):
+    async def test_field_delete(self):
         doc = self.test_doc()
         fcontents = b'some file contents'
-        yield from doc.ff.put(fcontents)
+        await doc.ff.put(fcontents)
         self.assertTrue(doc.ff.grid_id)
-        yield from doc.ff.delete()
+        await doc.ff.delete()
         self.assertIsNone(doc.ff.grid_id)
 
     @async_test
-    def test_field_replace(self):
+    async def test_field_replace(self):
         doc = self.test_doc()
         fcontents = b'some file contents'
-        yield from doc.ff.put(fcontents)
-        yield from doc.ff.replace(b'other content')
-        self.assertEqual((yield from doc.ff.read()), b'other content')
+        await doc.ff.put(fcontents)
+        await doc.ff.replace(b'other content')
+        self.assertEqual((await doc.ff.read()), b'other content')

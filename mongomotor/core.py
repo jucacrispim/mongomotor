@@ -26,6 +26,7 @@ import pymongo
 from pymongo.database import Database
 from pymongo.collection import Collection
 from mongomotor import PY35
+from mongomotor.decorators import aiter_compat
 from mongomotor.metaprogramming import OriginalDelegate
 
 
@@ -72,19 +73,15 @@ class MongoMotorAgnosticCursor(AgnosticCursor):
             r = type(self)(r, self.collection)
         return r
 
-    if PY35:
-        exec(textwrap.dedent("""
-        from mongomotor.decorators import aiter_compat
-        @aiter_compat
-        def __aiter__(self):
-            return self
+    # @aiter_compat
+    # def __aiter__(self):
+    #     return self
 
-        async def __anext__(self):
-            # An optimization: skip the "await" if possible.
-            if self._buffer_size() or await self.fetch_next:
-                return self.next_object()
-            raise StopAsyncIteration()
-        """), globals(), locals())
+    # async def __anext__(self):
+    #     # An optimization: skip the "await" if possible.
+    #     if self._buffer_size() or await self.fetch_next:
+    #         return self.next_object()
+    #     raise StopAsyncIteration()
 
 
 class MongoMotorAgnosticCollection(AgnosticCollection):

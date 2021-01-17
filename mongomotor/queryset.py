@@ -81,7 +81,7 @@ class QuerySet(MEQuerySet, metaclass=AsyncGenericMetaclass):
         async def __anext__(self):
             async for doc in self._cursor:
                 mm_doc = self._document._from_son(
-                    doc, only_fields=self.only_fields,
+                    doc,
                     _auto_dereference=self._auto_dereference)
                 return mm_doc
             else:
@@ -310,8 +310,8 @@ class QuerySet(MEQuerySet, metaclass=AsyncGenericMetaclass):
             # mongomotor documents
             docs_list = future.result()
             final_list = [self._document._from_son(
-                d, _auto_dereference=self._auto_dereference,
-                only_fields=self.only_fields) for d in docs_list]
+                d, _auto_dereference=self._auto_dereference)
+                for d in docs_list]
 
             list_future.set_result(final_list)
 
@@ -560,8 +560,7 @@ class QuerySet(MEQuerySet, metaclass=AsyncGenericMetaclass):
         mr_future.add_done_callback(average_cb)
         return future
 
-    @coroutine_annotation
-    def aggregate_average(self, field):
+    async def aggregate_average(self, field):
         """Average over the values of the specified field.
 
         :param field: the field to average over; use dot-notation to refer to
@@ -575,21 +574,12 @@ class QuerySet(MEQuerySet, metaclass=AsyncGenericMetaclass):
             {'$group': {'_id': 'avg', 'total': {'$avg': '$' + field}}}
         ])
 
-        fn_future = cursor.fetch_next
-        future = get_future(self)
+        avg = 0
+        async for doc in cursor:
+            avg = doc['total']
+            break
 
-        def fetch_next_cb(fn_future):
-            result = fn_future.result()
-            if result:
-                doc = cursor.next_object()
-                avg = doc['total']
-            else:
-                avg = 0
-
-            future.set_result(avg)
-
-        fn_future.add_done_callback(fetch_next_cb)
-        return future
+        return avg
 
     async def sum(self, field):
         """Sum over the values of the specified field.
@@ -652,12 +642,10 @@ class QuerySet(MEQuerySet, metaclass=AsyncGenericMetaclass):
             {'$group': {'_id': 'sum', 'total': {'$sum': '$' + field}}}
         ])
 
-        has_next = await cursor.fetch_next
-        if has_next:
-            doc = cursor.next_object()
+        r = 0
+        async for doc in cursor:
             r = doc['total']
-        else:
-            r = 0
+            break
 
         return r
 
@@ -669,8 +657,7 @@ class QuerySet(MEQuerySet, metaclass=AsyncGenericMetaclass):
     def next_object(self):
         raw = self._cursor.next_object()
         return self._document._from_son(
-            raw, _auto_dereference=self._auto_dereference,
-            only_fields=self.only_fields)
+            raw, _auto_dereference=self._auto_dereference)
 
     def no_cache(self):
         """Convert to a non-caching queryset
@@ -720,7 +707,7 @@ class QuerySet(MEQuerySet, metaclass=AsyncGenericMetaclass):
             out = SON(ordered_output)
 
         else:
-            raise ConfusionError('Bad output type %r'.format(type(output)))
+            raise ConfusionError('Bad output type {}'.format(type(output)))
 
         return out
 

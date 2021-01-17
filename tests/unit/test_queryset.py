@@ -51,21 +51,21 @@ class QuerySetTest(TestCase):
         self.test_doc = TestDoc
 
     @async_test
-    def tearDown(self):
-        yield from self.test_doc.drop_collection()
+    async def tearDown(self):
+        await self.test_doc.drop_collection()
 
     @async_test
-    def test_to_list(self):
+    async def test_to_list(self):
         futures = []
         for i in range(4):
             d = self.test_doc(a=str(i))
             futures.append(d.save())
 
-        yield from asyncio.gather(*futures)
+        await asyncio.gather(*futures)
         collection = self.test_doc._collection
         qs = QuerySet(self.test_doc, collection)
         qs = qs.filter(a__in=['1', '2'])
-        docs = yield from qs.to_list()
+        docs = await qs.to_list()
         self.assertEqual(len(docs), 2)
         self.assertTrue(isinstance(docs[0], self.test_doc))
 
@@ -75,49 +75,49 @@ class QuerySetTest(TestCase):
         self.assertEqual(type(qs._dereference), MongoMotorDeReference)
 
     @async_test
-    def test_get(self):
+    async def test_get(self):
         d = self.test_doc(a=str(1))
-        yield from d.save()
+        await d.save()
         dd = self.test_doc(a=str(2))
-        yield from dd.save()
+        await dd.save()
         collection = self.test_doc._collection
         qs = QuerySet(self.test_doc, collection)
 
-        returned = yield from qs.get(id=d.id)
+        returned = await qs.get(id=d.id)
 
         self.assertEqual(d.id, returned.id)
 
     @async_test
-    def test_get_with_no_doc(self):
+    async def test_get_with_no_doc(self):
         collection = self.test_doc._get_collection()
         qs = QuerySet(self.test_doc, collection)
 
         with self.assertRaises(self.test_doc.DoesNotExist):
-            yield from qs.get(a='bla')
+            await qs.get(a='bla')
 
     @async_test
-    def test_get_with_multiple_docs(self):
+    async def test_get_with_multiple_docs(self):
         d = self.test_doc(a='a')
-        yield from d.save()
+        await d.save()
         d = self.test_doc(a='a')
-        yield from d.save()
+        await d.save()
 
         collection = self.test_doc._get_collection()
         qs = QuerySet(self.test_doc, collection)
         with self.assertRaises(self.test_doc.MultipleObjectsReturned):
-            yield from qs.get(a='a')
+            await qs.get(a='a')
 
     @async_test
-    def test_delete_queryset(self):
+    async def test_delete_queryset(self):
         d = self.test_doc(a='a')
-        yield from d.save()
+        await d.save()
         collection = self.test_doc._get_collection()
 
         qs = QuerySet(self.test_doc, collection)
 
-        yield from qs.delete()
+        await qs.delete()
 
-        docs = yield from qs.to_list()
+        docs = await qs.to_list()
         self.assertEqual(len(docs), 0)
 
     def test_get_loop(self):
@@ -131,7 +131,7 @@ class QuerySetTest(TestCase):
 
     @patch.object(queryset, 'TEST_ENV', True)
     @async_test
-    def test_delete_with_rule_cascade(self):
+    async def test_delete_with_rule_cascade(self):
         try:
             class SomeRef(Document):
                 pass
@@ -141,19 +141,19 @@ class QuerySetTest(TestCase):
                     SomeRef, reverse_delete_rule=mongoengine.CASCADE)
 
             r = SomeRef()
-            yield from r.save()
+            await r.save()
             d = SomeDoc(ref=r)
-            yield from d.save()
-            yield from r.delete()
+            await d.save()
+            await r.delete()
             with self.assertRaises(SomeDoc.DoesNotExist):
-                yield from SomeDoc.objects.get(id=d.id)
+                await SomeDoc.objects.get(id=d.id)
         finally:
             queryset._delete_futures = []
-            yield from SomeRef.drop_collection()
-            yield from SomeDoc.drop_collection()
+            await SomeRef.drop_collection()
+            await SomeDoc.drop_collection()
 
     @async_test
-    def test_delete_with_multiple_rule_cascade(self):
+    async def test_delete_with_multiple_rule_cascade(self):
         try:
             class SomeRef(Document):
                 pass
@@ -167,21 +167,21 @@ class QuerySetTest(TestCase):
                     SomeRef, reverse_delete_rule=mongoengine.CASCADE)
 
             r = SomeRef()
-            yield from r.save()
+            await r.save()
             d = SomeDoc(ref=r)
-            yield from d.save()
-            yield from r.delete()
+            await d.save()
+            await r.delete()
             with self.assertRaises(SomeDoc.DoesNotExist):
-                yield from SomeDoc.objects.get(id=d.id)
+                await SomeDoc.objects.get(id=d.id)
 
         finally:
             queryset._delete_futures = []
-            yield from SomeRef.drop_collection()
-            yield from SomeDoc.drop_collection()
+            await SomeRef.drop_collection()
+            await SomeDoc.drop_collection()
 
     @patch.object(queryset, 'TEST_ENV', True)
     @async_test
-    def test_delete_with_rule_cascade_no_reference(self):
+    async def test_delete_with_rule_cascade_no_reference(self):
         try:
             class SomeRef(Document):
                 pass
@@ -191,18 +191,18 @@ class QuerySetTest(TestCase):
                     SomeRef, reverse_delete_rule=mongoengine.CASCADE)
 
             r = SomeRef()
-            yield from r.save()
-            yield from r.delete()
+            await r.save()
+            await r.delete()
             with self.assertRaises(SomeRef.DoesNotExist):
-                yield from SomeRef.objects.get(id=r.id)
+                await SomeRef.objects.get(id=r.id)
         finally:
             queryset._delete_futures = []
-            yield from SomeRef.drop_collection()
-            yield from SomeDoc.drop_collection()
+            await SomeRef.drop_collection()
+            await SomeDoc.drop_collection()
 
     @patch.object(queryset, 'TEST_ENV', True)
     @async_test
-    def test_delete_with_rule_nullify(self):
+    async def test_delete_with_rule_nullify(self):
         try:
             class SomeRef(Document):
                 pass
@@ -212,21 +212,21 @@ class QuerySetTest(TestCase):
                     SomeRef, reverse_delete_rule=mongoengine.NULLIFY)
 
             r = SomeRef()
-            yield from r.save()
+            await r.save()
             d = SomeDoc(ref=r)
-            yield from d.save()
-            yield from r.delete()
-            d = yield from SomeDoc.objects.get(id=d.id)
-            self.assertIsNone((yield from d.ref))
+            await d.save()
+            await r.delete()
+            d = await SomeDoc.objects.get(id=d.id)
+            self.assertIsNone((await d.ref))
 
         finally:
             queryset._delete_futures = []
-            yield from SomeRef.drop_collection()
-            yield from SomeDoc.drop_collection()
+            await SomeRef.drop_collection()
+            await SomeDoc.drop_collection()
 
     @patch.object(queryset, 'TEST_ENV', True)
     @async_test
-    def test_delete_with_rule_pull(self):
+    async def test_delete_with_rule_pull(self):
         try:
             class SomeRef(Document):
                 pass
@@ -236,33 +236,33 @@ class QuerySetTest(TestCase):
                     SomeRef, reverse_delete_rule=mongoengine.PULL))
 
             r = SomeRef()
-            yield from r.save()
+            await r.save()
             d = SomeDoc(ref=[r])
-            yield from d.save()
-            yield from r.delete()
-            d = yield from SomeDoc.objects.get(id=d.id)
-            self.assertEqual(len((yield from d.ref)), 0)
+            await d.save()
+            await r.delete()
+            d = await SomeDoc.objects.get(id=d.id)
+            self.assertEqual(len((await d.ref)), 0)
         finally:
             queryset._delete_futures = []
-            yield from SomeRef.drop_collection()
-            yield from SomeDoc.drop_collection()
+            await SomeRef.drop_collection()
+            await SomeDoc.drop_collection()
 
     @async_test
-    def test_iterate_over_queryset(self):
+    async def test_iterate_over_queryset(self):
         """Ensure that we can iterate over the queryset using
         fetch_next/next_doc.
         """
 
         for i in range(5):
             d = self.test_doc(a=str(i))
-            yield from d.save()
+            await d.save()
 
         collection = self.test_doc._get_collection()
 
         qs = QuerySet(self.test_doc, collection)
 
         c = 0
-        while (yield from qs.fetch_next):
+        while (await qs.fetch_next):
             c += 1
             doc = qs.next_object()
 
@@ -271,16 +271,16 @@ class QuerySetTest(TestCase):
         self.assertEqual(c, 5)
 
     @async_test
-    def test_count_queryset(self):
+    async def test_count_queryset(self):
         for i in range(5):
             d = self.test_doc(a=str(i))
-            yield from d.save()
+            await d.save()
 
         collection = self.test_doc._get_collection()
 
         qs = QuerySet(self.test_doc, collection)
         qs = qs.filter(a='1')
-        count = yield from qs.count()
+        count = await qs.count()
         self.assertEqual(count, 1)
 
     def test_queryset_len(self):
@@ -288,37 +288,36 @@ class QuerySetTest(TestCase):
             len(self.test_doc.objects)
 
     @async_test
-    def test_getitem_with_slice(self):
+    async def test_getitem_with_slice(self):
         for i in range(5):
             d = self.test_doc(a=str(i))
-            yield from d.save()
+            await d.save()
 
         collection = self.test_doc._get_collection()
 
         qs = QuerySet(self.test_doc, collection)
 
         qs = qs[1:3]
-        count = yield from qs.count()
+        count = await qs.count()
         self.assertEqual(count, 2)
 
         incr = 0
-        while (yield from qs.fetch_next):
-            qs.next_object()
+        async for _ in qs:
             incr += 1
 
         self.assertEqual(incr, 2)
 
     @async_test
-    def test_getitem_with_int(self):
+    async def test_getitem_with_int(self):
         for i in range(5):
             d = self.test_doc(a=str(i))
-            yield from d.save()
+            await d.save()
 
         collection = self.test_doc._get_collection()
 
         qs = QuerySet(self.test_doc, collection).order_by('-a')
 
-        doc = yield from qs[0]
+        doc = await qs[0]
 
         self.assertEqual(doc.a, '4')
 
@@ -379,20 +378,20 @@ class QuerySetTest(TestCase):
         self.assertIsInstance(ret, SON)
 
     @async_test
-    def test_map_reduce_with_inline_output(self):
+    async def test_map_reduce_with_inline_output(self):
         # raises an exception when output is inline
 
         collection = self.test_doc._get_collection()
         qs = QuerySet(self.test_doc, collection)
 
         with self.assertRaises(OperationError):
-            yield from qs.map_reduce('mapf', 'reducef', output='inline')
+            await qs.map_reduce('mapf', 'reducef', output='inline')
 
     @async_test
-    def test_get_map_reduce(self):
+    async def test_get_map_reduce(self):
         for i in range(5):
             d = self.test_doc(a=str(i))
-            yield from d.save()
+            await d.save()
 
         collection = self.test_doc._get_collection()
         qs = QuerySet(self.test_doc, collection)
@@ -407,23 +406,23 @@ function(key, values){
   return Array.sum(values)
 }
 """
-        ret = yield from qs.map_reduce(mapf, reducef, {'merge': 'bla'})
+        ret = await qs.map_reduce(mapf, reducef, {'merge': 'bla'})
         self.assertEqual(ret['counts']['input'], 5)
 
     @async_test
-    def test_inline_map_reduce_with_bad_output(self):
+    async def test_inline_map_reduce_with_bad_output(self):
         mr_kwrags = {'out': 'bla'}
         collection = self.test_doc._get_collection()
         qs = QuerySet(self.test_doc, collection)
 
         with self.assertRaises(OperationError):
-            yield from qs.inline_map_reduce('mapf', 'reducef', **mr_kwrags)
+            await qs.inline_map_reduce('mapf', 'reducef', **mr_kwrags)
 
     @async_test
-    def test_inline_map_reduce(self):
+    async def test_inline_map_reduce(self):
         for i in range(5):
             d = self.test_doc(a=str(i))
-            yield from d.save()
+            await d.save()
 
         collection = self.test_doc._get_collection()
         qs = QuerySet(self.test_doc, collection)
@@ -438,185 +437,185 @@ function(key, values){
   return Array.sum(values)
 }
 """
-        gen = yield from qs.inline_map_reduce(mapf, reducef)
+        gen = await qs.inline_map_reduce(mapf, reducef)
         ret = list(gen)
         self.assertEqual(len(ret), 5)
         self.assertIsInstance(ret[0], MapReduceDocument)
 
     @async_test
-    def test_item_frequencies(self):
+    async def test_item_frequencies(self):
         d = self.test_doc(lf=['a', 'b'])
-        yield from d.save()
+        await d.save()
         d = self.test_doc(lf=['a', 'c'])
-        yield from d.save()
+        await d.save()
 
         collection = self.test_doc._get_collection()
         qs = QuerySet(self.test_doc, collection)
 
-        freq = yield from qs.item_frequencies('lf')
+        freq = await qs.item_frequencies('lf')
         self.assertEqual(freq['a'], 2)
 
     @async_test
-    def test_item_frequencies_with_normalize(self):
+    async def test_item_frequencies_with_normalize(self):
         d = self.test_doc(lf=['a', 'b'])
-        yield from d.save()
+        await d.save()
         d = self.test_doc(lf=['a', 'c'])
-        yield from d.save()
+        await d.save()
 
         collection = self.test_doc._get_collection()
         qs = QuerySet(self.test_doc, collection)
 
-        freq = yield from qs.item_frequencies('lf', normalize=True)
+        freq = await qs.item_frequencies('lf', normalize=True)
         self.assertEqual(freq['a'], 0.5)
 
     @async_test
-    def test_average(self):
+    async def test_average(self):
         docs = [self.test_doc(docint=i) for i in range(5)]
-        yield from self.test_doc.objects.insert(docs)
-        average = yield from self.test_doc.objects.average('docint')
+        await self.test_doc.objects.insert(docs)
+        average = await self.test_doc.objects.average('docint')
         self.assertEqual(average, 2)
 
     @async_test
-    def test_aggregate_average(self):
+    async def test_aggregate_average(self):
         docs = [self.test_doc(docint=i) for i in range(5)]
-        yield from self.test_doc.objects.insert(docs)
-        average = yield from self.test_doc.objects.aggregate_average('docint')
+        await self.test_doc.objects.insert(docs)
+        average = await self.test_doc.objects.aggregate_average('docint')
         self.assertEqual(average, 2)
 
     @async_test
-    def test_sum(self):
+    async def test_sum(self):
         for i in range(5):
             d = self.test_doc(docint=i)
-            yield from d.save()
+            await d.save()
 
-        soma = yield from self.test_doc.objects.sum('docint')
+        soma = await self.test_doc.objects.sum('docint')
         self.assertEqual(soma, 10)
 
     @async_test
-    def test_aggregate_sum(self):
+    async def test_aggregate_sum(self):
         docs = [self.test_doc(docint=i) for i in range(5)]
-        yield from self.test_doc.objects.insert(docs)
-        soma = yield from self.test_doc.objects.aggregate_sum('docint')
+        await self.test_doc.objects.insert(docs)
+        soma = await self.test_doc.objects.aggregate_sum('docint')
         self.assertEqual(soma, 10)
 
     @async_test
-    def test_distinct(self):
+    async def test_distinct(self):
         d = self.test_doc(a='a')
-        yield from d.save()
+        await d.save()
 
         d = self.test_doc(a='a')
-        yield from d.save()
+        await d.save()
 
         d = self.test_doc(a='b')
-        yield from d.save()
+        await d.save()
 
         expected = ['a', 'b']
-        returned = yield from self.test_doc.objects.distinct('a')
+        returned = await self.test_doc.objects.distinct('a')
 
         self.assertEqual(returned, expected)
 
     @async_test
-    def test_first(self):
+    async def test_first(self):
         d = self.test_doc(a='a')
-        yield from d.save()
+        await d.save()
 
         d = self.test_doc(a='z')
-        yield from d.save()
+        await d.save()
 
-        f = yield from self.test_doc.objects.order_by('-a').first()
+        f = await self.test_doc.objects.order_by('-a').first()
         self.assertEqual(f.a, 'z')
 
     @async_test
-    def test_first_with_empty_queryset(self):
-        f = yield from self.test_doc.objects.first()
+    async def test_first_with_empty_queryset(self):
+        f = await self.test_doc.objects.first()
         self.assertIsNone(f)
 
     @async_test
-    def test_update_queryset(self):
+    async def test_update_queryset(self):
         d = self.test_doc(a='a')
-        yield from d.save()
-        yield from self.test_doc.objects.filter(id=d.id).update(a='b')
+        await d.save()
+        await self.test_doc.objects.filter(id=d.id).update(a='b')
 
-        d = yield from self.test_doc.objects.get(id=d.id)
+        d = await self.test_doc.objects.get(id=d.id)
         self.assertEqual(d.a, 'b')
 
     @async_test
-    def test_update_one(self):
+    async def test_update_one(self):
         d = self.test_doc(a='a')
-        yield from d.save()
+        await d.save()
         d = self.test_doc(a='a')
-        yield from d.save()
-        n_updated = yield from self.test_doc.objects.filter(
+        await d.save()
+        n_updated = await self.test_doc.objects.filter(
             a='a').update_one(a='b')
 
         self.assertEqual(n_updated, 1)
-        self.assertEqual((yield from self.test_doc.objects(a='b').count()), 1)
+        self.assertEqual((await self.test_doc.objects(a='b').count()), 1)
 
     @async_test
-    def test_insert_documents(self):
+    async def test_insert_documents(self):
         docs = [self.test_doc(a=str(i)) for i in range(3)]
-        ret = yield from self.test_doc.objects.insert(docs)
+        ret = await self.test_doc.objects.insert(docs)
         self.assertEqual(len(ret), 3)
 
     @async_test
-    def test_modify_document(self):
+    async def test_modify_document(self):
         d = self.test_doc(a='a')
-        yield from d.save()
+        await d.save()
 
-        yield from self.test_doc.objects.filter(id=d.id).modify(a='aa')
-        d = yield from self.test_doc.objects.get(id=d.id)
+        await self.test_doc.objects.filter(id=d.id).modify(a='aa')
+        d = await self.test_doc.objects.get(id=d.id)
         self.assertEqual(d.a, 'aa')
 
     @async_test
-    def test_modify_upsert_document(self):
-        yield from self.test_doc.objects.modify(upsert=True, a='zz')
-        d = yield from self.test_doc.objects.get(a='zz')
+    async def test_modify_upsert_document(self):
+        await self.test_doc.objects.modify(upsert=True, a='zz')
+        d = await self.test_doc.objects.get(a='zz')
         self.assertTrue(d.id)
 
     @async_test
-    def test_in_bulk(self):
+    async def test_in_bulk(self):
         docs = []
         for i in range(5):
             d = self.test_doc(a=str(i))
-            yield from d.save()
+            await d.save()
             docs.append(d)
 
-        ret = yield from self.test_doc.objects.in_bulk([d.id for d in docs])
+        ret = await self.test_doc.objects.in_bulk([d.id for d in docs])
         self.assertEqual(len(ret), 5)
 
     @async_test
-    def test_upsert_one_update(self):
+    async def test_upsert_one_update(self):
         docs = [self.test_doc(a='aa') for i in range(3)]
-        docs = yield from self.test_doc.objects.insert(docs)
+        docs = await self.test_doc.objects.insert(docs)
         first = docs[0]
-        other = yield from self.test_doc.objects.upsert_one(a='zz')
+        other = await self.test_doc.objects.upsert_one(a='zz')
         self.assertEqual(other.a, 'zz')
         self.assertEqual(first.id, other.id)
 
     @async_test
-    def test_upsert_one_insert(self):
+    async def test_upsert_one_insert(self):
         docs = [self.test_doc(a='aa') for i in range(3)]
-        docs = yield from self.test_doc.objects.insert(docs)
+        docs = await self.test_doc.objects.insert(docs)
         first = docs[0]
-        other = yield from self.test_doc.objects(a='xx').upsert_one(a='zz')
+        other = await self.test_doc.objects(a='xx').upsert_one(a='zz')
         self.assertEqual(other.a, 'zz')
         self.assertNotEqual(first.id, other.id)
 
     @async_test
-    def test_create(self):
-        doc = yield from self.test_doc.objects.create(a='123')
+    async def test_create(self):
+        doc = await self.test_doc.objects.create(a='123')
         self.assertTrue(doc.id)
 
     @async_test
-    def test_no_cache(self):
-        yield from self.test_doc.objects.create(a='123')
-        doc = yield from self.test_doc.objects.no_cache().get(a='123')
+    async def test_no_cache(self):
+        await self.test_doc.objects.create(a='123')
+        doc = await self.test_doc.objects.no_cache().get(a='123')
         self.assertTrue(doc.id)
         self.assertFalse(self.test_doc.objects._result_cache)
 
     # @async_test
-    # def test_explain(self):
-    #     plan = yield from self.test_doc.objects.explain()
+    # async def test_explain(self):
+    #     plan = await self.test_doc.objects.explain()
     #     self.assertFalse(isinstance(plan, asyncio.futures.Future))
 
 
@@ -637,8 +636,8 @@ class PY35QuerySetTest(TestCase):
         self.test_doc = TestDoc
 
     @async_test
-    def tearDown(self):
-        yield from self.test_doc.drop_collection()
+    async def tearDown(self):
+        await self.test_doc.drop_collection()
 
     @async_test
     async def test_async_iterate_queryset(self):

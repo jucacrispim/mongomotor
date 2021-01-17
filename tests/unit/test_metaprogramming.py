@@ -60,7 +60,7 @@ class AsynchonizeTest(TestCase):
         disconnect()
 
     @async_test
-    def test_asynchronize(self):
+    async def test_asynchronize(self):
 
         test_mock = Mock()
 
@@ -73,11 +73,11 @@ class AsynchonizeTest(TestCase):
 
         testobj = TestClass()
         self.assertTrue(isinstance(testobj.sync(), Future))
-        yield from testobj.sync()
+        await testobj.sync()
         self.assertTrue(test_mock.called)
 
     @async_test
-    def test_asynchronize_not_on_main_thread(self):
+    async def test_asynchronize_not_on_main_thread(self):
 
         test_mock = Mock()
 
@@ -96,10 +96,11 @@ class AsynchonizeTest(TestCase):
         testobj = r.get()
         self.assertFalse(isinstance(testobj.sync(), Future))
         testobj.sync()
+        pool.close()
         self.assertTrue(test_mock.called)
 
     @async_test
-    def test_asynchronize_cls(self):
+    async def test_asynchronize_cls(self):
 
         test_mock = Mock()
 
@@ -115,11 +116,11 @@ class AsynchonizeTest(TestCase):
                                                       cls_meth=True)
         self.assertTrue(isinstance(TestClass.sync(), Future))
 
-        yield from TestClass.sync()
+        await TestClass.sync()
         self.assertTrue(test_mock.called)
 
     @async_test
-    def test_asynchornize_with_exception(self):
+    async def test_asynchornize_with_exception(self):
 
         class TestClass:
 
@@ -135,7 +136,7 @@ class AsynchonizeTest(TestCase):
 
         testobj = TestClass()
         with self.assertRaises(Exception):
-            yield from testobj.sync()
+            await testobj.sync()
 
     def test_get_framework_with_get_db(self):
 
@@ -218,7 +219,7 @@ class AsynchonizeTest(TestCase):
         self.assertIsInstance(future, Future)
 
     @async_test
-    def test_get_future_with_loop(self):
+    async def test_get_future_with_loop(self):
         class TestClass:
 
             @classmethod
@@ -266,7 +267,7 @@ class AsyncTest(TestCase):
         disconnect()
 
     @async_test
-    def test_create_attribute(self):
+    async def test_create_attribute(self):
 
         test_mock = Mock()
 
@@ -284,11 +285,11 @@ class AsyncTest(TestCase):
         test_class = TestClass
 
         test_instance = test_class()
-        yield from test_instance.some_method()
+        await test_instance.some_method()
         self.assertTrue(test_mock.called)
 
     @async_test
-    def test_create_class_attribute(self):
+    async def test_create_class_attribute(self):
 
         test_mock = Mock()
 
@@ -304,11 +305,11 @@ class AsyncTest(TestCase):
 
             some_method = metaprogramming.Async(cls_meth=True)
 
-        yield from TestClass.some_method()
+        await TestClass.some_method()
         self.assertTrue(test_mock.called)
 
     @async_test
-    def test_create_attribute_with_attribute_error(self):
+    async def test_create_attribute_with_attribute_error(self):
 
         test_mock = Mock()
 
@@ -340,7 +341,7 @@ class AsyncDocumentMetaclassTest(TestCase):
         disconnect()
 
     @async_test
-    def test_create_attributes(self):
+    async def test_create_attributes(self):
 
         test_mock = Mock()
 
@@ -377,5 +378,5 @@ class AsyncDocumentMetaclassTest(TestCase):
             meth = metaprogramming.Async()
 
         test_instance = TestDoc()
-        yield from test_instance.meth()
+        await test_instance.meth()
         self.assertTrue(test_mock.called)

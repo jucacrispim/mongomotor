@@ -10,7 +10,7 @@ coverage==5.3.1
 docutils==0.16
 flake8==3.8.4
 ipdb==0.13.4
-ipython==7.19.0
+ipython==7.31.1
 jsonschema==3.2.0
 mccabe==0.6.1
 mistune==0.8.4

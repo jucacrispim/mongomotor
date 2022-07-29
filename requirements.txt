@@ -13,7 +13,7 @@ ipdb==0.13.4
 ipython==7.19.0
 jsonschema==3.2.0
 mccabe==0.6.1
-mistune==0.8.4
+mistune==2.0.3
 mongoengine==0.22.1
 motor==2.3.0
 pep8==1.7.1

@@ -19,10 +19,9 @@
 
 from copy import copy
 from asyncblink import signal
-from mongoengine import connection, dereference, signals, mongodb_support
+from mongoengine import connection, dereference, signals
 from mongoengine.queryset import base
 from pymongo.mongo_client import MongoClient
-from pymongo.mongo_replica_set_client import MongoReplicaSetClient
 from mongomotor.dereference import MongoMotorDeReference
 
 
@@ -87,8 +86,7 @@ class MonkeyPatcher:
         connections = copy(connection._connections)
         for alias, conn in connection._connections.items():
             conn = connections[alias]
-            if not isinstance(conn, MongoClient) and not isinstance(
-                    conn, MongoReplicaSetClient):
+            if not isinstance(conn, MongoClient):
                 del connections[alias]
 
         # we merge the connections no in next time we use the
@@ -104,8 +102,7 @@ class MonkeyPatcher:
         connections = copy(connection._connections)
         for alias, conn in connection._connections.items():
             conn = connections[alias]
-            if isinstance(conn, MongoClient) or isinstance(
-                    conn, MongoReplicaSetClient):
+            if isinstance(conn, MongoClient):
                 del connections[alias]
 
         self._update_original_dict = True

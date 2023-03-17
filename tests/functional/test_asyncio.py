@@ -261,29 +261,6 @@ class MongoMotorTest(unittest.TestCase):
         self.assertEqual(obj.docint, 2)
 
     @async_test
-    async def test_map_reduce(self):
-        d = self.maindoc(list_field=['a', 'b'])
-        await d.save()
-        d = self.maindoc(list_field=['a', 'c'])
-        await d.save()
-
-        mapf = """
-function(){
-  this.list_field.forEach(function(f){
-    emit(f, 1);
-  });
-}
-"""
-        reducef = """
-function(key, values){
-  return Array.sum(values)
-}
-"""
-        r = await self.maindoc.objects.all().map_reduce(
-            mapf, reducef, {'merge': 'testcol'})
-        self.assertEqual(r['result'], 'testcol')
-
-    @async_test
     async def test_query_item_frequencies(self):
         """Ensure that item_frequencies method works properly
         """
@@ -325,7 +302,7 @@ function(key, values){
 
     @async_test
     async def test_query_average(self):
-        """Ensure that we can get the average of a field using average()
+        """Ensure we can get the average of a field using aggregate_average()
         """
         await self._create_data()
 
@@ -333,30 +310,12 @@ function(key, values){
         self.assertEqual(avg, 1)
 
     @async_test
-    async def test_query_aggregate_average(self):
-        """Ensure we can get the average of a field using aggregate_average()
-        """
-        await self._create_data()
-
-        avg = await self.maindoc.objects.aggregate_average('docint')
-        self.assertEqual(avg, 1)
-
-    @async_test
     async def test_query_sum(self):
-        """Ensure that we can get the sum of a field using sum()
-        """
-        await self._create_data()
-
-        summed = await self.maindoc.objects.sum('docint')
-        self.assertEqual(summed, 3)
-
-    @async_test
-    async def test_query_aggregate_sum(self):
         """Ensure that we can get the sum of a field using aggregate_sum()
         """
         await self._create_data()
 
-        summed = await self.maindoc.objects.aggregate_sum('docint')
+        summed = await self.maindoc.objects.sum('docint')
         self.assertEqual(summed, 3)
 
     @async_test

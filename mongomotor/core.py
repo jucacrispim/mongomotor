@@ -91,15 +91,15 @@ class MongoMotorAgnosticCollection(AgnosticCollection):
     # Using the original delegate method (but with motor pool and event)
     # so I don't get a future as the return value and don't need to work
     # with mongoengine code.
-    insert = OriginalDelegate()
+    # insert = OriginalDelegate()
     insert_many = OriginalDelegate()
     insert_one = OriginalDelegate()
-    save = OriginalDelegate()
-    update = OriginalDelegate()
+    # save = OriginalDelegate()
+    # update = OriginalDelegate()
     update_one = OriginalDelegate()
     update_many = OriginalDelegate()
     find_one = OriginalDelegate()
-    find_and_modify = OriginalDelegate()
+    # find_and_modify = OriginalDelegate()
     find_one_and_update = OriginalDelegate()
     find_one_and_delete = OriginalDelegate()
     index_information = OriginalDelegate()
@@ -113,7 +113,8 @@ class MongoMotorAgnosticCollection(AgnosticCollection):
             raise TypeError("First argument to MongoMotorCollection must be "
                             "MongoMotorDatabase, not %r" % database)
 
-        delegate = _delegate or Collection(database.delegate, name)
+        delegate = _delegate if _delegate is not None else\
+            Collection(database.delegate, name)
         super(AgnosticCollection, self).__init__(delegate)
         self.database = database
 
@@ -167,7 +168,7 @@ class MongoMotorAgnosticDatabase(AgnosticDatabase):
     __motor_class_name__ = 'MongoMotorDatabase'
 
     dereference = OriginalDelegate()
-    authenticate = OriginalDelegate()
+    # authenticate = OriginalDelegate()
 
     def __init__(self, client, name, _delegate=None):
         if not isinstance(client, AgnosticClient):
@@ -205,7 +206,7 @@ class MongoMotorAgnosticDatabase(AgnosticDatabase):
 
 class MongoMotorAgnosticClientBase(AgnosticClient):
 
-    max_write_batch_size = ReadOnlyProperty()
+    # max_write_batch_size = ReadOnlyProperty()
 
     def __getattr__(self, name):
         if name.startswith('_'):

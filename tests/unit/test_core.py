@@ -36,7 +36,7 @@ class MongoMotorAgnosticCollectionTest(TestCase):
                                            asyncio_framework,
                                            self.__module__)
 
-        self.assertEqual(coll.insert, Collection.insert)
+        self.assertEqual(coll.insert_one, Collection.insert_one)
 
     @patch('mongomotor.core.Database', return_value=None)
     @patch('mongomotor.core.Collection')

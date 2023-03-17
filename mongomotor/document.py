@@ -137,7 +137,7 @@ class Document(NoDerefInitMixin, DocumentBase,
     reload = Async()
     compare_indexes = Sync(cls_meth=True)
     ensure_indexes = Sync(cls_meth=True)
-    ensure_index = Sync(cls_meth=True)
+    # ensure_index = Sync(cls_meth=True)
 
     async def delete(self, signal_kwargs=None, **write_concern):
         """Delete the :class:`~mongoengine.Document` from the database. This

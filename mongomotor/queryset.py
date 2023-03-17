@@ -320,109 +320,7 @@ class QuerySet(MEQuerySet, metaclass=AsyncGenericMetaclass):
         future.add_done_callback(_to_list_cb)
         return list_future
 
-    @coroutine_annotation
-    def map_reduce(self, map_f, reduce_f, output, **mr_kwargs):
-        """Perform a map/reduce query using the current query spec
-        and ordering. While ``map_reduce`` respects ``QuerySet`` chaining,
-        it must be the last call made, as it does not return a maleable
-        ``QuerySet``.
-
-        :param map_f: map function, as :class:`~bson.code.Code` or string
-        :param reduce_f: reduce function, as
-                         :class:`~bson.code.Code` or string
-        :param output: output collection name, if set to 'inline' will try to
-           use :class:`~pymongo.collection.Collection.inline_map_reduce`
-           This can also be a dictionary containing output options.
-
-        :param mr_kwargs: Arguments for mongodb map_reduce
-           see: https://docs.mongodb.com/manual/reference/command/mapReduce/
-           for more information
-
-        Returns a dict with the full response of the server
-
-        .. note::
-
-            This is different from mongoengine's map_reduce. It does not
-            support inline map reduce, for that use
-            :meth:`~mongomotor.queryset.QuerySet.inline_map_reduce`. And
-            It does not return a generator with MapReduceDocument, but
-            returns the server response instead.
-        """
-
-        if output == 'inline':
-            raise OperationError(
-                'For inline output please use inline_map_reduce')
-
-        queryset = self.clone()
-
-        map_f = self._get_code(map_f)
-        reduce_f = self._get_code(reduce_f)
-
-        mr_kwargs.update({'query': queryset._query})
-
-        if mr_kwargs.get('finalize'):
-            mr_kwargs['finalize'] = self._get_code(mr_kwargs['finalize'])
-
-        mr_kwargs['out'] = self._get_output(output)
-        mr_kwargs['full_response'] = True
-
-        return queryset._collection.map_reduce(map_f, reduce_f, **mr_kwargs)
-
-    @coroutine_annotation
-    def inline_map_reduce(self, map_f, reduce_f, **mr_kwargs):
-        """Perform a map/reduce query using the current query spec
-        and ordering. While ``map_reduce`` respects ``QuerySet`` chaining,
-        it must be the last call made, as it does not return a maleable
-        ``QuerySet``.
-
-        :param map_f: map function, as :class:`~bson.code.Code` or string
-        :param reduce_f: reduce function, as
-                         :class:`~bson.code.Code` or string
-
-        :param mr_kwargs: Arguments for mongodb map_reduce
-           see: https://docs.mongodb.com/manual/reference/command/mapReduce/
-           for more information
-
-        Returns a generator of MapReduceDocument with the map/reduce results.
-
-        .. note::
-
-           This method only works with inline map/reduce. If you want to
-           send the output to a collection use
-           :meth:`~mongomotor.queryset.Queryset.map_reduce`.
-        """
-
-        queryset = self.clone()
-
-        if mr_kwargs.get('out') and mr_kwargs.get('out') != 'inline':
-            msg = 'inline_map_reduce only supports inline output. '
-            msg += 'To send the result to a collection use map_reduce'
-            raise OperationError(msg)
-
-        map_f = self._get_code(map_f)
-        reduce_f = self._get_code(reduce_f)
-
-        mr_kwargs.update({'query': queryset._query})
-
-        if mr_kwargs.get('finalize'):
-            mr_kwargs['finalize'] = self._get_code(mr_kwargs['finalize'])
-
-        mr_future = queryset._collection.inline_map_reduce(
-            map_f, reduce_f, **mr_kwargs)
-        future = get_future(self)
-
-        def inline_mr_cb(result_future):
-            result = result_future.result()
-            gen = (MapReduceDocument(queryset._document, queryset._collection,
-                                     doc['_id'], doc['value'])
-                   for doc in result)
-            future.set_result(gen)
-
-        mr_future.add_done_callback(inline_mr_cb)
-        return future
-
-    @coroutine_annotation
-    def item_frequencies(self, field, normalize=False):
+    async def item_frequencies(self, field, normalize=False):
         """Returns a dictionary of all items present in a field across
         the whole queried set of documents, and their corresponding frequency.
         This is useful for generating tag clouds, or searching documents.
@@ -432,7 +330,7 @@ class QuerySet(MEQuerySet, metaclass=AsyncGenericMetaclass):
             Can only do direct simple mappings and cannot map across
             :class:`~mongoengine.fields.ReferenceField` or
             :class:`~mongoengine.fields.GenericReferenceField` for more complex
-            counting a manual map reduce call would is required.
+            counting a manual aggretation call would be required.
 
         If the field is a :class:`~mongoengine.fields.ListField`,
         the items within each list will be counted individually.
@@ -441,126 +339,23 @@ class QuerySet(MEQuerySet, metaclass=AsyncGenericMetaclass):
         :param normalize: normalize the results so they add to 1.0
         """
 
-        map_func = """
-            function() {
-                var path = '{{~%(field)s}}'.split('.');
-                var field = this;
+        cursor = self._document._get_collection().aggregate([
+            {'$match': self._query},
+            {'$unwind': f'${field}'},
+            {'$group': {'_id': '$' + field, 'total': {'$sum': 1}}}
+        ])
+        freqs = {}
+        async for doc in cursor:
+            freqs[doc['_id']] = doc['total']
 
-                for (p in path) {
-                    if (typeof field != 'undefined')
-                       field = field[path[p]];
-                    else
-                       break;
-                }
-                if (field && field.constructor == Array) {
-                    field.forEach(function(item) {
-                        emit(item, 1);
-                    });
-                } else if (typeof field != 'undefined') {
-                    emit(field, 1);
-                } else {
-                    emit(null, 1);
-                }
-            }
-        """ % dict(field=field)
-        reduce_func = """
-            function(key, values) {
-                var total = 0;
-                var valuesSize = values.length;
-                for (var i=0; i < valuesSize; i++) {
-                    total += parseInt(values[i], 10);
-                }
-                return total;
-            }
-        """
-        mr_future = self.inline_map_reduce(map_func, reduce_func)
-        future = get_future(self)
+        if normalize:
+            count = sum(freqs.values())
+            freqs = dict([(k, float(v) / count)
+                          for k, v in list(freqs.items())])
 
-        def item_frequencies_cb(mr_future):
-            values = mr_future.result()
-            frequencies = {}
-            for f in values:
-                key = f.key
-                if isinstance(key, float):
-                    if int(key) == key:
-                        key = int(key)
-                frequencies[key] = int(f.value)
+        return freqs
 
-            if normalize:
-                count = sum(frequencies.values())
-                frequencies = dict([(k, float(v) / count)
-                                    for k, v in list(frequencies.items())])
-
-            future.set_result(frequencies)
-
-        mr_future.add_done_callback(item_frequencies_cb)
-        return future
-
-    @coroutine_annotation
-    def average(self, field):
-        """Average over the values of the specified field.
-
-        :param field: the field to average over; use dot-notation to refer to
-            embedded document fields
-        """
-        map_func = """
-            function() {
-                var path = '{{~%(field)s}}'.split('.'),
-                field = this;
-
-                for (p in path) {
-                    if (typeof field != 'undefined')
-                       field = field[path[p]];
-                    else
-                       break;
-                }
-
-                if (field && field.constructor == Array) {
-                    field.forEach(function(item) {
-                        emit(1, {t: item||0, c: 1});
-                    });
-                } else if (typeof field != 'undefined') {
-                    emit(1, {t: field||0, c: 1});
-                }
-            }
-        """ % dict(field=field)
-
-        reduce_func = Code("""
-            function(key, values) {
-                var out = {t: 0, c: 0};
-                for (var i in values) {
-                    var value = values[i];
-                    out.t += value.t;
-                    out.c += value.c;
-                }
-                return out;
-            }
-        """)
-
-        finalize_func = Code("""
-            function(key, value) {
-                return value.t / value.c;
-            }
-        """)
-
-        future = get_future(self)
-        mr_future = self.inline_map_reduce(map_func, reduce_func,
-                                           finalize=finalize_func)
-
-        def average_cb(mr_future):
-            results = mr_future.result()
-            for result in results:
-                average = result.value
-                break
-            else:
-                average = 0
-
-            future.set_result(average)
-
-        mr_future.add_done_callback(average_cb)
-        return future
-
-    async def aggregate_average(self, field):
+    async def average(self, field):
         """Average over the values of the specified field.
 
         :param field: the field to average over; use dot-notation to refer to
@@ -582,53 +377,6 @@ class QuerySet(MEQuerySet, metaclass=AsyncGenericMetaclass):
         return avg
 
     async def sum(self, field):
-        """Sum over the values of the specified field.
-
-        :param field: the field to sum over; use dot-notation to refer to
-            embedded document fields
-        """
-        map_func = """
-            function() {
-                var path = '{{~%(field)s}}'.split('.'),
-                field = this;
-
-                for (p in path) {
-                    if (typeof field != 'undefined')
-                       field = field[path[p]];
-                    else
-                       break;
-                }
-
-                if (field && field.constructor == Array) {
-                    field.forEach(function(item) {
-                        emit(1, item||0);
-                    });
-                } else if (typeof field != 'undefined') {
-                    emit(1, field||0);
-                }
-            }
-        """ % dict(field=field)
-
-        reduce_func = Code("""
-            function(key, values) {
-                var sum = 0;
-                for (var i in values) {
-                    sum += values[i];
-                }
-                return sum;
-            }
-        """)
-
-        results = await self.inline_map_reduce(map_func, reduce_func)
-        for result in results:
-            r = result.value
-            break
-        else:
-            r = 0
-
-        return r
-
-    async def aggregate_sum(self, field):
         """Sum over the values of the specified field.
 
         :param field: the field to sum over; use dot-notation to refer to

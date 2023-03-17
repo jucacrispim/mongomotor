@@ -378,71 +378,6 @@ class QuerySetTest(TestCase):
         self.assertIsInstance(ret, SON)
 
     @async_test
-    async def test_map_reduce_with_inline_output(self):
-        # raises an exception when output is inline
-
-        collection = self.test_doc._get_collection()
-        qs = QuerySet(self.test_doc, collection)
-
-        with self.assertRaises(OperationError):
-            await qs.map_reduce('mapf', 'reducef', output='inline')
-
-    @async_test
-    async def test_get_map_reduce(self):
-        for i in range(5):
-            d = self.test_doc(a=str(i))
-            await d.save()
-
-        collection = self.test_doc._get_collection()
-        qs = QuerySet(self.test_doc, collection)
-
-        mapf = """
-function(){
-  emit(this.a, 1);
-}
-"""
-        reducef = """
-function(key, values){
-  return Array.sum(values)
-}
-"""
-        ret = await qs.map_reduce(mapf, reducef, {'merge': 'bla'})
-        self.assertEqual(ret['counts']['input'], 5)
-
-    @async_test
-    async def test_inline_map_reduce_with_bad_output(self):
-        mr_kwrags = {'out': 'bla'}
-        collection = self.test_doc._get_collection()
-        qs = QuerySet(self.test_doc, collection)
-
-        with self.assertRaises(OperationError):
-            await qs.inline_map_reduce('mapf', 'reducef', **mr_kwrags)
-
-    @async_test
-    async def test_inline_map_reduce(self):
-        for i in range(5):
-            d = self.test_doc(a=str(i))
-            await d.save()
-
-        collection = self.test_doc._get_collection()
-        qs = QuerySet(self.test_doc, collection)
-
-        mapf = """
-function(){
-  emit(this.a, 1);
-}
-"""
-        reducef = """
-function(key, values){
-  return Array.sum(values)
-}
-"""
-        gen = await qs.inline_map_reduce(mapf, reducef)
-        ret = list(gen)
-        self.assertEqual(len(ret), 5)
-        self.assertIsInstance(ret[0], MapReduceDocument)
-
-    @async_test
     async def test_item_frequencies(self):
         d = self.test_doc(lf=['a', 'b'])
         await d.save()
@@ -451,7 +386,6 @@ function(key, values){
 
         collection = self.test_doc._get_collection()
         qs = QuerySet(self.test_doc, collection)
-
         freq = await qs.item_frequencies('lf')
         self.assertEqual(freq['a'], 2)
 
@@ -476,26 +410,12 @@ function(key, values){
         self.assertEqual(average, 2)
 
     @async_test
-    async def test_aggregate_average(self):
-        docs = [self.test_doc(docint=i) for i in range(5)]
-        await self.test_doc.objects.insert(docs)
-        average = await self.test_doc.objects.aggregate_average('docint')
-        self.assertEqual(average, 2)
-
-    @async_test
     async def test_sum(self):
         for i in range(5):
             d = self.test_doc(docint=i)
             await d.save()
 
         soma = await self.test_doc.objects.sum('docint')
-        self.assertEqual(soma, 10)
-
-    @async_test
-    async def test_aggregate_sum(self):
-        docs = [self.test_doc(docint=i) for i in range(5)]
-        await self.test_doc.objects.insert(docs)
-        soma = await self.test_doc.objects.aggregate_sum('docint')
         self.assertEqual(soma, 10)
 
     @async_test

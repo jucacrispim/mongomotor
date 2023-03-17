@@ -5,7 +5,7 @@ Pygments==2.7.4
 Sphinx==3.4.3
 autopep8==1.5.4
 blinker==1.4
-certifi==14.05.14
+certifi==2017.4.17
 coverage==5.3.1
 docutils==0.16
 flake8==3.8.4

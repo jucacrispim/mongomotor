@@ -2,7 +2,7 @@
 
 import asyncio
 import os
-from mongomotor import connect
+from mongomotor.connection import connect
 
 # tks stackoverflow!
 

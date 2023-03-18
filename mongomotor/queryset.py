@@ -21,14 +21,11 @@ from bson.code import Code
 from bson import SON
 import functools
 import os
-import textwrap
 from mongoengine import signals, DENY, CASCADE, NULLIFY, PULL
 from mongoengine.connection import get_db
-from mongoengine.document import MapReduceDocument
 from mongoengine.queryset.queryset import QuerySet as MEQuerySet
 from mongoengine.errors import OperationError
 from motor.core import coroutine_annotation
-from mongomotor import PY35
 from mongomotor.exceptions import ConfusionError
 from mongomotor.metaprogramming import (get_future, AsyncGenericMetaclass,
                                         Async, asynchronize)
@@ -71,22 +68,17 @@ class QuerySet(MEQuerySet, metaclass=AsyncGenericMetaclass):
             async_getitem = asynchronize(sync_getitem)
             return async_getitem(self, index)
 
-    if PY35:
-        exec(textwrap.dedent("""
-        from mongomotor.decorators import aiter_compat
-        @aiter_compat
-        def __aiter__(self):
-            return self
+    def __aiter__(self):
+        return self
 
-        async def __anext__(self):
-            async for doc in self._cursor:
-                mm_doc = self._document._from_son(
-                    doc,
-                    _auto_dereference=self._auto_dereference)
-                return mm_doc
-            else:
-                raise StopAsyncIteration()
-        """), globals(), locals())
+    async def __anext__(self):
+        async for doc in self._cursor:
+            mm_doc = self._document._from_son(
+                doc,
+                _auto_dereference=self._auto_dereference)
+            return mm_doc
+        else:
+            raise StopAsyncIteration()
 
     @coroutine_annotation
     def get(self, *q_objs, **query):

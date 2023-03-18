@@ -18,7 +18,6 @@
 # along with mongomotor. If not, see <http://www.gnu.org/licenses/>.
 
 import asyncio
-import textwrap
 from unittest import TestCase
 from unittest.mock import patch
 import mongoengine
@@ -27,8 +26,7 @@ from mongomotor.dereference import MongoMotorDeReference
 from mongomotor.fields import StringField, ListField, IntField, ReferenceField
 from mongomotor import queryset
 from mongomotor.queryset import (QuerySet, OperationError, Code,
-                                 ConfusionError, SON, MapReduceDocument,
-                                 PY35)
+                                 ConfusionError, SON)
 from tests import async_test, connect2db
 
 

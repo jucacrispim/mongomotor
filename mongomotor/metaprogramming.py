@@ -22,11 +22,11 @@ from mongoengine.base.metaclasses import (
     TopLevelDocumentMetaclass,
     DocumentMetaclass
 )
+from mongoengine.connection import DEFAULT_CONNECTION_NAME
 from mongoengine.context_managers import switch_db as me_switch_db
 from motor.metaprogramming import MotorAttributeFactory
 from pymongo.database import Database
 from mongomotor import utils
-from mongomotor.connection import DEFAULT_CONNECTION_NAME
 from mongomotor.exceptions import ConfusionError
 from mongomotor.monkey import MonkeyPatcher
 

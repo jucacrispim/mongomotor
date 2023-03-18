@@ -17,16 +17,13 @@
 # You should have received a copy of the GNU General Public License
 # along with mongomotor. If not, see <http://www.gnu.org/licenses/>.
 
-import textwrap
 import types
 from motor.core import (AgnosticCollection, AgnosticClient, AgnosticDatabase,
                         AgnosticCursor)
-from motor.metaprogramming import create_class_with_framework, ReadOnlyProperty
+from motor.metaprogramming import create_class_with_framework
 import pymongo
 from pymongo.database import Database
 from pymongo.collection import Collection
-from mongomotor import PY35
-from mongomotor.decorators import aiter_compat
 from mongomotor.metaprogramming import OriginalDelegate
 
 

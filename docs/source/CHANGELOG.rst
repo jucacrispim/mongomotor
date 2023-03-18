@@ -1,6 +1,34 @@
 Changelog
 =========
 
+v0.16.0
++++++++
+
+* Upgrade mongoengine to 0.27.0 and motor to 3.1.1
+* Remove map-reduce related stuff
+* Remove support for python3.4
+
+v0.15.0
++++++++
+
+* Upgrade mongoengine/pymongo/motor
+
+
+v0.14.3
++++++++
+
+* Fix check of delete_rules
+
+v0.14.2
++++++++
+
+* Update mongoengine
+
+v0.14.1
++++++++
+
+* Fix references on embedded fields
+
 v0.14.0
 +++++++
 

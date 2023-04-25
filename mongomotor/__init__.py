@@ -16,7 +16,7 @@ patcher.patch_signals()
 patcher.patch_get_mongodb_version()
 
 
-VERSION = '0.16.0'
+VERSION = '0.16.1'
 
 __all__ = ['connect', 'disconnect', 'Document', 'DynamicDocument',
            'EmbeddedDocument', 'DynamicEmbeddedDocument', 'MapReduceDocument']

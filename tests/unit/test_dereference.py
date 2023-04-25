@@ -43,7 +43,7 @@ class MongoMotorDeReferenceTest(TestCase):
             self.assertFalse(hasattr(cls.objects.in_bulk, '__wrapped__'))
 
     @async_test
-    async def test_find_references(self):
+    async def test_fetch_objects(self):
 
         ref = self.test_ref(attr='bla')
         await ref.save()
@@ -61,4 +61,4 @@ class MongoMotorDeReferenceTest(TestCase):
         find_ref = asynchronize(find_ref)
         ref_map = await find_ref(qs)
         for doc in ref_map.keys():
-            self.assertTrue(doc.__name__.startswith('Patched'))
+            self.assertFalse(doc.__name__.startswith('Patched'))

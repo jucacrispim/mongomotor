@@ -5,14 +5,17 @@ from mongoengine.dereference import DeReference
 
 class MongoMotorDeReference(DeReference):
 
-    def _find_references(self, *args, **kwargs):
+    def _fetch_objects(self, *args, **kwargs):
         """
-        :param args: Positional args passed to DeReference._find_references.
-        :param kwargs: Named args passed to DeReference._find_references.
+        :param args: Positional args passed to DeReference._fetch_objects.
+        :param kwargs: Named args passed to DeReference._fetch_objects.
         """
-
-        r = super()._find_references(*args, **kwargs)
-        return self._patch_in_bulk(r)
+        self._old_refs = self.reference_map
+        self.reference_map = self._patch_in_bulk(self.reference_map)
+        r = super()._fetch_objects(*args, **kwargs)
+        self.reference_map = self._old_refs
+        self._old_refs = None
+        return r
 
     def _patch_in_bulk(self, ref_map):
         """Changes the in_bulk method of the classes to

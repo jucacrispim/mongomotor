@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Copyright 2016 Juca Crispim <juca@poraodojuca.net>
+# Copyright 2016, 2023 Juca Crispim <juca@poraodojuca.net>
 
 # This file is part of mongomotor.
 
@@ -30,7 +30,7 @@ from mongomotor.fields import (StringField, IntField, ListField, DictField,
                                FileField, GenericReferenceField)
 
 from tests import async_test, connect2db
-from tests.functional import DATA_DIR, CANNOT_EXEC_JS
+from tests.functional import DATA_DIR
 
 
 class MongoMotorTest(unittest.TestCase):

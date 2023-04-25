@@ -14,7 +14,7 @@ steps:
     command: ./build-scripts/db.sh
 
   - name: Run tests
-    command: pytest setup.py test
+    command: pytest tests/
     timeout: 120
 
 

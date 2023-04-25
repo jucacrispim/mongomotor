@@ -1,11 +1,15 @@
 Changelog
 =========
 
+v0.16.2
++++++++
+
+* Prevent Patched classes from being registered
+
 v0.16.1
++++++++
 
-* Fix patch for in_bulk on dereferences to avoid memory leaks due
-  to instances been added to the delete rules
-
+* Fix patch for in_bulk on dereferences to avoid Patched classes around
 * Remove support for py3.5, 3.6 e 3.7
 
 v0.16.0

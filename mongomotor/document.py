@@ -233,6 +233,15 @@ class Document(NoDerefInitMixin, DocumentBase,
         return ret_future
 
     @classmethod
+    def register_delete_rule(cls, document_cls, field_name, rule):
+        """This method registers the delete rules to apply when removing this
+        object.
+        """
+        if document_cls.__name__.startswith('Patched'):
+            return
+        return super().register_delete_rule(document_cls, field_name, rule)
+
+    @classmethod
     def drop_collection(cls):
         """Drops the entire collection associated with this
         :class:`mongomotor.Document` type from the database.

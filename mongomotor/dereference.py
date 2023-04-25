@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+from mongoengine.base.common import _document_registry
 from mongoengine.dereference import DeReference
 
 
@@ -39,6 +40,7 @@ class MongoMotorDeReference(DeReference):
             qs_class.in_bulk = sync_in_bulk
             new_cls_name = 'Patched{}'.format(cls.__name__)
             new_cls = type(new_cls_name, cls.__bases__, dict(cls.__dict__))
+            _document_registry.pop(new_cls._class_name)
             new_cls._meta['queryset_class'] = qs_class
             new_map[new_cls] = value
 

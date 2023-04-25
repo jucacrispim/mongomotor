@@ -14,7 +14,7 @@ steps:
     command: ./build-scripts/db.sh
 
   - name: Run tests
-    command: python setup.py test
+    command: pytest setup.py test
     timeout: 120
 
 
@@ -25,9 +25,9 @@ builders:
 
     plugins:
       - name: python-venv
-        pyversion: python3.6
+        pyversion: python3.11
 
-    platform: python3.7
+    platform: python3.11
 
     steps:
       - name: Upload documentation

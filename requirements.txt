@@ -24,3 +24,5 @@ requests==2.28.2
 sphinx-pdj-theme==0.2.1
 tornado==6.2
 twine==4.0.2
+build==0.10.0
+pytest==7.3.1

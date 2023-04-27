@@ -44,6 +44,10 @@ builders:
       - name: python-venv
         pyversion: python3.11
 
+      - name: apt-install
+        packages:
+          - build-essential
+
     platform: python3.11
 
     steps:

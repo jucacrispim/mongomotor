@@ -9,6 +9,9 @@ versions:
 branches:
   - master
 
+envvars:
+  ENV: ci
+
 steps:
   - name: setup db
     command: ./build-scripts/db.sh
@@ -44,6 +47,7 @@ builders:
       - name: apt-install
         packages:
           - build-essential
+          - curl
 
       - name: python-venv
         pyversion: python3.11

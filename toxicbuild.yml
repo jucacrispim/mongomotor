@@ -19,9 +19,26 @@ steps:
 
 
 builders:
-  - name: release
+  - name: Docs
     branches:
-      - release
+      - master
+
+    triggered_by:
+      - builder_name: python3.8
+        statuses:
+          - success
+
+      - builder_name: python3.9
+        statuses:
+          - success
+
+      - builder_name: python3.10
+        statuses:
+          - success
+
+      - builder_name: python3.11
+        statuses:
+          - success
 
     plugins:
       - name: python-venv
@@ -30,5 +47,8 @@ builders:
     platform: python3.11
 
     steps:
-      - name: Upload documentation
-        command: pdj-deployer pdj01 software_deploy mongomotor release
+      - name: Build docs
+        command: ./build-scripts/build_docs.sh
+
+      - name: upload docs
+        command: ./build-scripts/upload_docs.sh

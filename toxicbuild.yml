@@ -41,12 +41,12 @@ builders:
           - success
 
     plugins:
-      - name: python-venv
-        pyversion: python3.11
-
       - name: apt-install
         packages:
           - build-essential
+
+      - name: python-venv
+        pyversion: python3.11
 
     platform: python3.11
 

@@ -3,7 +3,7 @@ cd docs
 export PYTHONPATH="$PWD/../"
 rm -rf "$PWD/source/apidoc"
 rm -rf "$PWD/build"
-
+which pip
 base_cmd=""
 if [ "$ENV" == "ci" ]
 then

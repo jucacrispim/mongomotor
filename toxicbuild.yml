@@ -9,9 +9,6 @@ versions:
 branches:
   - master
 
-envvars:
-  ENV: ci
-
 steps:
   - name: setup db
     command: ./build-scripts/db.sh
@@ -53,6 +50,9 @@ builders:
         pyversion: python3.11
 
     platform: python3.11
+
+    envvars:
+      ENV: ci
 
     steps:
       - name: Build docs

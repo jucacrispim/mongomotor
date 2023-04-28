@@ -7,4 +7,4 @@ approuch to create a awesome library for asynchronous access to MongoDB
 using python 3.4+.
 
 Take a look at the
-[full documentation](http://mongomotor.poraodojuca.net/).
+[full documentation](https://mongomotor.poraodojuca.dev/).

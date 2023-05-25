@@ -22,7 +22,7 @@ pyflakes==3.0.1
 pymongo==4.3.3
 requests==2.31.0
 sphinx-pdj-theme==0.2.1
-tornado==6.2
+tornado==6.3.2
 twine==4.0.2
 build==0.10.0
 pytest==7.3.1

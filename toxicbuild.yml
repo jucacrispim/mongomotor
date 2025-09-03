@@ -48,9 +48,9 @@ builders:
           - curl
 
       - name: python-venv
-        pyversion: python3.11
+        pyversion: python3.13
 
-    platform: python3.11
+    platform: python3.13
 
     envvars:
       ENV: ci

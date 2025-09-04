@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Copyright 2016 Juca Crispim <juca@poraodojuca.net>
+# Copyright 2016, 2025 Juca Crispim <juca@poraodojuca.dev>
 
 # This file is part of mongomotor.
 
@@ -19,7 +19,7 @@
 
 from copy import copy
 from asyncblink import signal
-from mongoengine import connection, dereference, signals
+from mongoengine import connection, dereference, signals, context_managers
 from mongoengine.queryset import base
 from pymongo.mongo_client import MongoClient
 from mongomotor.dereference import MongoMotorDeReference
@@ -111,6 +111,13 @@ class MonkeyPatcher:
     def patch_dereference(self):
         self.patch_item(dereference, 'DeReference', MongoMotorDeReference,
                         undo=False)
+
+    def patch_no_dereferencing_active_for_class(self):
+        from .context_managers import no_dereferencing_active_for_class
+        self.patch_item(context_managers, 'no_dereferencing_active_for_class',
+                        no_dereferencing_active_for_class)
+        self.patch_item(base, 'no_dereferencing_active_for_class',
+                        no_dereferencing_active_for_class)
 
     def patch_qs_stop_iteration(self):
         """Patches StopIterations raised by mongoengine's queryset

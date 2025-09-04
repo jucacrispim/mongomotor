@@ -21,7 +21,7 @@ from unittest import TestCase
 from unittest.mock import Mock
 from asyncblink import NamedAsyncSignal
 from mongoengine import connection as me_connection
-from mongomotor import monkey, Document, metaprogramming
+from mongomotor import monkey, Document, metaprogramming, context_managers
 from mongomotor.connection import disconnect
 from tests import connect2db
 
@@ -108,3 +108,13 @@ class MonkeyPatcherTest(TestCase):
 
             from mongoengine.signals import pre_init
             self.assertIsInstance(pre_init, NamedAsyncSignal)
+
+    def test_no_dereferencing_for_active_class(self):
+        with monkey.MonkeyPatcher() as patcher:
+            patcher.patch_no_dereferencing_active_for_class()
+
+            from mongoengine.context_managers import \
+                no_dereferencing_active_for_class
+            self.assertIs(
+                no_dereferencing_active_for_class,
+                context_managers.no_dereferencing_active_for_class)

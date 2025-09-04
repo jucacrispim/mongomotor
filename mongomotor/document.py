@@ -55,12 +55,12 @@ class NoDerefInitMixin:
                     isinstance(field, ComplexBaseField) and
                     isinstance(field.field, ReferenceField)):
                 fields.append((field, field._auto_dereference))
-                field._auto_dereference = False
+                field._BaseField__auto_dereference = False
 
         super().__init__(*args, **kwargs)
         # and here we back things to normal
         for field, deref in fields:
-            field._auto_dereference = deref
+            field._BaseField__auto_dereference = deref
 
 
 class Document(NoDerefInitMixin, DocumentBase,

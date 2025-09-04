@@ -14,6 +14,7 @@ patcher = MonkeyPatcher()
 patcher.patch_dereference()
 patcher.patch_signals()
 patcher.patch_get_mongodb_version()
+patcher.patch_no_dereferencing_active_for_class()
 
 
 __version__ = '0.16.2'

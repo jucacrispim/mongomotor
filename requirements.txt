@@ -14,7 +14,7 @@ ipython==8.11.0
 jsonschema==4.17.3
 mccabe==0.7.0
 mistune==2.0.5
-mongoengine==0.27.0
+mongoengine==0.29.1
 motor==3.1.1
 pep8==1.7.1
 pkginfo==1.9.6

@@ -180,7 +180,7 @@ class GridFSProxy(fields.GridFSProxy, metaclass=AsyncGenericMetaclass):
             raise GridFSError('You must create a new file first. Call '
                               '``new_file`` or use the async context manager')
 
-        return self.grid_in.write(data)
+        return await self.grid_in.write(data)
 
     async def put(self, data, **metadata):
         """Writes ``data`` to gridfs.

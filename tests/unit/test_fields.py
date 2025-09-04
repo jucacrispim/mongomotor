@@ -258,6 +258,8 @@ class GridFSProxyTest(TestCase):
         db = get_db()
         coll = db.fs
         await coll.drop()
+        await db.fs.files.drop()
+        await db.fs.chunks.drop()
 
     def test_fs(self):
         grid_class = create_class_with_framework(
@@ -339,6 +341,9 @@ class FileFieldTest(TestCase):
     async def tearDown(self):
         await self.test_doc.drop_collection()
         db = self.test_doc._get_db()
+        await db.fs.files.drop()
+        await db.fs.chunks.drop()
+
         await db.fs.drop()
 
     @async_test

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Copyright 2016 Juca Crispim <juca@poraodojuca.net>
+# Copyright 2016-2017, 2025 Juca Crispim <juca@poraodojuca.dev>
 
 # This file is part of mongomotor.
 
@@ -22,13 +22,12 @@ from unittest import TestCase
 from unittest.mock import Mock
 from mongoengine.connection import get_db
 from motor.frameworks import asyncio as asyncio_framework
-from motor.metaprogramming import create_class_with_framework
+import gridfs
 from mongomotor import Document, disconnect, EmbeddedDocument
 from mongomotor.fields import (ReferenceField, ListField,
                                EmbeddedDocumentField, StringField, DictField,
                                BaseList, BaseDict, GridFSProxy, FileField,
                                GridFSError, GenericReferenceField)
-from mongomotor.gridfs import MongoMotorAgnosticGridFS
 from tests import async_test, connect2db
 
 
@@ -42,21 +41,22 @@ class TestReferenceField(TestCase):
     def tearDownClass(cls):
         disconnect()
 
-    def test_get(self):
+    @async_test
+    async def test_get(self):
         class RefClass(Document):
-
-            @classmethod
-            def _get_db(self):
-                db = Mock()
-                db._framework = asyncio_framework
-                return db
+            a = StringField()
 
         class SomeClass(Document):
             ref = ReferenceField(RefClass)
 
-        someclass = SomeClass()
-        # ref should be a future
-        self.assertTrue(hasattr(someclass.ref, 'set_result'))
+        r = RefClass(a='ola')
+        await r.save()
+        someclass = SomeClass(ref=r)
+        await someclass.save()
+        ref = await someclass.ref
+
+        self.assertTrue(ref.id)
+        self.assertEqual(ref.a, "ola")
 
     def test_get_with_class(self):
         class RefClass(Document):
@@ -107,23 +107,31 @@ class GenericReferenceFieldTest(TestCase):
     def tearDownClass(cls):
         disconnect()
 
-    def test_get(self):
+    @async_test
+    async def test_get(self):
         class RefClass(Document):
+            pass
 
-            @classmethod
-            def _get_db(self):
-                db = Mock()
-                db._framework = asyncio_framework
-                return db
+        class SomeClass(Document):
+            ref = GenericReferenceField()
+
+        r = RefClass()
+        await r.save()
+        someclass = SomeClass(ref=r)
+        ref = await someclass.ref
+        self.assertTrue(ref.id)
+
+    @async_test
+    async def test_get_none(self):
+        class RefClass(Document):
+            pass
 
         class SomeClass(Document):
             ref = GenericReferenceField()
 
         someclass = SomeClass()
-        someclass.ref = RefClass()
-
-        # ref should be a future
-        self.assertTrue(hasattr(someclass.ref, 'set_result'))
+        ref = await someclass.ref
+        self.assertIsNone(ref)
 
 
 class TestComplexField(TestCase):
@@ -182,7 +190,8 @@ class TestComplexField(TestCase):
         await test_doc.save()
 
         test_doc = await self.test_class.objects.get(id=test_doc.id)
-        self.assertEqual(test_doc.list_field, ['a', 'b'])
+        lf = test_doc.list_field
+        self.assertEqual(lf, ['a', 'b'])
 
     @async_test
     async def test_get_list_field_with_embedded(self):
@@ -237,7 +246,8 @@ class TestComplexField(TestCase):
         doc = self.test_embed_ref(embedlist=[embed])
         await doc.save()
         doc = await self.test_embed_ref.objects.get(id=doc.id)
-        self.assertTrue((await doc.embedlist[0].ref).id)
+        ref = await doc.embedlist[0].ref
+        self.assertTrue(ref.id)
 
 
 class GridFSProxyTest(TestCase):
@@ -262,51 +272,38 @@ class GridFSProxyTest(TestCase):
         await db.fs.chunks.drop()
 
     def test_fs(self):
-        grid_class = create_class_with_framework(
-            MongoMotorAgnosticGridFS, asyncio_framework,
-            'mongomotor.gridfs')
-        self.assertIsInstance(self.proxy.fs, grid_class)
+        self.assertIsInstance(self.proxy.fs, gridfs.AsyncGridFS)
 
     @async_test
     async def test_new_file(self):
         self.proxy.new_file(**{'contentType': 'text/plain'})
-        self.assertTrue(self.proxy.grid_in)
+        self.assertTrue(self.proxy.grid_id)
 
     @async_test
-    async def test_write_with_id_not_grid_in(self):
+    async def test_write_with_id_not_newfile(self):
         self.proxy.grid_id = 'some-id'
         with self.assertRaises(GridFSError):
             await self.proxy.write('some-str')
 
     @async_test
-    async def test_write_not_grid_in(self):
-        with self.assertRaises(GridFSError):
-            await self.proxy.write('some-str')
-
-    @async_test
     async def test_write(self):
-        self.proxy.new_file()
         await self.proxy.write(b'bla')
-        await self.proxy.grid_in.close()
-        buff = io.BytesIO()
-        await self.proxy.fs.download_to_stream(self.proxy.grid_in._id, buff)
-        buff.seek(0)
-        content = buff.read()
+        await self.proxy.close()
+        content = await self.proxy.read()
         self.assertEqual(content, b'bla')
 
     @async_test
     async def test_put(self):
         await self.proxy.put(b'asdf')
-        buff = io.BytesIO()
-        await self.proxy.fs.download_to_stream(self.proxy.grid_id, buff)
-        buff.seek(0)
-        content = buff.read()
+        await self.proxy.close()
+        content = await self.proxy.read()
         self.assertEqual(content, b'asdf')
 
     @async_test
     async def test_read(self):
         fcontents = b'asdf'
         await self.proxy.put(fcontents)
+        await self.proxy.close()
         contents = await self.proxy.read()
         self.assertEqual(fcontents, contents)
 
@@ -315,7 +312,9 @@ class GridFSProxyTest(TestCase):
         fcontents = b'asdf'
         new_contents = b'123'
         await self.proxy.put(fcontents)
+        await self.proxy.close()
         await self.proxy.replace(new_contents)
+        await self.proxy.close()
         contents = await self.proxy.read()
         self.assertEqual(contents, new_contents)
 

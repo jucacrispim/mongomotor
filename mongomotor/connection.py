@@ -18,20 +18,19 @@
 # along with mongomotor. If not, see <http://www.gnu.org/licenses/>.
 
 
+import asyncio
 from mongoengine import connection
 from mongoengine.connection import (connect as me_connect,
                                     DEFAULT_CONNECTION_NAME,
-                                    disconnect as me_disconnect,
                                     register_connection,
-                                    get_connection)
+                                    get_connection,
+                                    _connection_settings,
+                                    _connections,
+                                    _dbs)
+from pymongo import AsyncMongoClient
 
 from mongomotor import utils
-from mongomotor.clients import (MongoMotorAsyncIOClient,
-                                MongoMotorTornadoClient)
 from mongomotor.monkey import MonkeyPatcher
-
-CLIENTS = {'asyncio': (MongoMotorAsyncIOClient,),
-           'tornado': (MongoMotorTornadoClient,)}
 
 _db_version = {}
 
@@ -75,10 +74,9 @@ def connect(db=None, async_framework='asyncio',
       It can be `tornado` or `asyncio`. Defaults to `asyncio`.
 
     """
-
-    clients = CLIENTS[async_framework]
+    kwargs['uuidrepresentation'] = 'standard'
     with MonkeyPatcher() as patcher:
-        patcher.patch_db_clients(*clients)
+        patcher.patch_db_clients(AsyncMongoClient)
         patcher.patch_sync_connections()
         ret = me_connect(db=db, alias=alias, **kwargs)
 
@@ -97,11 +95,28 @@ def connect(db=None, async_framework='asyncio',
 
 
 def disconnect(alias=DEFAULT_CONNECTION_NAME):
-    """Disconnects from the database indentified by ``alias``.
-    """
+    """Close the connection with a given alias."""
+    from mongoengine import Document
+    from mongoengine.base.common import _get_documents_by_db
 
-    me_disconnect(alias=alias)
+    connection = _connections.pop(alias, None)
+    if connection:
+        # MongoEngine may share the same MongoClient across multiple aliases
+        # if connection settings are the same so we only close
+        # the client if we're removing the final reference.
+        # Important to use 'is' instead of '==' because clients connected
+        # to the same cluster will compare equal even with different options
+        if all(connection is not c for c in _connections.values()):
+            loop = asyncio.new_event_loop()
+            loop.run_until_complete(connection.close())
 
-    # disconneting sync connection
-    sync_alias = utils.get_sync_alias(alias)
-    me_disconnect(alias=sync_alias)
+    if alias in _dbs:
+        # Detach all cached collections in Documents
+        for doc_cls in _get_documents_by_db(alias, DEFAULT_CONNECTION_NAME):
+            if issubclass(doc_cls, Document):  # Skip EmbeddedDocument
+                doc_cls._disconnect()
+
+        del _dbs[alias]
+
+    if alias in _connection_settings:
+        del _connection_settings[alias]

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Copyright 2016 Juca Crispim <juca@poraodojuca.net>
+# Copyright 2016, 2025 Juca Crispim <juca@poraodojuca.net>
 
 # This file is part of mongomotor.
 
@@ -30,7 +30,7 @@ class DocumentTest(TestCase):
 
     @classmethod
     def setUpClass(cls):
-        connect2db(async_framework='asyncio')
+        connect2db()
 
     @classmethod
     def tearDownClass(cls):
@@ -80,9 +80,18 @@ class DocumentTest(TestCase):
         self.assertTrue(doc.id)
 
     @async_test
+    async def test_save_update(self):
+        doc = self.test_doc(i=1)
+        self.assertFalse(doc.id)
+        await doc.save()
+        doc.i = 2
+        await doc.save()
+        self.assertTrue(doc.id)
+
+    @async_test
     async def test_save_unique(self):
         doc = self.unique(attr=1)
-        self.unique.ensure_indexes()
+        await self.unique.ensure_indexes()
         await doc.save()
         other = self.unique(attr=1)
         with self.assertRaises(mongoengine.errors.NotUniqueError):
@@ -146,16 +155,16 @@ class DocumentTest(TestCase):
 
         inst = self.indexed_test(some_index=1)
         await inst.save()
-        missing = self.indexed_test.compare_indexes()['missing']
+        missing = (await self.indexed_test.compare_indexes())['missing']
         self.assertEqual(missing[0][0][0], 'some_index')
 
     @async_test
     async def test_ensure_indexes(self):
 
         inst = self.auto_indexed_test(some_index=1)
-        self.auto_indexed_test.ensure_indexes()
+        await self.auto_indexed_test.ensure_indexes()
         await inst.save()
-        missing = self.auto_indexed_test.compare_indexes()['missing']
+        missing = (await self.auto_indexed_test.compare_indexes())['missing']
         self.assertFalse(missing)
 
     @async_test
@@ -179,6 +188,5 @@ class DocumentTest(TestCase):
         await self.test_doc.objects(id=d.id).update(refs_list=[ref])
 
         await d.reload()
-
         refs = await d.refs_list
         self.assertEqual(len(refs), 1)

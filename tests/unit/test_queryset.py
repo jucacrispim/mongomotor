@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Copyright 2016 Juca Crispim <juca@poraodojuca.net>
+# Copyright 2016, 2025 Juca Crispim <juca@poraodojuca.dev>
 
 # This file is part of mongomotor.
 
@@ -25,8 +25,7 @@ from mongomotor import Document, disconnect
 from mongomotor.dereference import MongoMotorDeReference
 from mongomotor.fields import StringField, ListField, IntField, ReferenceField
 from mongomotor import queryset
-from mongomotor.queryset import (QuerySet, OperationError, Code,
-                                 ConfusionError, SON)
+from mongomotor.queryset import (QuerySet, Code)
 from tests import async_test, connect2db
 
 
@@ -117,15 +116,6 @@ class QuerySetTest(TestCase):
 
         docs = await qs.to_list()
         self.assertEqual(len(docs), 0)
-
-    def test_get_loop(self):
-        collection = self.test_doc._get_collection()
-
-        qs = QuerySet(self.test_doc, collection)
-
-        loop = qs._get_loop()
-        aio_loop = asyncio.get_event_loop()
-        self.assertIs(loop, aio_loop)
 
     @patch.object(queryset, 'TEST_ENV', True)
     @async_test
@@ -260,9 +250,8 @@ class QuerySetTest(TestCase):
         qs = QuerySet(self.test_doc, collection)
 
         c = 0
-        while (await qs.fetch_next):
+        async for doc in qs:
             c += 1
-            doc = qs.next_object()
 
             self.assertIsInstance(doc, self.test_doc)
 
@@ -336,45 +325,6 @@ class QuerySetTest(TestCase):
         self.assertIsInstance(ret, Code)
         self.assertIsNot(ret, code)
 
-    def test_get_output_without_action_data(self):
-        collection = self.test_doc._get_collection()
-        qs = QuerySet(self.test_doc, collection)
-
-        with self.assertRaises(OperationError):
-            qs._get_output({})
-
-    def test_get_output_with_bad_output_type(self):
-        collection = self.test_doc._get_collection()
-        qs = QuerySet(self.test_doc, collection)
-
-        with self.assertRaises(ConfusionError):
-            qs._get_output([])
-
-    def test_get_output_with_son(self):
-        collection = self.test_doc._get_collection()
-        qs = QuerySet(self.test_doc, collection)
-
-        son = SON({'merge': 'bla'})
-        ret = qs._get_output(son)
-
-        self.assertEqual(ret, son)
-
-    def test_get_output_with_str(self):
-        collection = self.test_doc._get_collection()
-        qs = QuerySet(self.test_doc, collection)
-
-        ret = qs._get_output('outcoll')
-
-        self.assertEqual(ret, 'outcoll')
-
-    def test_get_output_with_dict(self):
-        output = {'merge': 'bla', 'db_alias': 'default'}
-        collection = self.test_doc._get_collection()
-        qs = QuerySet(self.test_doc, collection)
-
-        ret = qs._get_output(output)
-        self.assertIsInstance(ret, SON)
-
     @async_test
     async def test_item_frequencies(self):
         d = self.test_doc(lf=['a', 'b'])
@@ -406,6 +356,193 @@ class QuerySetTest(TestCase):
         await self.test_doc.objects.insert(docs)
         average = await self.test_doc.objects.average('docint')
         self.assertEqual(average, 2)
+
+    @async_test
+    async def test_map_reduce_inline(self):
+        d = self.test_doc(lf=['a', 'b'])
+        await d.save()
+        d = self.test_doc(lf=['a', 'c'])
+        await d.save()
+
+        mapf = """
+              function () {
+                this.lf.forEach(function(z) {
+                  emit(z, 1);
+                });
+              }
+              """
+        reducef = """
+              function (key, values) {
+                 var total = 0;
+                 for (var i = 0; i < values.length; i++) {
+                   total += values[i];
+                 }
+                 return total;
+               }
+               """
+        collection = self.test_doc._get_collection()
+        qs = QuerySet(self.test_doc, collection)
+        r = []
+        async for doc in qs.map_reduce(mapf, reducef, 'inline'):
+            assert isinstance(doc, mongoengine.document.MapReduceDocument)
+            r.append(doc)
+
+        assert len(r) == 3
+
+    @async_test
+    async def test_map_reduce_code_inline(self):
+        d = self.test_doc(lf=['a', 'b'])
+        await d.save()
+        d = self.test_doc(lf=['a', 'c'])
+        await d.save()
+
+        mapf = queryset.Code("""
+              function () {
+                this.lf.forEach(function(z) {
+                  emit(z, 1);
+                });
+              }
+              """)
+        reducef = queryset.Code("""
+              function (key, values) {
+                 var total = 0;
+                 for (var i = 0; i < values.length; i++) {
+                   total += values[i];
+                 }
+                 return total;
+               }
+               """)
+        collection = self.test_doc._get_collection()
+        qs = QuerySet(self.test_doc, collection)
+        r = []
+        async for doc in qs.map_reduce(mapf, reducef, 'inline'):
+            assert isinstance(doc, mongoengine.document.MapReduceDocument)
+            r.append(doc)
+
+        assert len(r) == 3
+
+    @async_test
+    async def test_map_reduce_collection_out(self):
+        d = self.test_doc(lf=['a', 'b'])
+        await d.save()
+        d = self.test_doc(lf=['a', 'c'])
+        await d.save()
+
+        mapf = """
+              function () {
+                this.lf.forEach(function(z) {
+                  emit(z, 1);
+                });
+              }
+              """
+        reducef = """
+              function (key, values) {
+                 var total = 0;
+                 for (var i = 0; i < values.length; i++) {
+                   total += values[i];
+                 }
+                 return total;
+               }
+               """
+        collection = self.test_doc._get_collection()
+        qs = QuerySet(self.test_doc, collection)
+        r = []
+        async for doc in qs.map_reduce(mapf, reducef, 'mr_coll'):
+            assert isinstance(doc, mongoengine.document.MapReduceDocument)
+            r.append(doc)
+
+        assert len(r) == 3
+
+    @async_test
+    async def test_map_reduce_replace_collection_out(self):
+        d = self.test_doc(lf=['a', 'b'])
+        await d.save()
+        d = self.test_doc(lf=['a', 'c'])
+        await d.save()
+
+        mapf = """
+              function () {
+                this.lf.forEach(function(z) {
+                  emit(z, 1);
+                });
+              }
+              """
+        reducef = """
+              function (key, values) {
+                 var total = 0;
+                 for (var i = 0; i < values.length; i++) {
+                   total += values[i];
+                 }
+                 return total;
+               }
+               """
+        collection = self.test_doc._get_collection()
+        qs = QuerySet(self.test_doc, collection)
+        r = []
+        async for doc in qs.map_reduce(mapf, reducef, {"replace": 'mr_coll'}):
+            assert isinstance(doc, mongoengine.document.MapReduceDocument)
+            r.append(doc)
+
+        assert len(r) == 3
+
+    @async_test
+    async def test_map_reduce_inline_finalize(self):
+        d = self.test_doc(lf=['a', 'b'])
+        await d.save()
+        d = self.test_doc(lf=['a', 'c'])
+        await d.save()
+
+        mapf = """
+              function () {
+                this.lf.forEach(function(z) {
+                  emit(z, 1);
+                });
+              }
+              """
+        reducef = """
+              function (key, values) {
+                 var total = 0;
+                 for (var i = 0; i < values.length; i++) {
+                   total += values[i];
+                 }
+                 return total;
+               }
+               """
+
+        finalizef = """
+               function (key, val) {return 0}
+        """
+        collection = self.test_doc._get_collection()
+        qs = QuerySet(self.test_doc, collection)
+        r = []
+        async for doc in qs.map_reduce(mapf, reducef, 'inline',
+                                       finalize_f=finalizef):
+            assert doc.value == 0
+            r.append(doc)
+
+        assert len(r) == 3
+
+    @async_test
+    async def test_aggregate(self):
+        d = self.test_doc(a='a')
+        await d.save()
+
+        d = self.test_doc(a='b')
+        await d.save()
+
+        d = self.test_doc(a='c')
+        await d.save()
+
+        pipeline = [
+            {"$sort": {"a": 1}},
+            {"$project": {"_id": 0, "a": {"$toUpper": "$a"}}}
+        ]
+        expected = [{'a': 'A'}, {'a': 'B'}, {'a': 'C'}]
+        returned = await (
+            await self.test_doc.objects.aggregate(pipeline)
+        ).to_list()
+
+        self.assertEqual(returned, expected)
 
     @async_test
     async def test_sum(self):
@@ -442,6 +579,17 @@ class QuerySetTest(TestCase):
 
         f = await self.test_doc.objects.order_by('-a').first()
         self.assertEqual(f.a, 'z')
+
+    @async_test
+    async def test_explain(self):
+        d = self.test_doc(a='a')
+        await d.save()
+
+        d = self.test_doc(a='z')
+        await d.save()
+
+        e = await self.test_doc.objects.order_by('-a').explain()
+        assert e['explainVersion']
 
     @async_test
     async def test_first_with_empty_queryset(self):
@@ -535,36 +683,3 @@ class QuerySetTest(TestCase):
     # async def test_explain(self):
     #     plan = await self.test_doc.objects.explain()
     #     self.assertFalse(isinstance(plan, asyncio.futures.Future))
-
-
-class PY35QuerySetTest(TestCase):
-
-    @classmethod
-    def setUpClass(cls):
-        connect2db(async_framework='asyncio')
-
-    @classmethod
-    def tearDownClass(cls):
-        disconnect()
-
-    def setUp(self):
-        class TestDoc(Document):
-            a = StringField()
-
-        self.test_doc = TestDoc
-
-    @async_test
-    async def tearDown(self):
-        await self.test_doc.drop_collection()
-
-    @async_test
-    async def test_async_iterate_queryset(self):
-        docs = [self.test_doc(a=str(i)) for i in range(4)]
-        await self.test_doc.objects.insert(docs)
-
-        async for doc in self.test_doc.objects:
-            self.assertTrue(isinstance(doc, self.test_doc))
-            self.assertTrue(doc.id)
-
-        count = await self.test_doc.objects.count()
-        self.assertEqual(count, 4)

@@ -18,11 +18,10 @@
 # along with mongomotor. If not, see <http://www.gnu.org/licenses/>.
 
 from copy import copy
-from asyncblink import signal
 from mongoengine import connection, dereference, signals, context_managers
 from mongoengine.queryset import base
 from pymongo.mongo_client import MongoClient
-from mongomotor.dereference import MongoMotorDeReference
+from mongomotor import signals as async_signals
 
 
 class MonkeyPatcher:
@@ -109,6 +108,7 @@ class MonkeyPatcher:
         self.patch_item(connection, '_connections', connections)
 
     def patch_dereference(self):
+        from mongomotor.dereference import MongoMotorDeReference
         self.patch_item(dereference, 'DeReference', MongoMotorDeReference,
                         undo=False)
 
@@ -132,22 +132,15 @@ class MonkeyPatcher:
     def patch_signals(self):
         """Patches mongoengine signals to use asyncblink signals"""
 
-        pre_init = signal('pre_init')
-        self.patch_item(signals, 'pre_init', pre_init)
-        post_init = signal('post_init')
-        self.patch_item(signals, 'post_init', post_init)
-        pre_save = signal('pre_save')
-        self.patch_item(signals, 'pre_save', pre_save)
-        post_save = signal('post_save')
-        self.patch_item(signals, 'post_save', post_save)
-        pre_save_post_validation = signal('pre_save_post_validation')
+        self.patch_item(signals, 'pre_init', async_signals.pre_init)
+        self.patch_item(signals, 'post_init', async_signals.post_init)
+        self.patch_item(signals, 'pre_save', async_signals.pre_save)
+        self.patch_item(signals, 'post_save', async_signals.post_save)
         self.patch_item(signals, 'pre_save_post_validation',
-                        pre_save_post_validation)
-        pre_delete = signal('pre_delete')
-        self.patch_item(signals, 'pre_delete', pre_delete)
-        post_delete = signal('post_delete')
-        self.patch_item(signals, 'post_delete', post_delete)
-        pre_bulk_insert = signal('pre_bulk_insert')
-        self.patch_item(signals, 'pre_bulk_insert', pre_bulk_insert)
-        post_bulk_insert = signal('post_bulk_insert')
-        self.patch_item(signals, 'post_bulk_insert', post_bulk_insert)
+                        async_signals.pre_save_post_validation)
+        self.patch_item(signals, 'pre_delete', async_signals.pre_delete)
+        self.patch_item(signals, 'post_delete', async_signals.post_delete)
+        self.patch_item(signals, 'pre_bulk_insert',
+                        async_signals.pre_bulk_insert)
+        self.patch_item(signals, 'post_bulk_insert',
+                        async_signals.post_bulk_insert)

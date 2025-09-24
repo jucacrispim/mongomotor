@@ -10,7 +10,8 @@ from mongomotor.connection import connect
 def async_test(f):
     def wrapper(*args, **kwargs):
         future = f(*args, **kwargs)
-        loop = asyncio.get_event_loop()
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
         loop.run_until_complete(future)
     return wrapper
 
@@ -36,7 +37,6 @@ def connect2db(async_framework='asyncio'):
     if password:
         conn_kw['password'] = password
 
-    conn_kw['io_loop'] = asyncio.get_event_loop()
     conn_kw['retryWrites'] = False
     db = 'mongomotor-test'
 

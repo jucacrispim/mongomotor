@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Copyright 2016 Juca Crispim <juca@poraodojuca.net>
+# Copyright 2016, 2025 Juca Crispim <juca@poraodojuca.dev>
 
 # This file is part of mongomotor.
 
@@ -26,9 +26,7 @@ except ImportError:
 
 from mongoengine.connection import _connection_settings
 from mongomotor import connect, disconnect
-from mongomotor.connection import (MongoMotorAsyncIOClient,
-                                   MongoMotorTornadoClient)
-from mongomotor.clients import DummyMongoMotorTornadoClient
+from mongomotor.connection import AsyncMongoClient
 
 
 class ConnectionTest(TestCase):
@@ -36,20 +34,9 @@ class ConnectionTest(TestCase):
     def tearDown(self):
         disconnect()
 
-    if tornado:
-        def test_connect_with_tornado(self):
-            conn = connect(async_framework='tornado')
-            self.assertTrue(isinstance(conn, MongoMotorTornadoClient))
-
-    @patch('mongomotor.connection.CLIENTS',
-           {'tornado': DummyMongoMotorTornadoClient})
-    def test_connect_with_tornado_not_installed(self):
-        with self.assertRaises(Exception):
-            connect(async_framework='tornado')
-
     def test_connect_with_asyncio(self):
         conn = connect()
-        self.assertTrue(isinstance(conn, MongoMotorAsyncIOClient))
+        self.assertTrue(isinstance(conn, AsyncMongoClient))
 
     def test_registered_connections(self):
         # ensures that a sync connection was registered

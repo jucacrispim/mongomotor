@@ -16,9 +16,8 @@ readme = "README.md"
 
 dependencies = [
     'mongoengine>=0.29.1',
-    'motor>=3.1.1',
     'blinker>=1.5',
-    'pymongo>=4.3.3',
+    'pymongo>=4.9.0',
     'asyncblink>=0.3.2',
 ]
 

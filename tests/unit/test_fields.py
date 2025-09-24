@@ -17,11 +17,8 @@
 # You should have received a copy of the GNU General Public License
 # along with mongomotor. If not, see <http://www.gnu.org/licenses/>.
 
-import io
 from unittest import TestCase
-from unittest.mock import Mock
 from mongoengine.connection import get_db
-from motor.frameworks import asyncio as asyncio_framework
 import gridfs
 from mongomotor import Document, disconnect, EmbeddedDocument
 from mongomotor.fields import (ReferenceField, ListField,
@@ -60,12 +57,7 @@ class TestReferenceField(TestCase):
 
     def test_get_with_class(self):
         class RefClass(Document):
-
-            @classmethod
-            def _get_db(self):
-                db = Mock()
-                db._framework = asyncio_framework
-                return db
+            pass
 
         class SomeClass(Document):
             ref = ReferenceField(RefClass)

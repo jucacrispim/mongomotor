@@ -25,10 +25,6 @@ builders:
 
     triggered_by:
 
-      - builder_name: python3.10
-        statuses:
-          - success
-
       - builder_name: python3.11
         statuses:
           - success

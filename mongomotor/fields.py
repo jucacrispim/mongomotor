@@ -48,8 +48,13 @@ class BaseAsyncReferenceField:
                 return instance._data.get(self.name)
 
             ref_value = instance._data.get(self.name)
+            if isinstance(ref_value, dict) and '_ref' in ref_value.keys():
+                ref = ref_value['_ref']
+                cls = get_document(ref_value['_cls'])
+                instance._data[self.name] = await self._lazy_load_ref(
+                    cls, ref)
 
-            if auto_dereference and isinstance(ref_value, DBRef):
+            elif auto_dereference and isinstance(ref_value, DBRef):
                 if hasattr(ref_value, "cls"):
                     # Dereference using the class type specified in the
                     # reference
@@ -212,6 +217,21 @@ class GridFSProxy(fields.GridFSProxy):
             self._fs = gridfs.AsyncGridFS(
                 get_db(self.db_alias), collection=self.collection_name)
         return self._fs
+
+    async def get(self, grid_id=None):
+        if grid_id:
+            self.grid_id = grid_id
+
+        if self.grid_id is None:
+            return None
+
+        try:
+            if self.gridout is None:
+                self.gridout = await self.fs.get(self.grid_id)
+            return self.gridout
+        except Exception:
+            # File has been deleted
+            return None
 
     async def close(self):
         if self.newfile:

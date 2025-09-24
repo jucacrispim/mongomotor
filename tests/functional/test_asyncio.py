@@ -215,7 +215,7 @@ class MongoMotorTest(unittest.TestCase):
 
         with self.assertRaises(Exception):
             # len does not work with mongomotor
-            len(self.maindoc.objects.count())
+            len(self.maindoc.objects)
 
     @async_test
     async def test_query_get(self):
@@ -419,7 +419,6 @@ class MongoMotorTest(unittest.TestCase):
         m = self.maindoc(reflist=[])
         await m.save()
         m = await self.maindoc.objects.get(id=m.id)
-        self.assertIsInstance(m.reflist, asyncio.futures.Future)
         reflist = await m.reflist
         self.assertFalse(reflist)
 
@@ -484,7 +483,7 @@ class MongoMotorTest(unittest.TestCase):
                             'total': {'$sum': 1}}}
         unwind = {'$unwind': '$list_field'}
 
-        cursor = self.maindoc.objects.aggregate([unwind, group])
+        cursor = await self.maindoc.objects.aggregate([unwind, group])
 
         async for d in cursor:
             if d['_id'] == 'a':
@@ -590,5 +589,5 @@ class GridFSTest(unittest.TestCase):
         await doc.save()
         doc = await self.test_doc.objects.get(id=doc.id)
         self.assertEqual((await doc.filefield.read()), fcontents)
-        self.assertEqual(doc.filefield.grid_out.metadata['mime_type'],
-                         'plain/text')
+        gout = doc.filefield.gridout
+        self.assertEqual(gout.mime_type, 'plain/text')

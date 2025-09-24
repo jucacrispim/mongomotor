@@ -370,7 +370,7 @@ class QuerySet(MEQuerySet):
                                 has_delete_signal) and not _from_doc_delete
 
         if call_document_delete:
-            r = await self._document_delete()
+            r = await self._document_delete(queryset, write_concern)
             return r
 
         await self._check_delete_rules(doc, queryset, cascade_refs,
@@ -851,7 +851,7 @@ class QuerySet(MEQuerySet):
         method."""
 
         cnt = 0
-        for doc in queryset:
+        async for doc in queryset:
             await doc.delete(**write_concern)
             cnt += 1
         return cnt

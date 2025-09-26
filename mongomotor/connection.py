@@ -56,8 +56,7 @@ def get_db_version(alias=DEFAULT_CONNECTION_NAME):
     return _db_version[alias]
 
 
-def connect(db=None, async_framework='asyncio',
-            alias=DEFAULT_CONNECTION_NAME, **kwargs):
+def connect(db=None, alias=DEFAULT_CONNECTION_NAME, **kwargs):
     """Connect to the database specified by the 'db' argument.
 
     Connection settings may be provided here as well if the database is not

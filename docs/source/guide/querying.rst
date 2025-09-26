@@ -422,14 +422,14 @@ to :meth:`~mongomotor.queryset.QuerySet.aggregate`.
    # Here the pipeline with the stages, except $match
    pipeline = [{'$unwind': '$artists'}
                {'$group': {'_id': '$artists', 'total': {'$sum': 1}}}]
-   aggregation = Albums.objects.aggregate(pipeline)
+   aggregation = await Albums.objects.aggregate(pipeline)
    # The return of :meth:`~mongomotor.queryset.QuerySet.aggregate` is a
    # :meth:`~mongomotor.core.MongoMotorCursor` and we can iterate over it
    async for doc in aggregation:
        print('Artist: {} has {} albums'.format(doc._id, doc.total))
 
    # If we want to have a $match stage just filter the queryset
-   aggregation = Albums.objects(track__title='Tormentor').aggregate(pipeline)
+   aggregation = await Albums.objects(track__title='Tormentor').aggregate(pipeline)
 
 
 For more information on aggregation and map-reduce see

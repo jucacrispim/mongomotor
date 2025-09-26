@@ -16,14 +16,14 @@ def async_test(f):
     return wrapper
 
 
-def connect2db(async_framework='asyncio'):
+def connect2db():
 
     host = os.environ.get('MONGOMOTOR_TEST_DB_HOST')
     port = os.environ.get('MONGOMOTOR_TEST_DB_PORT')
     username = os.environ.get('MONGOMOTOR_TEST_DB_USERNAME')
     password = os.environ.get('MONGOMOTOR_TEST_DB_PASSWORD')
 
-    conn_kw = {'async_framework': async_framework}
+    conn_kw = {}
 
     if host:
         conn_kw['host'] = host

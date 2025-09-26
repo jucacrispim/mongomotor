@@ -38,7 +38,7 @@ class MongoMotorTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        connect2db(async_framework='asyncio')
+        connect2db()
 
     @classmethod
     def tearDownClass(cls):
@@ -560,7 +560,7 @@ class GridFSTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        connect2db(async_framework='asyncio')
+        connect2db()
 
     @classmethod
     def tearDownClass(cls):

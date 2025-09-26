@@ -32,7 +32,7 @@ class TestReferenceField(TestCase):
 
     @classmethod
     def setUpClass(cls):
-        connect2db(async_framework='asyncio')
+        connect2db()
 
     @classmethod
     def tearDownClass(cls):
@@ -93,7 +93,7 @@ class GenericReferenceFieldTest(TestCase):
 
     @classmethod
     def setUpClass(cls):
-        connect2db(async_framework='asyncio')
+        connect2db()
 
     @classmethod
     def tearDownClass(cls):
@@ -130,7 +130,7 @@ class TestComplexField(TestCase):
 
     @classmethod
     def setUpClass(cls):
-        connect2db(async_framework='asyncio')
+        connect2db()
 
     @classmethod
     def tearDownClass(cls):
@@ -246,7 +246,7 @@ class GridFSProxyTest(TestCase):
 
     @classmethod
     def setUpClass(cls):
-        connect2db(async_framework='asyncio')
+        connect2db()
 
     @classmethod
     def tearDownClass(cls):
@@ -315,7 +315,7 @@ class FileFieldTest(TestCase):
 
     @classmethod
     def setUpClass(cls):
-        connect2db(async_framework='asyncio')
+        connect2db()
 
     @classmethod
     def tearDownClass(cls):

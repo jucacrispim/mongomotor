@@ -33,7 +33,7 @@ class QuerySetTest(TestCase):
 
     @classmethod
     def setUpClass(cls):
-        connect2db(async_framework='asyncio')
+        connect2db()
 
     @classmethod
     def tearDownClass(cls):

@@ -1,7 +1,7 @@
 asyncblink==0.3.2
 Jinja2==3.1.2
 MarkupSafe==2.1.2
-Pygments==2.14.0
+Pygments==2.19.2
 autopep8==2.0.2
 blinker==1.5
 certifi==2022.12.7

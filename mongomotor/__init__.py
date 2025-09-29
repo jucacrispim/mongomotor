@@ -2,22 +2,22 @@
 
 # flake8: noqa
 
-import sys
-PY35 = sys.version_info[:2] >= (3, 5)
-
+from mongomotor.document import (Document, EmbeddedDocument,
+                                 DynamicDocument)
+from mongoengine.document import (MapReduceDocument,
+                                  DynamicEmbeddedDocument)
+from mongomotor.connection import connect, disconnect
 from mongomotor.monkey import MonkeyPatcher
+
 
 patcher = MonkeyPatcher()
 patcher.patch_dereference()
 patcher.patch_signals()
+patcher.patch_get_mongodb_version()
+patcher.patch_no_dereferencing_active_for_class()
 
-from mongomotor.connection import connect, disconnect
-from mongoengine.document import (MapReduceDocument, EmbeddedDocument,
-                                  DynamicEmbeddedDocument)
-from mongomotor.document import (Document,
-                                 DynamicDocument)
 
-VERSION = '0.14.0'
+__version__ = '0.16.2'
 
 __all__ = ['connect', 'disconnect', 'Document', 'DynamicDocument',
            'EmbeddedDocument', 'DynamicEmbeddedDocument', 'MapReduceDocument']

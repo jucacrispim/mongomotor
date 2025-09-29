@@ -1,50 +1,58 @@
-TESTS_CMD:  &TESTS_CMD
-  - name: Run tests
-    command: python setup.py test
-    timeout: 10
+language: python
+docker: true
+versions:
+  - '3.11'
+  - '3.12'
+  - '3.13'
 
-UPLOAD_DOCS_CMD:  &UPLOAD_DOCS_CMD
-  - name: Upload documentation
-    command: pdj-deployer pdj01 software_deploy mongomotor release
+branches:
+  - master
+
+steps:
+  - name: setup db
+    command: ./build-scripts/db.sh
+
+  - name: Run tests
+    command: pytest tests/
+    timeout: 120
 
 
 builders:
-  - name: python3.5
+  - name: Docs
     branches:
       - master
 
-    plugins:
-      - name: python-venv
-        pyversion: python3.5
+    triggered_by:
 
-    platform: python3.5
+      - builder_name: python3.11
+        statuses:
+          - success
 
-    steps:
-      - <<: *TESTS_CMD
+      - builder_name: python3.12
+        statuses:
+          - success
 
-  - name: python3.6
-    branches:
-      - master
-
-    plugins:
-      - name: python-venv
-        pyversion: python3.6
-
-    platform: python3.6
-
-    steps:
-      - <<: *TESTS_CMD
-
-  - name: release
-    branches:
-      - release
+      - builder_name: python3.13
+        statuses:
+          - success
 
     plugins:
-      - name: python-venv
-        pyversion: python3.6
+      - name: apt-install
+        packages:
+          - build-essential
+          - curl
 
-    platform: python3.6
+      - name: python-venv
+        pyversion: python3.13
+
+    platform: python3.13
+
+    envvars:
+      ENV: ci
 
     steps:
-      - <<: *TESTS_CMD
-      - <<: *UPLOAD_DOCS_CMD
+      - name: Build docs
+        command: ./build-scripts/build_docs.sh
+
+      - name: upload docs
+        command: ./build-scripts/upload_docs.sh

@@ -24,6 +24,7 @@ fetch documents from the database:
     :class:`~mongomotor.queryset.QuerySet.no_cache` to return a non-caching
     queryset.
 
+
 Filtering queries
 =================
 The query may be filtered by calling the
@@ -421,36 +422,15 @@ to :meth:`~mongomotor.queryset.QuerySet.aggregate`.
    # Here the pipeline with the stages, except $match
    pipeline = [{'$unwind': '$artists'}
                {'$group': {'_id': '$artists', 'total': {'$sum': 1}}}]
-   aggregation = Albums.objects.aggregate(pipeline)
+   aggregation = await Albums.objects.aggregate(pipeline)
    # The return of :meth:`~mongomotor.queryset.QuerySet.aggregate` is a
    # :meth:`~mongomotor.core.MongoMotorCursor` and we can iterate over it
    async for doc in aggregation:
        print('Artist: {} has {} albums'.format(doc._id, doc.total))
 
    # If we want to have a $match stage just filter the queryset
-   aggregation = Albums.objects(track__title='Tormentor').aggregate(pipeline)
+   aggregation = await Albums.objects(track__title='Tormentor').aggregate(pipeline)
 
-The other methods for data aggregation in mongomotor are
-:meth:`~mongomotor.queryset.QuerySet.map_reduce` and
-:meth:`~mongomotor.queryset.QuerySet.inline_map_reduce`.
-
-The method :meth:`~mongomotor.queryset.QuerySet.map_reduce` is used to do
-map reduce aggregations and send the result to a collection and
-:meth:`~mongomotor.queryset.QuerySet.inline_map_reduce` returns the results
-of the map reduce operation.
-
-.. code-block:: python
-
-   # Here we count how many albums have the same title
-   mapf = Code("""function(){emit(this.title, 1)}""")
-   reducef = Code("""function(key, values){return Array.sum(values)} """)
-   # here we send the output to a collection called `somecoll`
-   await Album.objects.map_reduce(mapf, reducef, {'merge' 'somecoll'})
-
-   # or using inline_map_reduce we have the result in memory
-   result = await Album.objects.inline_map_reduce(mapf, reducef)
-   for doc in result:
-       print('id: {} value: {}'.format(doc._id, doc.value))
 
 For more information on aggregation and map-reduce see
 `MongoDB aggregation manual <https://docs.mongodb.com/manual/aggregation/>`_.

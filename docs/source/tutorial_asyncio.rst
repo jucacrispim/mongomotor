@@ -22,13 +22,10 @@ need is to call the function with a single parameter, the database name.
 
 .. note::
 
-    :func:`~mongomotor.connect` accepts a ``async_framework`` named parameter
-    that indicates which asynchronous framework we should use, either
-    ``asyncio`` or ``tornado``. It defaults to ``asyncio``. The other arguments
-    to :func:`~mongomotor.connect` are passed to mongoengine's connect()
-    function. See the
+    :func:`~mongomotor.connect` arguments are passed to mongoengine's connect()
+    function after the async suff is ready. See the
     `Connecting guide <http://docs.mongoengine.org/guide/connecting.html>`_
-    at mongoengine docs.
+    at mongoengine docs for all connection params.
 
 
 Defining documents

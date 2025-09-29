@@ -1,0 +1,43 @@
+[build-system]
+requires = [
+    "setuptools >= 65",
+    "wheel >= 0.38",
+]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mongomotor"
+dynamic = ["version"]
+authors = [
+  { name="Juca Crispim" },
+]
+description = "MongoMotor: An async document-object mapper for MongoDB"
+readme = "README.md"
+
+dependencies = [
+    'mongoengine>=0.29.1',
+    'blinker>=1.5',
+    'pymongo>=4.9.0',
+    'asyncblink>=0.3.2',
+]
+
+classifiers = [
+    'Development Status :: 3 - Alpha',
+    'Intended Audience :: Developers',
+    'License :: OSI Approved :: GNU General Public License (GPL)',
+    'Natural Language :: English',
+    'Operating System :: OS Independent',
+    'Programming Language :: Python :: 3',
+    'Topic :: Software Development :: Libraries :: Python Modules',
+    'License :: OSI Approved :: GNU General Public License v3 (GPLv3)'
+
+]
+
+
+[tool.setuptools.packages.find]
+where = ["."]
+exclude = ["tests*"]
+include = ["mongomotor"]
+
+[tool.setuptools.dynamic]
+version = {attr = "mongomotor.__version__"}

@@ -21,3 +21,4 @@ mongoengine*.egg
 /.dir-locals.el
 .eggs/
 htmlcov/
+/docs/source/apidoc/

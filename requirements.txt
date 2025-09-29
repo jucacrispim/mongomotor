@@ -19,7 +19,7 @@ pkginfo==1.9.6
 pyflakes==3.0.1
 pymongo==4.9
 requests==2.31.0
-twine==4.0.2
+twine==6.1.0
 build==0.10.0
 pytest==7.3.1
 standard-imghdr==3.13.0

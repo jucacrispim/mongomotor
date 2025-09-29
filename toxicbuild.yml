@@ -30,6 +30,7 @@ builders:
       - name: apt-install
         packages:
           - build-essential
+          - curl
 
       - name: python-venv
         pyversion: python3.13
@@ -56,6 +57,7 @@ builders:
       - name: apt-install
         packages:
           - build-essential
+          - curl
 
       - name: python-venv
         pyversion: python3.13

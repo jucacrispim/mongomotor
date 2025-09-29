@@ -20,30 +20,7 @@ steps:
 builders:
   - name: Docs
     branches:
-      - master
-
-    triggered_by:
-
-      - builder_name: python3.11
-        statuses:
-          - success
-
-      - builder_name: python3.12
-        statuses:
-          - success
-
-      - builder_name: python3.13
-        statuses:
-          - success
-
-    plugins:
-      - name: apt-install
-        packages:
-          - build-essential
-          - curl
-
-      - name: python-venv
-        pyversion: python3.13
+      - release
 
     platform: python3.13
 
@@ -56,3 +33,22 @@ builders:
 
       - name: upload docs
         command: ./build-scripts/upload_docs.sh
+
+  - name: Packages
+    branches:
+      - release
+
+    platform: python3.13
+
+    envvars:
+      ENV: ci
+
+    steps:
+      - name: Build package
+        command: ./build-scripts/create_package.sh
+
+      - name: upload docs to pdj pypi
+        command: ./build-scripts/upload_to_pdj.sh
+
+      - name: upload docs to pypi
+        command: ./build-scripts/upload_to_pypi.sh

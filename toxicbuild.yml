@@ -26,9 +26,15 @@ builders:
     envvars:
       ENV: ci
 
+    plugins:
+      - name: apt-install
+        packages:
+          - build-essential
+
     steps:
       - name: Build docs
         command: ./build-scripts/build_docs.sh
+        stop_on_fail: true
 
       - name: upload docs
         command: ./build-scripts/upload_docs.sh
@@ -42,9 +48,16 @@ builders:
     envvars:
       ENV: ci
 
+    plugins:
+      - name: apt-install
+        packages:
+          - build-essential
+
+
     steps:
       - name: Build package
         command: ./build-scripts/create_package.sh
+        stop_on_fail: true
 
       - name: upload docs to pdj pypi
         command: ./build-scripts/upload_to_pdj.sh

@@ -6,7 +6,7 @@ autopep8==2.0.2
 blinker==1.5
 certifi==2022.12.7
 coverage==7.2.2
-docutils==0.19
+docutils==0.21.2
 flake8==6.0.0
 ipdb==0.13.13
 ipython==8.11.0

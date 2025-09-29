@@ -31,6 +31,10 @@ builders:
         packages:
           - build-essential
 
+      - name: python-venv
+        pyversion: python3.13
+
+
     steps:
       - name: Build docs
         command: ./build-scripts/build_docs.sh
@@ -53,6 +57,8 @@ builders:
         packages:
           - build-essential
 
+      - name: python-venv
+        pyversion: python3.13
 
     steps:
       - name: Build package

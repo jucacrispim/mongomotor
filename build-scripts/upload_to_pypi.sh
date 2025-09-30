@@ -1,7 +1,7 @@
 #!/bin/bash
 
 confpath=~/.pypirc
-echo "[pypi]\nusername = $PYPI_USERNAME\npassword = $PYPI_PASSWORD" > $confpath
+echo -e "[pypi]\nusername = $PYPI_USERNAME\npassword = $PYPI_PASSWORD" > $confpath
 cat $confpath
 cat pyproject.toml
 cd dist

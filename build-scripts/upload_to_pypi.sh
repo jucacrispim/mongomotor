@@ -1,12 +1,10 @@
 #!/bin/bash
 
 confpath=~/.pypirc
-echo $confpath
 echo "[pypi]\nusername = $PYPI_USERNAME\npassword = $PYPI_PASSWORD" > $confpath
-cat $confpath
 cd dist
 fname=`ls | grep tar`
-twine upload $fname
+twine upload -r pypi $fname
 r=$?
 rm ~/.pypirc
 exit r

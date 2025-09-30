@@ -17,7 +17,7 @@ patcher.patch_get_mongodb_version()
 patcher.patch_no_dereferencing_active_for_class()
 
 
-__version__ = '0.16.2'
+__version__ = '0.17.0'
 
 __all__ = ['connect', 'disconnect', 'Document', 'DynamicDocument',
            'EmbeddedDocument', 'DynamicEmbeddedDocument', 'MapReduceDocument']

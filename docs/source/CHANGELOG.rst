@@ -1,6 +1,11 @@
 Changelog
 =========
 
+v0.17.0
++++++++
+
+* Refactor to remove motor in favor of async pymongo
+
 v0.16.2
 +++++++
 

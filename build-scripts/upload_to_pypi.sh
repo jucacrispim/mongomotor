@@ -1,6 +1,9 @@
 #!/bin/bash
 
-echo "[pypi]\nusername = $PYPI_USERNAME\npassword = $PYPI_PASSWORD" > ~/.pypirc
+confpath=~/.pypirc
+echo $confpath
+echo "[pypi]\nusername = $PYPI_USERNAME\npassword = $PYPI_PASSWORD" > $confpath
+cat $confpath
 cd dist
 fname=`ls | grep tar`
 twine upload $fname

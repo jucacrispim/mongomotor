@@ -1,6 +1,11 @@
 Changelog
 =========
 
+v0.17.1
++++++++
+
+* Add EmbeddedDocumentListField
+
 v0.17.0
 +++++++
 

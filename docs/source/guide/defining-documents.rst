@@ -1,4 +1,3 @@
-==================
 Defining documents
 ==================
 In MongoDB, a **document** is roughly equivalent to a **row** in an RDBMS. When

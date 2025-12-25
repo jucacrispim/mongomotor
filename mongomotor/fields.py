@@ -192,6 +192,11 @@ class ComplexBaseField(fields.ComplexBaseField):
             instance._data[self.name] = value
 
 
+class EmbeddedDocumentListField(ComplexBaseField,
+                                fields.EmbeddedDocumentListField):
+    pass
+
+
 class ListField(ComplexBaseField, fields.ListField):
     pass
 

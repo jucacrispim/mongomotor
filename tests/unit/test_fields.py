@@ -24,7 +24,8 @@ from mongomotor import Document, disconnect, EmbeddedDocument
 from mongomotor.fields import (ReferenceField, ListField,
                                EmbeddedDocumentField, StringField, DictField,
                                BaseList, BaseDict, GridFSProxy, FileField,
-                               GridFSError, GenericReferenceField)
+                               GridFSError, GenericReferenceField,
+                               EmbeddedDocumentListField)
 from tests import async_test, connect2db
 
 
@@ -150,6 +151,9 @@ class TestComplexField(TestCase):
         class Embed(EmbeddedDocument):
             field = StringField()
 
+        class TestEmbedRefListField(Document):
+            embed_list = EmbeddedDocumentListField(Embed)
+
         class ReferenceClass(Document):
             embed_list = ListField(EmbeddedDocumentField(Embed))
 
@@ -162,6 +166,7 @@ class TestComplexField(TestCase):
         self.reference_class = ReferenceClass
         self.test_class = TestClass
         self.embed_ref = EmbedRef
+        self.embed_list_field = TestEmbedRefListField
         self.ref_by_embed = ReferedByEmbed
         self.test_embed_ref = TestEmbedRef
 
@@ -192,6 +197,15 @@ class TestComplexField(TestCase):
         await test_doc.save()
 
         test_doc = await self.reference_class.objects.get(id=test_doc.id)
+        self.assertEqual(test_doc.embed_list, [embed])
+
+    @async_test
+    async def test_get_embedded_list_field(self):
+        embed = self.embed(field='bla')
+        test_doc = self.embed_list_field(embed_list=[embed])
+        await test_doc.save()
+
+        test_doc = await self.embed_list_field.objects.get(id=test_doc.id)
         self.assertEqual(test_doc.embed_list, [embed])
 
     @async_test

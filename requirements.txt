@@ -4,7 +4,7 @@ MarkupSafe==2.1.2
 Pygments==2.19.2
 autopep8==2.0.2
 blinker==1.5
-certifi==2022.12.7
+certifi==2023.7.22
 coverage==7.2.2
 docutils==0.21.2
 flake8==6.0.0

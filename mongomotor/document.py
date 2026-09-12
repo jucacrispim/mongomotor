@@ -33,6 +33,8 @@ from mongoengine.errors import (
     SaveConditionError
 )
 from mongoengine.base.metaclasses import TopLevelDocumentMetaclass
+from mongoengine.base.document import BaseDocument
+from mongoengine.base.datastructures import LazyReference
 from mongoengine.queryset import OperationError, NotUniqueError, transform
 from mongomotor import signals
 
@@ -41,7 +43,63 @@ import pymongo
 from pymongo.read_preferences import ReadPreference
 
 
-class NoDerefInitMixin:
+class BaseDocumentMixin:
+    """Common behavior for all mongomotor documents.
+
+    It is a place to incorporate (and adapt) pieces of mongoengine's
+    ``BaseDocument`` that need to be aware of mongomotor's async fields.
+    """
+
+    def _clear_changed_fields(self):
+        """Using ``_get_changed_fields`` iterate and remove any fields that
+        are marked as changed.
+
+        This is a copy of mongoengine's
+        ``BaseDocument._clear_changed_fields`` that resolves the changed
+        field paths through ``_data`` instead of ``getattr``. Using
+        ``getattr`` would invoke mongomotor's async field descriptors
+        (``BaseAsyncReferenceField``/``ComplexBaseField``) which return a
+        coroutine that is never awaited.
+        """
+
+        ReferenceField = _import_class("ReferenceField")
+        GenericReferenceField = _import_class("GenericReferenceField")
+
+        for changed in self._get_changed_fields():
+            parts = changed.split(".")
+            data = self
+            for part in parts:
+                if isinstance(data, list):
+                    try:
+                        data = data[int(part)]
+                    except IndexError:
+                        data = None
+                elif isinstance(data, dict):
+                    data = data.get(part, None)
+                else:
+                    field_name = data._reverse_db_field_map.get(part, part)
+                    # using ``_data`` instead of ``getattr`` so we don't
+                    # trigger the async descriptors of reference fields
+                    data = data._data.get(field_name, None)
+
+                if not isinstance(data, LazyReference) and hasattr(
+                    data, "_changed_fields"
+                ):
+                    if getattr(data, "_is_document", False):
+                        continue
+
+                    data._changed_fields = []
+                elif isinstance(data, (list, tuple, dict)):
+                    if hasattr(data, "field") and isinstance(
+                        data.field, (ReferenceField, GenericReferenceField)
+                    ):
+                        continue
+                    BaseDocument._nestable_types_clear_changed_fields(data)
+
+        self._changed_fields = []
+
+
+class NoDerefInitMixin(BaseDocumentMixin):
     """A mixin used to Documents and EmbeddedDocuments not to dereference
     reference fields on __init__.
     """

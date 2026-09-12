@@ -19,6 +19,8 @@
 
 from unittest import TestCase
 from unittest.mock import patch, Mock
+import gc
+import warnings
 import mongoengine
 from mongomotor import Document, disconnect
 from mongomotor import document
@@ -42,6 +44,7 @@ class DocumentTest(TestCase):
 
         class TestDoc(Document):
             i = IntField()
+            ref = ReferenceField(TestRef)
             refs_list = ListField(ReferenceField(TestRef))
 
         class IndexedTest(Document):
@@ -87,6 +90,25 @@ class DocumentTest(TestCase):
         doc.i = 2
         await doc.save()
         self.assertTrue(doc.id)
+
+    @async_test
+    async def test_clear_changed_fields_no_unawaited_coroutine(self):
+        ref = self.ref_doc()
+        await ref.save()
+        doc = self.test_doc(i=1)
+        doc._changed_fields = []
+        doc.ref = ref
+        doc.refs_list = [ref]
+
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter('always')
+            doc._clear_changed_fields()
+            gc.collect()
+
+        coroutine_warnings = [w for w in caught
+                              if 'never awaited' in str(w.message)]
+        self.assertFalse(coroutine_warnings)
+        self.assertFalse(doc._changed_fields)
 
     @async_test
     async def test_save_unique(self):

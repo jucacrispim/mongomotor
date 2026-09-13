@@ -1,6 +1,10 @@
 Changelog
 =========
 
+v0.17.2
+
+* Fix _clear_changed_fields for documents
+
 v0.17.1
 +++++++
 

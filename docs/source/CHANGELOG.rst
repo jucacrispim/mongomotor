@@ -1,6 +1,12 @@
 Changelog
 =========
 
+v0.17.3
+
+* Fix ``EmbeddedDocumentListField`` not being set as the watched value
+  on the instance, which made changes made through ``append`` (and other
+  list mutators) not be persisted on save.
+
 v0.17.2
 
 * Fix _clear_changed_fields for documents

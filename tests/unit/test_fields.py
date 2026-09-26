@@ -25,7 +25,8 @@ from mongomotor.fields import (ReferenceField, ListField,
                                EmbeddedDocumentField, StringField, DictField,
                                BaseList, BaseDict, GridFSProxy, FileField,
                                GridFSError, GenericReferenceField,
-                               EmbeddedDocumentListField)
+                               EmbeddedDocumentListField,
+                               EmbeddedDocumentList)
 from tests import async_test, connect2db
 
 
@@ -240,6 +241,28 @@ class TestComplexField(TestCase):
     async def test_convert_value_with_dict(self):
         doc = self.test_class(dict_field={'a': 1, 'b': 2})
         self.assertIsInstance(doc.dict_field, BaseDict)
+
+    @async_test
+    async def test_convert_value_with_embedded_document_list(self):
+        doc = self.embed_list_field(embed_list=[self.embed(field='bla')])
+        self.assertIsInstance(doc.embed_list, EmbeddedDocumentList)
+
+    @async_test
+    async def test_append_to_embedded_document_list_is_persisted(self):
+        """Ensures that appending to an EmbeddedDocumentListField marks
+        the field as changed and is persisted on save."""
+
+        doc = self.embed_list_field()
+        await doc.save()
+
+        doc = await self.embed_list_field.objects.get(id=doc.id)
+        doc.embed_list.append(self.embed(field='bla'))
+        self.assertIn('embed_list', doc._get_changed_fields())
+        await doc.save()
+
+        doc = await self.embed_list_field.objects.get(id=doc.id)
+        self.assertEqual(len(doc.embed_list), 1)
+        self.assertEqual(doc.embed_list[0].field, 'bla')
 
     @async_test
     async def test_embedded_list_with_references(self):

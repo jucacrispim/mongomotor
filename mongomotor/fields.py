@@ -184,6 +184,7 @@ class ComplexBaseField(fields.ComplexBaseField):
             if issubclass(type(self), fields.EmbeddedDocumentListField) \
                and not isinstance(value, EmbeddedDocumentList):
                 value = EmbeddedDocumentList(value, instance, self.name)
+                instance._data[self.name] = value
             elif not isinstance(value, BaseList):
                 value = BaseList(value, instance, self.name)
                 instance._data[self.name] = value
